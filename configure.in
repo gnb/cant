@@ -18,7 +18,7 @@ dnl You should have received a copy of the GNU General Public License
 dnl along with this program; if not, write to the Free Software
 dnl Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 dnl 
-dnl $Id: configure.in,v 1.3 2001-11-10 03:18:26 gnb Exp $
+dnl $Id: configure.in,v 1.4 2001-11-13 03:04:06 gnb Exp $
 dnl
 
 AC_INIT(README.cant)
@@ -46,10 +46,15 @@ dnl AM_GNU_GETTEXT
 
 dnl Checks for libraries.
 
+dnl Note that we want to override the side
+dnl effect of adding the library to $LIBS.
+AC_CHECK_LIB(pthread,pthread_create,[dummy=1],[dummy=0])
+
 dnl Checks for header files.
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
-AC_CHECK_HEADERS(malloc.h sys/ioctl.h sys/time.h unistd.h memory.h signal.h sys/filio.h)
+AC_CHECK_HEADERS(malloc.h sys/ioctl.h sys/time.h unistd.h memory.h)
+AC_CHECK_HEADERS(signal.h sys/filio.h pthread.h semaphore.h)
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -58,6 +63,50 @@ AC_TYPE_PID_T
 dnl Check for the libxml library
 AM_PATH_LIBXML(1.8.7)
 AM_PATH_GLIB(1.2.7)
+
+dnl Check the threads implementations
+AC_MSG_CHECKING(for best threads implementation)
+AC_ARG_WITH(threads,
+[  --with-threads=WHICH     Which threads implementation to use (none,posix)],
+[
+# Parse user's requested threads implementation, even
+# if it appears to be unachievable from our earlier probe
+# of libraries and headers.
+case "$withval" in
+none|posix)
+    THREADS=$withval
+    ;;
+*)
+    AC_MSG_ERROR([Unknown argument for --with-threads, expecting \"none\" or \"posix\"])
+    ;;
+esac
+],[
+# Automatically infer the most appropriate threads
+# implementation from probed headers and libraries
+if test "${ac_cv_header_pthread_h}:${ac_cv_header_semaphore_h}:${ac_cv_lib_pthread_pthread_create}" = yes:yes:yes ; then
+    THREADS=posix
+else
+    THREADS=none
+fi
+])
+AC_MSG_RESULT($THREADS)
+
+THREADS_NONE=0
+THREADS_POSIX=0
+case "$THREADS" in
+none)
+    THREADS_NONE=1
+    ;;
+posix)
+    THREADS_POSIX=1
+    THREADS_LIBS="-lpthread"
+    ;;
+esac
+AC_DEFINE_UNQUOTED(THREADS_NONE, $THREADS_NONE)
+AC_DEFINE_UNQUOTED(THREADS_POSIX, $THREADS_POSIX)
+AC_SUBST(THREADS_CFLAGS)
+AC_SUBST(THREADS_LIBS)
+
 
 dnl Checks for library functions.
 AC_PROG_GCC_TRADITIONAL

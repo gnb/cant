@@ -21,7 +21,7 @@
 #define _config_h_ 1
 
 /*
- * $Id: acconfig.h,v 1.1 2001-11-06 07:40:31 gnb Exp $
+ * $Id: acconfig.h,v 1.2 2001-11-13 03:04:06 gnb Exp $
  */
  
 /*
@@ -38,6 +38,9 @@
 #define PACKAGE "foo"
 #define VERSION "bar"
 #endif
+
+#define THREADS_NONE 0
+#define THREADS_POSIX 0
 
 /*@BOTTOM@*/
 #endif /* _config_h_ */
