@@ -1,4 +1,4 @@
-
+--- OPEN ---
 
 x  modify task_execute() to run all jobs at tasks marked barriers
 x  organise to mark most tasks as barriers!
@@ -18,6 +18,26 @@ x  start job worker threads on demand, i.e. when a job is runnable,
    the start queue is full, and there are less than the maximum
    number of worker threads, start another.
 x  Implement filtersets and make <copy> use them.
+x  Implement a generic way of running a config program with
+   "--libs" etc to generate a <library> definition.  Want this
+   to look like:
+   
+   <library
+    	id="glib"
+	prefix="/usr"
+	configprog="glib-config"
+	modules="glib gmodule"/>
+	
+   The question is, how to integrate this with <taglistdef> in
+   a generic manner.
+x  When a log context is pushed without any messages being emitted in
+   it, and a new log context is pushed, emit an empty message just to
+   show what the intervening log context was.
+
+
+
+--- CLOSED ---
+
 x  Design and implement some form of referrable arglist so that
    e.g. CPPFLAGS can be handled in a whitespace-safe manner, i.e.
    without using bloody properties.
@@ -168,5 +188,3 @@ x  Improve the taglist implementation so that tagexp_t can
       <expand tag="incdir" to="${value}"/>
     </tagexpand>
     
-x  Implement a generic way of running a config program with
-   "--libs" etc to generate a <library> definition.
