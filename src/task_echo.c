@@ -27,7 +27,7 @@ typedef struct
     gboolean newline:1;
 } echo_private_t;
 
-CVSID("$Id: task_echo.c,v 1.1 2001-11-19 01:18:07 gnb Exp $");
+CVSID("$Id: task_echo.c,v 1.2 2002-02-10 15:31:14 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -132,10 +132,13 @@ echo_execute(task_t *task)
     }
 
     expmsg = task_expand(task, ep->message);
-    fputs(expmsg, fp);
-    if (ep->newline)
-    	fputc('\n', fp);
-    g_free(expmsg);
+    if (expmsg != 0)
+    {
+	fputs(expmsg, fp);
+	if (ep->newline)
+    	    fputc('\n', fp);
+	g_free(expmsg);
+    }
 
     if (fp != stdout)
     	fclose(fp);
