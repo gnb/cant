@@ -27,13 +27,13 @@
 class props_t
 {
 private:
-    props_t *parent_;	    /* inherits values from here */
+    const props_t *parent_;	    /* inherits values from here */
     hashtable_t<char*, char> *values_;
 
     void expand_1(estring *rep, const char *str, int depth) const;
 
 public:
-    props_t(props_t *parent);
+    props_t(const props_t *parent);
     ~props_t();
     
     /*

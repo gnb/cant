@@ -22,11 +22,11 @@
 #include "filename.H"
 #include "hashtable.H"
 
-CVSID("$Id: props.C,v 1.3 2002-04-06 11:22:12 gnb Exp $");
+CVSID("$Id: props.C,v 1.4 2002-04-07 07:45:00 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-props_t::props_t(props_t *parent)
+props_t::props_t(const props_t *parent)
 {
     parent_ = parent;
     values_ = new hashtable_t<char *, char>;
