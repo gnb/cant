@@ -230,6 +230,7 @@ struct tl_def_tag_s
 
 EXTERN char *argv0;
 EXTERN gboolean verbose;
+EXTERN project_t *project_globals;
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 /*
@@ -339,7 +340,7 @@ void taglist_list_gather(GList *list_of_taglists, tagexp_t *te,
 
 
 /* process.c */
-gboolean process_run(strarray_t *command, strarray_t *env);
+gboolean process_run(strarray_t *command, strarray_t *env, const char *dir);
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 #endif /* _cant_h_ */
