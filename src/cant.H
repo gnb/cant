@@ -60,8 +60,6 @@ EXTERN gboolean verbose;
  */
 
 /* cant.c */
-/* TODO: gcc format decls */
-void fatal(const char *fmt, ...);
 #if DEBUG
 void dump_project(project_t *proj);
 #endif
