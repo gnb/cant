@@ -20,7 +20,7 @@
 #include "cant.h"
 #include "xtask.h"
 
-CVSID("$Id: buildfile.c,v 1.21 2002-02-08 07:11:50 gnb Exp $");
+CVSID("$Id: buildfile.c,v 1.22 2002-02-10 10:10:45 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -948,16 +948,14 @@ parse_fileset(project_t *proj, xmlNode *node, const char *dirprop)
     else
     {
 	/* Handle definition of a new fileset */
-	if (dirprop != 0 && (buf = xmlGetProp(node, dirprop)) == 0)
-	{
-	    parse_error_required_attribute(node, dirprop);
-    	    return 0;
-	}
 
 	fs = fileset_new();
-	fileset_set_directory(fs, buf);
-	xmlFree(buf);
 
+	if (dirprop != 0 && (buf = xmlGetProp(node, dirprop)) != 0)
+	{
+	    fileset_set_directory(fs, buf);
+	    xmlFree(buf);
+    	}
 
 	if ((buf = xmlGetProp(node, "id")) != 0)
 	{

@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 
-<!-- $Id: build.xml,v 1.1 2002-02-04 05:17:49 gnb Exp $ -->
+<!-- $Id: build.xml,v 1.2 2002-02-10 10:15:39 gnb Exp $ -->
 
 <project name="test005" default="all" basedir=".">
 
@@ -18,7 +18,7 @@
 
   <target name="clean">
     <delete>
-      <fileset dir=".">
+      <fileset>
 	<include name="foo"/>
 	<include name="*.o"/>
       </fileset>
