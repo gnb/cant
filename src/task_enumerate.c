@@ -19,7 +19,7 @@
 
 #include "cant.h"
 
-CVSID("$Id: task_enumerate.c,v 1.8 2001-11-21 13:04:20 gnb Exp $");
+CVSID("$Id: task_enumerate.c,v 1.9 2002-02-08 07:44:04 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -48,13 +48,6 @@ enumerate_add_fileset(task_t *task, xmlNode *node)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static gboolean
-enumerate_one_file(const char *filename, void *userdata)
-{
-    logf("%s\n", filename);
-    return TRUE;    /* keep going */
-}
-
-static gboolean
 enumerate_execute(task_t *task)
 {
     GList *list = (GList *)task->private;
@@ -62,11 +55,18 @@ enumerate_execute(task_t *task)
     for ( ; list != 0 ; list = list->next)
     {
     	fileset_t *fs = (fileset_t *)list->data;
+	strarray_t *sa = strarray_new();
+	int i;
+	
+	fileset_gather_mapped(fs, project_get_props(task->project), sa, 0);
+    	strarray_sort(sa, 0);
 	
 	logf("{\n");
-	fileset_apply(fs, project_get_props(task->project),
-	    	      enumerate_one_file, 0);
+	for (i = 0 ; i < sa->len ; i++)
+	    logf("%s\n", strarray_nth(sa, i));
 	logf("}\n");
+	
+	strarray_delete(sa);
     }
     
     return TRUE;
@@ -79,11 +79,7 @@ enumerate_delete(task_t *task)
 {
     GList *list = (GList *)task->private;
     
-    while (list != 0)
-    {
-    	fileset_delete((fileset_t *)list->data);
-    	list = g_list_remove_link(list, list);
-    }
+    listdelete(list, fileset_t, fileset_unref);
 
     task->private = 0;
 }
