@@ -19,7 +19,7 @@
 
 #include "log.h"
 
-CVSID("$Id: log.c,v 1.9 2002-02-08 08:32:39 gnb Exp $");
+CVSID("$Id: log.c,v 1.10 2002-02-11 01:47:01 gnb Exp $");
 
 typedef struct log_context_s	log_context_t;
 
@@ -62,37 +62,22 @@ logv(const char *fmt, va_list args)
     
     if (log_context_stack != 0)
     {
-    	if (verbose)
-	{
-	    /* show all intervening contexts since we last emitted a message */
-    	    GList *iter;
-    	    log_context_t *lc;
-	    int n;
+	/* show all intervening contexts since we last emitted a message */
+    	GList *iter, *prev = 0;
+    	log_context_t *lc;
+	int n;
 
-	    for (iter = log_context_stack, n = g_list_length(log_context_stack) ;
-		 iter != 0 && ((log_context_t *)iter->data)->nmessages == 0 ;
-		 iter = iter->next, n--)
-		;
+	for (iter = log_context_stack, n = g_list_length(log_context_stack) ;
+	     iter != 0 && ((log_context_t *)iter->data)->nmessages == 0 ;
+	     prev = iter, iter = iter->next, n--)
+	    ;
 
-    	    if (iter != log_context_stack)
-	    {
-	    	if (iter == 0)
-		    iter = g_list_last(log_context_stack);
-		for (n++ ;
-		     iter != 0 ;
-		     iter = iter->next, n++)
-		{
-		    lc = (log_context_t *)iter->data;
-		    log_show_context(n, lc->name);
-		    lc->nmessages++;
-		}
-	    }
-	}
-	else
+	for (iter = prev, n++ ;
+	     iter != 0 ;
+	     iter = iter->prev, n++)
 	{
-	    /* just show the current context */
-	    log_context_t *lc = (log_context_t *)log_context_stack->data;
-	    log_show_context(g_list_length(log_context_stack), lc->name);
+	    lc = (log_context_t *)iter->data;
+	    log_show_context(n, lc->name);
 	    lc->nmessages++;
 	}
     }
