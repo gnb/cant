@@ -19,7 +19,9 @@
 
 #include "log.h"
 
-CVSID("$Id: log.c,v 1.8 2002-02-04 05:20:53 gnb Exp $");
+CVSID("$Id: log.c,v 1.9 2002-02-08 08:32:39 gnb Exp $");
+
+typedef struct log_context_s	log_context_t;
 
 struct logmsg_s
 {
@@ -31,8 +33,16 @@ struct logmsg_s
     const char *context;    	/* not saved */
 };
 
-static GList *log_context_stack;
-static int log_topn;	/* number of messages since last push */
+struct log_context_s
+{
+    const char *name;
+    int nmessages;
+};
+
+static GList *log_context_stack;    /* stack of log_context_s */
+
+/* TODO: fmeh, do this properly */
+extern gboolean verbose;
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -42,7 +52,6 @@ log_show_context(int depth, const char *context)
     while (depth--)
 	fputs("  ", stderr);
     fprintf(stderr, "[%s] ", context);
-    log_topn++;
 }
 
 void
@@ -52,8 +61,41 @@ logv(const char *fmt, va_list args)
     /* TODO: lock between threads */
     
     if (log_context_stack != 0)
-	log_show_context(g_list_length(log_context_stack),
-    	    		 (const char *)log_context_stack->data);
+    {
+    	if (verbose)
+	{
+	    /* show all intervening contexts since we last emitted a message */
+    	    GList *iter;
+    	    log_context_t *lc;
+	    int n;
+
+	    for (iter = log_context_stack, n = g_list_length(log_context_stack) ;
+		 iter != 0 && ((log_context_t *)iter->data)->nmessages == 0 ;
+		 iter = iter->next, n--)
+		;
+
+    	    if (iter != log_context_stack)
+	    {
+	    	if (iter == 0)
+		    iter = g_list_last(log_context_stack);
+		for (n++ ;
+		     iter != 0 ;
+		     iter = iter->next, n++)
+		{
+		    lc = (log_context_t *)iter->data;
+		    log_show_context(n, lc->name);
+		    lc->nmessages++;
+		}
+	    }
+	}
+	else
+	{
+	    /* just show the current context */
+	    log_context_t *lc = (log_context_t *)log_context_stack->data;
+	    log_show_context(g_list_length(log_context_stack), lc->name);
+	    lc->nmessages++;
+	}
+    }
     vfprintf(stderr, fmt, args);
     fflush(stderr);
 }
@@ -83,7 +125,7 @@ logmsg_newm(char *str)
     
     lm = new(logmsg_t);
     lm->depth = g_list_length(log_context_stack);
-    lm->context = (const char *)log_context_stack->data;
+    lm->context = ((log_context_t *)log_context_stack->data)->name;
     lm->message = str;
     
     return lm;
@@ -135,17 +177,23 @@ logmsg_emit(logmsg_t *lm)
 void
 log_push_context(const char *name)
 {
-    if (log_context_stack != 0 && log_topn == 0)
-    	logf("\n");
-    log_context_stack = g_list_prepend(log_context_stack, (gpointer)name);
-    log_topn = 0;
+    log_context_t *lc;
+    
+    lc = new(log_context_t);
+    lc->name = name;
+    
+    log_context_stack = g_list_prepend(log_context_stack, lc);
 }
 
 void
 log_pop_context(void)
 {
     if (log_context_stack != 0)
+    {
+	log_context_t *lc = (log_context_t *)log_context_stack->data;
     	log_context_stack = g_list_remove_link(log_context_stack, log_context_stack);
+	g_free(lc);
+    }
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
