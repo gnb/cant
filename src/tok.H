@@ -27,26 +27,27 @@
  */
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-typedef struct tok_s	tok_t;
-
-struct tok_s
+class tok_t
 {
-    char *buf;
-    char *state;
-    const char *sep;
+public:
+    /* ctors */
+    tok_t(const char *str, const char *sep = 0);    /* const=>copy */
+    tok_t(char *str, const char *sep = 0);  	    /* nonconst=>don't copy */
+    /* dtor */
+    ~tok_t();
+
+    /*
+     * Returns next token or 0 when last token reached.
+     */
+    const char *next();
+
+private:
+    void init(char *str, const char *sep);
+    
+    char *buf_;
+    char *state_;
+    const char *sep_;
 };
-
-/* for allocating a new object */
-tok_t *tok_new(const char *str, const char *sep);
-tok_t *tok_new_m(char *str, const char *sep);
-void tok_delete(tok_t *);
-
-/* for an auto object */
-void tok_init(tok_t *tok, const char *str, const char *sep);
-void tok_init_m(tok_t *tok, char *str, const char *sep);
-void tok_free(tok_t *);
-
-const char *tok_next(tok_t *tok);
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 #endif /* _tok_h_ */

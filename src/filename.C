@@ -23,7 +23,7 @@
 #include <dirent.h>
 #include <fcntl.h>
 
-CVSID("$Id: filename.C,v 1.1 2002-03-29 12:36:26 gnb Exp $");
+CVSID("$Id: filename.C,v 1.2 2002-03-29 13:02:36 gnb Exp $");
 
 #ifndef __set_errno
 #define __set_errno(v)	 errno = (v)
@@ -69,7 +69,6 @@ file_normalise_m(char *filename, const char *basedir)
 {
     const char *fp;
     estring abs;
-    tok_t tok;
         
 #if DEBUG
     fprintf(stderr, "file_normalise_m(\"%s\", \"%s\")",
@@ -86,8 +85,8 @@ file_normalise_m(char *filename, const char *basedir)
     	estring_append_string(&abs, basedir);
     
     /* iterate over parts of `filename', appending to `abs' */
-    tok_init_m(&tok, filename, "/");
-    while ((fp = tok_next(&tok)) != 0)
+    tok_t tok(filename, "/");
+    while ((fp = tok.next()) != 0)
     {
     	if (!strcmp(fp, "."))
 	{
@@ -126,7 +125,6 @@ file_normalise_m(char *filename, const char *basedir)
     if (abs.data[0] == '.' && abs.data[1] == '/')
     	estring_remove(&abs, 0, 2);
     
-    tok_free(&tok);
 #if DEBUG
     fprintf(stderr, " -> \"%s\"\n", abs.data);
 #endif

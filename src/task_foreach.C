@@ -21,7 +21,7 @@
 #include "tok.H"
 #include <time.h>
 
-CVSID("$Id: task_foreach.C,v 1.1 2002-03-29 12:36:27 gnb Exp $");
+CVSID("$Id: task_foreach.C,v 1.2 2002-03-29 13:02:36 gnb Exp $");
 
 typedef struct
 {
@@ -107,15 +107,13 @@ foreach_execute(task_t *task)
     foreach_private_t *fp = (foreach_private_t *)task->private_data;
     const char *val;
     GList *iter;
-    tok_t tok;
 
     fp->failed = FALSE;    
     fp->variable_e = task_expand(task, fp->variable);
 
-    tok_init_m(&tok, task_expand(task, fp->values), ",");
-    while (!fp->failed && (val = tok_next(&tok)) != 0)
+    tok_t tok(task_expand(task, fp->values), ",");
+    while (!fp->failed && (val = tok.next()) != 0)
     	foreach_do_iteration(val, task);
-    tok_free(&tok);
     
     for (iter = fp->filesets ; !fp->failed && iter != 0 ; iter = iter->next)
     {

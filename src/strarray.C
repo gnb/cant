@@ -20,7 +20,7 @@
 #include "strarray.H"
 #include "tok.H"
 
-CVSID("$Id: strarray.C,v 1.1 2002-03-29 12:36:26 gnb Exp $");
+CVSID("$Id: strarray.C,v 1.2 2002-03-29 13:02:36 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -72,14 +72,10 @@ strarray_split_tom(strarray_t *sa, char *str, const char *sep)
     /* tokenise value on whitespace */
     const char *x;
     int oldlen = sa->len;
-    tok_t tok;
+    tok_t tok(str, sep);
     
-    if (sep == 0)
-    	sep = " \t\n\r";
-    tok_init_m(&tok, str, sep);
-    while ((x = tok_next(&tok)) != 0)
+    while ((x = tok.next()) != 0)
 	strarray_append(sa, x);
-    tok_free(&tok);
     return sa->len - oldlen;
 }
 

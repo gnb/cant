@@ -24,7 +24,7 @@
 #include "log.H"
 #include <dirent.h>
 
-CVSID("$Id: fileset.C,v 1.1 2002-03-29 12:36:26 gnb Exp $");
+CVSID("$Id: fileset.C,v 1.2 2002-03-29 13:02:36 gnb Exp $");
 
 static void fs_spec_delete(fs_spec_t *fss);
 
@@ -293,11 +293,9 @@ glob_path(
 {
     const char *part;
     GList *iter, *next;
-    tok_t tok;
-    
-    tok_init(&tok, globpath, "/");
+    tok_t tok((const char *)globpath, "/");
 
-    while ((part = tok_next(&tok)) != 0)
+    while ((part = tok.next()) != 0)
     {
 	if (!strcmp(part, "**"))
 	{
@@ -348,7 +346,6 @@ glob_path(
 	}
     }
 
-    tok_free(&tok);
     g_free(globpath);
 }
 

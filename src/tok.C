@@ -19,61 +19,39 @@
 
 #include "tok.H"
 
-CVSID("$Id: tok.C,v 1.1 2002-03-29 12:36:27 gnb Exp $");
-
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
-
-tok_t *
-tok_new(const char *str, const char *sep)
-{
-    return tok_new_m(g_strdup(str), sep);
-}
-
-tok_t *
-tok_new_m(char *str, const char *sep)
-{
-    tok_t *tok;
-    
-    tok = new(tok_t);
-    tok_init_m(tok, str, sep);
-    return tok;
-}
-
-void
-tok_delete(tok_t *tok)
-{
-    tok_free(tok);
-    g_free(tok);
-}
+CVSID("$Id: tok.C,v 1.2 2002-03-29 13:02:36 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 void
-tok_init(tok_t *tok, const char *str, const char *sep)
+tok_t::init(char *str, const char *sep)
 {
-    tok_init_m(tok, g_strdup(str), sep);
+    buf_ = str;
+    state_ = 0;
+    sep_ = (sep == 0 ? " \t\r\n" : sep);
 }
 
-void
-tok_init_m(tok_t *tok, char *str, const char *sep)
+tok_t::tok_t(const char *str, const char *sep)
 {
-    tok->buf = str;
-    tok->state = 0;
-    tok->sep = sep;
+    init(g_strdup(str), sep);
 }
 
-void
-tok_free(tok_t *tok)
+tok_t::tok_t(char *str, const char *sep)
 {
-    g_free(tok->buf);
+    init(str, sep);
+}
+
+tok_t::~tok_t()
+{
+    g_free(buf_);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 const char *
-tok_next(tok_t *tok)
+tok_t::next()
 {
-    return strtok_r((tok->state == 0 ? tok->buf : 0), tok->sep, &tok->state);
+    return strtok_r((state_ == 0 ? buf_ : 0), sep_, &state_);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
