@@ -20,7 +20,7 @@
 #include "xtask.h"
 #include "job.h"
 
-CVSID("$Id: xtask.c,v 1.18 2002-02-04 05:16:28 gnb Exp $");
+CVSID("$Id: xtask.c,v 1.19 2002-02-08 07:45:43 gnb Exp $");
 
 typedef struct
 {
@@ -162,15 +162,6 @@ xtask_execute_command(task_t *task)
     strarray_t *depfiles;
     char *targfile = 0;
     
-    /* build the command from args and properties */
-    command = strarray_new();
-    
-    if (!xtask_build_command(task, command))
-    {
-    	strarray_delete(command);
-	return FALSE;
-    }
-    
        
     /* try to build dependency information for the command */
 
@@ -205,6 +196,21 @@ xtask_execute_command(task_t *task)
     }
 
     strnullnorm(targfile);
+    if (targfile != 0)
+	props_set(xp->properties, "targfile", targfile);
+
+
+    /* build the command from args and properties */
+    command = strarray_new();
+    
+    if (!xtask_build_command(task, command))
+    {
+    	strdelete(targfile);
+    	strarray_delete(command);
+    	strarray_delete(depfiles);
+	return FALSE;
+    }
+    
     
     if (verbose)
     	logmsg = logmsg_newnm(strarray_join(command, " "));
@@ -331,7 +337,7 @@ xtask_arg_delete(xtask_arg_t *xa)
     	break;
     case XT_FILESET:    /* <fileset> child */
 	if (xa->data.fileset != 0)
-    	    fileset_delete(xa->data.fileset);
+    	    fileset_unref(xa->data.fileset);
     	break;
     case XT_FILES:  	/* <files> child */
     	break;
