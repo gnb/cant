@@ -31,7 +31,7 @@ typedef struct
     gboolean result:1;
 } delete_private_t;
 
-CVSID("$Id: task_delete.c,v 1.9 2001-11-19 01:18:07 gnb Exp $");
+CVSID("$Id: task_delete.c,v 1.10 2002-02-08 07:42:29 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -226,11 +226,7 @@ delete_delete(task_t *task)
     strdelete(dp->directory);
     
     /* delete filesets */
-    while (dp->filesets != 0)
-    {
-    	fileset_delete((fileset_t *)dp->filesets->data);
-    	dp->filesets = g_list_remove_link(dp->filesets, dp->filesets);
-    }
+    listdelete(dp->filesets, fileset_t, fileset_unref);
     
     task->private = 0;
 }
