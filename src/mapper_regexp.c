@@ -19,15 +19,15 @@
 
 #include "cant.h"
 
-CVSID("$Id: mapper_regexp.c,v 1.2 2001-11-13 04:08:05 gnb Exp $");
+CVSID("$Id: mapper_regexp.c,v 1.3 2001-11-21 13:07:46 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-/* TODO: this one can actually fail, handle that */
-static void
+static gboolean
 regexp_new(mapper_t *ma)
 {
     ma->private = pattern_new(ma->from, PAT_GROUPS|PAT_REGEXP);
+    return (ma->private != 0);
 }
 
 static char *
@@ -43,7 +43,8 @@ regexp_map(mapper_t *ma, const char *filename)
 static void
 regexp_delete(mapper_t *ma)
 {
-    pattern_delete((pattern_t *)ma->private);
+    if (ma->private != 0)
+	pattern_delete((pattern_t *)ma->private);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

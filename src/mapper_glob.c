@@ -19,13 +19,11 @@
 
 #include "cant.h"
 
-CVSID("$Id: mapper_glob.c,v 1.2 2001-11-13 04:08:05 gnb Exp $");
+CVSID("$Id: mapper_glob.c,v 1.3 2001-11-21 13:07:46 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
-
-/* TODO: this one can actually fail, handle that */
-
-static void
+ 
+static gboolean
 glob_new(mapper_t *ma)
 {
     estring replace;
@@ -42,11 +40,12 @@ glob_new(mapper_t *ma)
     }
     if (nstar != 1 || nother != 0)
     {
-    	/* TODO: report error properly. */
-    	fprintf(stderr, "glob_new: bad \"from\" expression \"%s\"\n", ma->from);
-    	return; /* failure */
+    	parse_error("bad \"from\" expression \"%s\"\n", ma->from);
+    	return FALSE;
     }
-    ma->private = pattern_new(ma->from, PAT_GROUPS);
+    if ((ma->private = pattern_new(ma->from, PAT_GROUPS)) == 0)
+    	return FALSE;
+    
 
 
     estring_init(&replace);
@@ -66,16 +65,15 @@ glob_new(mapper_t *ma)
     }
     if (nstar != 1 || nother != 0)
     {
-    	/* TODO: report error properly. */
-    	fprintf(stderr, "glob_new: bad \"to\" expression \"%s\"\n", ma->to);
+    	parse_error("bad \"to\" expression \"%s\"\n", ma->to);
     	estring_free(&replace);
-    	return; /* failure */
+    	return FALSE;
     }
     /* might as well stash this in `to', it has no other use */
     g_free(ma->to);
     ma->to = replace.data;
     
-    /* success */
+    return TRUE;
 }
 
 static char *
@@ -107,7 +105,8 @@ glob_map(mapper_t *ma, const char *filename)
 static void
 glob_delete(mapper_t *ma)
 {
-    pattern_delete((pattern_t *)ma->private);
+    if (ma->private != 0)
+	pattern_delete((pattern_t *)ma->private);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

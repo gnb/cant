@@ -20,13 +20,16 @@
 #include "mapper.h"
 #include "log.h"
 
-CVSID("$Id: mapper.c,v 1.3 2001-11-14 06:30:26 gnb Exp $");
+CVSID("$Id: mapper.c,v 1.4 2001-11-21 13:07:46 gnb Exp $");
 
 static GHashTable *mapper_ops_all;
 
 static mapper_ops_t *mapper_ops_find(const char *name);
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+/* TODO: fmeh */
+extern void parse_error(const char *fmt, ...);
 
 mapper_t *
 mapper_new(const char *name, const char *from, const char *to)
@@ -35,7 +38,10 @@ mapper_new(const char *name, const char *from, const char *to)
     mapper_ops_t *ops;
     
     if ((ops = mapper_ops_find(name)) == 0)
+    {
+    	parse_error("Unknown mapper type \"%s\"\n", name);
     	return 0;
+    }
 	
     ma = new(mapper_t);
     
@@ -43,7 +49,11 @@ mapper_new(const char *name, const char *from, const char *to)
     strassign(ma->from, from);
     strassign(ma->to, to);
     
-    (*ma->ops->new)(ma);
+    if (!(*ma->ops->new)(ma))
+    {
+    	mapper_delete(ma);
+    	return 0;
+    }
     
     return ma;
 }

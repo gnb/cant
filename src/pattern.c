@@ -19,17 +19,26 @@
 
 #include "pattern.h"
 #include "estring.h"
+#include "log.h"
 
-CVSID("$Id: pattern.c,v 1.7 2001-11-14 10:59:03 gnb Exp $");
+CVSID("$Id: pattern.c,v 1.8 2001-11-21 13:07:46 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-void
+/*
+ * TODO: this really, really needs a more sensible approach
+ *       to error reporting, so that I don't have to declare
+ *       the right function to report errors.  FMEH!!
+ */
+extern void parse_error(const char *fmt, ...);
+
+gboolean
 pattern_init(pattern_t *pat, const char *pattern, unsigned flags)
 {
     const char *p = pattern;
     estring restr;
     unsigned reflags = 0;
+    int errcode;
     
 #if DEBUG
     strassign(pat->pattern, pattern);
@@ -75,8 +84,16 @@ pattern_init(pattern_t *pat, const char *pattern, unsigned flags)
 #endif
     if (!(flags & PAT_CASE)) reflags |= REG_ICASE;
     if (!(flags & PAT_GROUPS)) reflags |= REG_NOSUB;
-    regcomp(&pat->regex, restr.data, reflags);
+    errcode = regcomp(&pat->regex, restr.data, reflags);
+    if (errcode != 0)
+    {
+	char errbuf[1024];
+
+	regerror(errcode, &pat->regex, errbuf, sizeof(errbuf));
+	parse_error("\"%s\": %s\n", pattern, errbuf);
+    }
     estring_free(&restr);
+    return (errcode == 0);
 }
 
 void
@@ -101,7 +118,11 @@ pattern_new(const char *pattern, unsigned flags)
     
     pat = new(pattern_t);
     
-    pattern_init(pat, pattern, flags);
+    if (!pattern_init(pat, pattern, flags))
+    {
+    	pattern_delete(pat);
+    	return 0;
+    }
     
     return pat;
 }

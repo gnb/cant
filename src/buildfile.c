@@ -20,7 +20,7 @@
 #include "cant.h"
 #include "xtask.h"
 
-CVSID("$Id: buildfile.c,v 1.17 2001-11-21 07:17:31 gnb Exp $");
+CVSID("$Id: buildfile.c,v 1.18 2001-11-21 13:07:46 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -164,11 +164,12 @@ is_condition_attribute(const char *attrname)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void
+static gboolean
 parse_property(project_t *proj, xmlNode *node)
 {
     char *name = 0;
     xmlAttr *attr;
+    gboolean failed = FALSE;
 
     /* a lot hinges on whether attribute "name" is present */    
     name = xmlGetProp(node, "name");
@@ -186,7 +187,10 @@ parse_property(project_t *proj, xmlNode *node)
 	if (refid != 0) n++;
 
 	if (n != 1)
+	{
 	    parse_node_error(node, "You must specify exactly one of \"value\", \"location\", and \"refid\"\n");
+	    failed = TRUE;
+	}
     	else if (value != 0)
 	{
 	    project_set_property(proj, name, value);
@@ -206,7 +210,8 @@ parse_property(project_t *proj, xmlNode *node)
 	else if (refid != 0)
 	{
 	    /* TODO */
-	    fprintf(stderr, "<property refid=> not implemented\n");
+	    parse_node_error(node, "<property refid=> not implemented\n");
+	    failed = TRUE;
 	}
 	
 	if (value != 0)
@@ -229,21 +234,27 @@ parse_property(project_t *proj, xmlNode *node)
 	if (environment != 0) n++;
 
 	if (n != 1)
+	{
 	    parse_node_error(node, "You must specify exactly one of \"resource\", \"file\", and \"environment\"\n");
-    	else if (resource != 0)
+    	    failed = TRUE;
+    	}
+	else if (resource != 0)
 	{
 	    /* TODO */
-	    fprintf(stderr, "<property resource=> not implemented\n");
+	    parse_node_error(node, "<property resource=> not implemented\n");
+	    failed = TRUE;
 	}
 	else if (file != 0)
 	{
 	    /* TODO */
-	    fprintf(stderr, "<property file=> not implemented\n");
+	    parse_node_error(node, "<property file=> not implemented\n");
+	    failed = TRUE;
 	}
 	else if (environment != 0)
 	{
 	    /* TODO */
-	    fprintf(stderr, "<property environment=> not implemented\n");
+	    parse_node_error(node, "<property environment=> not implemented\n");
+	    failed = TRUE;
 	}
 	
 	if (resource != 0)
@@ -270,7 +281,10 @@ parse_property(project_t *proj, xmlNode *node)
 	    !strcmp(attr->name, "classpathref"))
 	    ;
 	else
-	    parse_error_unknown_attribute(attr);	/* TODO: warning? */
+	{
+	    parse_error_unknown_attribute(attr);
+	    failed = TRUE;
+	}
 
     	xmlFree(value);
     }
@@ -278,6 +292,8 @@ parse_property(project_t *proj, xmlNode *node)
 
     if (name != 0)
     	xmlFree(name);
+	
+    return !failed;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -556,7 +572,7 @@ parse_project_taglist(project_t *proj, xmlNode *node)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void
+static gboolean
 parse_xtaskdef(project_t *proj, xmlNode *node)
 {
     char *buf;
@@ -564,6 +580,7 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
     xmlNode *child;
     xtask_arg_t *xa;
     fileset_t *fs;
+    gboolean failed = FALSE;
     
 #if DEBUG
     fprintf(stderr, "Parsing xtaskdef\n");
@@ -572,9 +589,10 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
     if ((buf = xmlGetProp(node, "name")) == 0)
     {
 	parse_error_required_attribute(node, "name");
-	return;     /* TODO: return failure */
+	return FALSE;
     }
 
+    parse_node_push(node);
     xops = xtask_ops_new(buf);
     xmlFree(buf);
 
@@ -593,6 +611,7 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
     	if (child->type != XML_ELEMENT_NODE)
 	    continue;
 
+    	parse_node_push(child);
     	xa = 0;
     	if (!strcmp(child->name, "arg"))
 	{
@@ -612,14 +631,20 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
 	    	xmlFree(buf);
 	    }
 	    else
+	    {
 	    	parse_node_error(node, "One of \"line\", \"value\" or \"file\" must be set\n");
+    	    	failed = TRUE;
+	    }
 	}
 	else if (!strcmp(child->name, "attr"))
 	{
 	    char *from = 0, *to = 0;
 	    
 	    if ((from = xmlGetProp(child, "attribute")) == 0)
+	    {
 		parse_error_required_attribute(node, "attribute");
+		failed = TRUE;
+	    }
 	    else if ((to = xmlGetProp(child, "property")) == 0)
 	    	to = xmlMemStrdup(from);
 
@@ -637,7 +662,10 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
 	    char *namespace = 0;
 	    
 	    if ((namespace = xmlGetProp(child, "namespace")) == 0)
+	    {
 		parse_error_required_attribute(node, "namespace");
+		failed = TRUE;
+	    }
 
 	    xtask_ops_add_child(xops, namespace);
 	    
@@ -646,7 +674,9 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
     	}	
 	else if (!strcmp(child->name, "fileset"))
 	{
-	    if ((fs = parse_fileset(proj, child, "dir")) != 0)
+	    if ((fs = parse_fileset(proj, child, "dir")) == 0)
+	    	failed = TRUE;
+	    else
 	    	xa = xtask_ops_add_fileset(xops, fs);
 	}
 	else if (!strcmp(child->name, "files"))
@@ -657,36 +687,56 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
 	{
 	    tagexp_t *te;
 	    
-	    /* TODO: propagate failure */
-	    if ((te = parse_tagexpand(proj, child)) != 0)
+	    if ((te = parse_tagexpand(proj, child)) == 0)
+	    	failed = TRUE;
+	    else
 		xa = xtask_ops_add_tagexpand(xops, te);
 	}
 	else if (!strcmp(child->name, "mapper"))
 	{
 	    mapper_t *ma;
 	    
-	    if ((ma = parse_mapper(proj, child)) != 0)
+	    if ((ma = parse_mapper(proj, child)) == 0)
+	    	failed = TRUE;
+	    else
 		xops->mappers = g_list_append(xops->mappers, ma);
 	}
 	else if (!strcmp(child->name, "depmapper"))
 	{
 	    mapper_t *ma;
 	    
-	    if ((ma = parse_mapper(proj, child)) != 0)
+	    if ((ma = parse_mapper(proj, child)) == 0)
+	    	failed = TRUE;
+	    else
 		xops->dep_mappers = g_list_append(xops->dep_mappers, ma);
 	}
 	else
+	{
 	    parse_error_unexpected_element(child);
+	    failed = TRUE;
+	}
 
+    	parse_node_pop();
     	if (xa == 0)
 	    continue;
 
     	if (!parse_condition(&xa->condition, child))
-	    continue;	/* TODO: do something more drastic */
+	{
+	    failed = TRUE;
+	    continue;
+	}
     }    
 
+    parse_node_pop();
+    if (failed)
+    {
+    	xtask_ops_delete(xops);
+	return FALSE;
+    }
+    
     /* TODO: handle duplicate registrations cleanly */
     tscope_register(proj->tscope, (task_ops_t *)xops);
+    return TRUE;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -929,21 +979,22 @@ parse_fileset(project_t *proj, xmlNode *node, const char *dirprop)
 }
 
 
-static void
+static gboolean
 parse_project_fileset(project_t *proj, xmlNode *node)
 {
     fileset_t *fs;
     
     if ((fs = parse_fileset(proj, node, "dir")) == 0)
-    	return;
+    	return FALSE;
 	
     if (fs->id == 0)
     {
     	parse_node_error(node, "<fileset> at project scope must have \"id\" attribute\n");
-    	return;
+    	return FALSE;
     }
     /* TODO: detect duplicate fileset ids */
     project_add_fileset(proj, fs);
+    return TRUE;
 }
 
 
@@ -963,12 +1014,13 @@ is_fileset_attribute(const char *attrname, const char *dirprop)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void
+static gboolean
 parse_path(project_t *proj, xmlNode *node)
 {
 #if DEBUG
     fprintf(stderr, "ignoring path\n");
 #endif
+    return TRUE;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -979,6 +1031,7 @@ parse_mapper(project_t *proj, xmlNode *node)
     char *name;
     char *from;
     char *to;
+    mapper_t *ma;
     
     if ((name = xmlGetProp(node, "name")) == 0)
     {
@@ -1001,7 +1054,13 @@ parse_mapper(project_t *proj, xmlNode *node)
     	return 0;
     }
     
-    return mapper_new(name, from, to);
+    ma = mapper_new(name, from, to);
+    
+    xmlFree(name);
+    xmlFree(from);
+    xmlFree(to);
+    
+    return ma;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -1265,9 +1324,13 @@ static void
 check_one_target(gpointer key, gpointer value, gpointer userdata)
 {
     target_t *targ = (target_t *)value;
+    gboolean *failedp = (gboolean *)userdata;
     
     if ((targ->flags & (T_DEFINED|T_DEPENDED_ON)) == T_DEPENDED_ON)
+    {
     	parse_node_error(0, "Target \"%s\" is depended on but never defined\n", targ->name);
+	*failedp = TRUE;
+    }
 }
 
 static project_t *
@@ -1276,6 +1339,7 @@ parse_project(xmlNode *node, project_t *parent)
     project_t *proj;
     xmlNode *child;
     gboolean globals = (parent == 0);
+    gboolean failed = FALSE;
    
     proj = project_new(parent);
     
@@ -1299,12 +1363,18 @@ parse_project(xmlNode *node, project_t *parent)
     	    else if (!strcmp(attr->name, "basedir"))
 		project_set_basedir(proj, value);
 	    else
+	    {
 		parse_error_unknown_attribute(attr);
+		failed = TRUE;
+	    }
 
     	    xmlFree(value);
 	}
 	if (proj->default_target == 0)
+	{
 	    parse_error_required_attribute(node, "default");
+	    failed = TRUE;
+	}
     }
         
 
@@ -1314,28 +1384,35 @@ parse_project(xmlNode *node, project_t *parent)
 	    continue;
 	    
     	if (!strcmp(child->name, "property"))
-	    parse_property(proj, child);
+	    failed |= !parse_property(proj, child);
 	else if (!strcmp(child->name, "path"))
-	    parse_path(proj, child);
+	    failed |= !parse_path(proj, child);
     	else if (!strcmp(child->name, "fileset"))
-	    parse_project_fileset(proj, child);
-    	else if (!strcmp(child->name, "xtaskdef"))
-	    parse_xtaskdef(proj, child);
+	    failed |= !parse_project_fileset(proj, child);
+	else if (!strcmp(child->name, "xtaskdef"))
+	    failed |= !parse_xtaskdef(proj, child);
     	else if (!strcmp(child->name, "taglistdef"))
-	    parse_taglistdef(proj, child);
+	    failed |= !parse_taglistdef(proj, child);
 	else if (!globals && !strcmp(child->name, "target"))
-	    /* TODO: propagate failure */
-	    parse_target(proj, child);
+	    failed |= !parse_target(proj, child);
 	else if (project_find_tl_def(proj, child->name) != 0)
-	    parse_project_taglist(proj, child);
+	    failed |= !parse_project_taglist(proj, child);
 	else
-	    /* TODO: fileset */
+	{
 	    /* TODO: patternset */
 	    parse_error_unexpected_element(child);
+	    failed = TRUE;
+	}
     }
 
     if (!globals)    
-	g_hash_table_foreach(proj->targets, check_one_target, proj);
+	g_hash_table_foreach(proj->targets, check_one_target, &failed);
+    
+    if (failed)
+    {
+    	project_delete(proj);
+    	proj = 0;
+    }
     
     return proj;
 }
@@ -1387,7 +1464,8 @@ read_buildfile(const char *filename, project_t *parent)
     if (num_errs > 0)
     {
     	logf("%s: found %d errors\n", filename, num_errs);
-	project_delete(proj);
+	if (proj != 0)
+	    project_delete(proj);
 	xmlFreeDoc(doc);
 	cantXmlNodeInfoClear();
 	return 0;

@@ -45,7 +45,7 @@ struct pattern_s
 #endif
 };
 
-void pattern_init(pattern_t *, const char *s, unsigned flags);
+gboolean pattern_init(pattern_t *, const char *s, unsigned flags);
 void pattern_free(pattern_t *);
 pattern_t *pattern_new(const char *s, unsigned flags);
 void pattern_delete(pattern_t *);

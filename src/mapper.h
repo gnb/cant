@@ -39,7 +39,7 @@ struct mapper_s
 struct mapper_ops_s
 {
     char *name;
-    void (*new)(mapper_t *);
+    gboolean (*new)(mapper_t *);
     char *(*map)(mapper_t *, const char *filename);
     void (*delete)(mapper_t *);
 };

@@ -19,14 +19,15 @@
 
 #include "cant.h"
 
-CVSID("$Id: mapper_merge.c,v 1.2 2001-11-13 04:08:05 gnb Exp $");
+CVSID("$Id: mapper_merge.c,v 1.3 2001-11-21 13:07:46 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void
+static gboolean
 merge_new(mapper_t *ma)
 {
     ma->private = 0;
+    return TRUE;
 }
 
 static char *
