@@ -118,6 +118,8 @@ struct task_child_s
 };
 #define TASK_CHILD(scope, name, flags) \
     { g_string(name), scope ## _add_ ## name, flags}
+#define TASK_GENERIC_CHILD(scope, name, flags) \
+    { "*", scope ## _add_ ## name, flags}
 
 struct task_ops_s
 {
@@ -240,6 +242,9 @@ EXTERN project_t *project_globals;
 /* cant.c */
 /* TODO: gcc format decls */
 void fatal(const char *fmt, ...);
+#if DEBUG
+void dump_project(project_t *proj);
+#endif
 
 /* buildfile.c */
 void parse_node_error(const xmlNode *, const char *fmt, ...);
@@ -274,6 +279,7 @@ void project_add_taglist(project_t*, taglist_t*);
 void project_remove_taglist(project_t *proj, taglist_t *);
 const char *project_get_property(project_t *, const char *name);
 void project_set_property(project_t *, const char *name, const char *value);
+void project_append_property(project_t *, const char *name, const char *value);
 void project_add_fileset(project_t *, fileset_t *);
 fileset_t *project_find_fileset(project_t *, const char *id);
 #define project_get_props(proj)     ((proj)->fixed_properties)
