@@ -18,10 +18,10 @@ dnl You should have received a copy of the GNU General Public License
 dnl along with this program; if not, write to the Free Software
 dnl Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 dnl 
-dnl $Id: configure.in,v 1.11 2001-11-16 10:32:34 gnb Exp $
+dnl $Id: configure.in,v 1.12 2002-04-13 14:29:55 gnb Exp $
 dnl
 
-AC_INIT(src/cant.c)
+AC_INIT(src/cant.C)
 dnl sinclude(/usr/share/aclocal/gettext.m4)dnl
 dnl sinclude(/usr/share/aclocal/lcmessage.m4)dnl
 sinclude(/usr/share/aclocal/init.m4)dnl
@@ -60,6 +60,7 @@ AC_ARG_PROGRAM
 AC_PROG_INSTALL
 AC_PROG_AWK
 AC_PROG_CC
+AC_PROG_CXX
 
 dnl Stuff for gettext
 dnl ALL_LINGUAS="la"
