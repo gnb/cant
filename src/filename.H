@@ -60,6 +60,7 @@ FILE *file_open_mode(const char *filename, const char *rw, mode_t mode);
 DIR *file_opendir(const char *dirname);
 mode_t file_mode(const char *filename);
 int file_exists(const char *filename);
+time_t file_mtime(const char *filename);
 int file_build_tree(const char *dirname, mode_t mode);	/* make sequence of directories */
 int file_apply_children(const char *filename, file_apply_proc_t, void *userdata);
 int file_is_directory(const char *filename);

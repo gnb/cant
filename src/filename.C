@@ -25,7 +25,7 @@
 #include <fcntl.h>
 #include "log.H"
 
-CVSID("$Id: filename.C,v 1.5 2002-04-13 09:26:06 gnb Exp $");
+CVSID("$Id: filename.C,v 1.6 2002-04-21 06:05:20 gnb Exp $");
 
 #ifndef __set_errno
 #define __set_errno(v)	 errno = (v)
@@ -265,6 +265,16 @@ file_exists(const char *filename)
     if (file_stat(filename, &sb) < 0)
     	return (errno == ENOENT ? -1 : 0);
     return 0;
+}
+
+time_t
+file_mtime(const char *filename)
+{
+    struct stat sb;
+    
+    if (file_stat(filename, &sb) < 0)
+    	return -1;
+    return sb.st_mtime;
 }
 
 int
