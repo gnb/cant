@@ -22,7 +22,7 @@
 #include "estring.H"
 #endif
 
-CVSID("$Id: condition.C,v 1.4 2002-04-07 04:23:25 gnb Exp $");
+CVSID("$Id: condition.C,v 1.5 2002-04-07 06:21:38 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -149,7 +149,7 @@ condition_t::describe() const
     	estring_append_printf(&e, "unless=\"%s\"", property_);
 
     if (flags_ & COND_MATCHES)
-    	estring_append_printf(&e, " matches=\"%s\"", pattern_.pattern);
+    	estring_append_printf(&e, " matches=\"%s\"", pattern_.get_pattern());
     
     estring_append_string(&e, " }");
 
