@@ -19,7 +19,7 @@
 
 #include "cant.h"
 
-CVSID("$Id: task.c,v 1.3 2001-11-06 09:29:06 gnb Exp $");
+CVSID("$Id: task.c,v 1.4 2001-11-06 14:08:17 gnb Exp $");
 
 static GHashTable *task_ops_all;
 
@@ -113,7 +113,15 @@ task_ops_register(task_ops_t *ops)
 {
     if (task_ops_all == 0)
     	task_ops_all = g_hash_table_new(g_str_hash, g_str_equal);
-    g_hash_table_insert(task_ops_all, (gpointer)ops->name, ops);
+    else if (g_hash_table_lookup(task_ops_all, ops->name) != 0)
+    {
+    	fprintf(stderr,
+	    	"%s: Task operations \"%s\" already registered, ignoring new definition\n",
+	    	argv0, ops->name);
+    	return;
+    }
+    
+    g_hash_table_insert(task_ops_all, ops->name, ops);
 #if DEBUG
     fprintf(stderr, "task_ops_register: registering \"%s\"\n", ops->name);
 #endif
