@@ -18,10 +18,9 @@
  */
 
 #include "cant.h"
-#include "tok.h"
 #include <time.h>
 
-CVSID("$Id: task_cant.c,v 1.3 2002-02-11 05:34:05 gnb Exp $");
+CVSID("$Id: task_cant.c,v 1.4 2002-02-11 06:28:08 gnb Exp $");
 
 typedef struct
 {
@@ -93,38 +92,6 @@ cant_set_inheritAll(task_t *task, const char *name, const char *value)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-/*
- * Setup the magical variables _PATHUP and _PATHDOWN
- */
-static void
-cant_setup_magical_paths(project_t *proj)
-{
-    const char *d;
-    estring path;
-    tok_t tok;
-
-    tok_init_m(&tok, file_normalise(proj->basedir, 0), "/");
-    estring_init(&path);
-    
-    /* TODO: We need something like a file_denormalise() */
-    
-    while ((d = tok_next(&tok)) != 0)
-	estring_append_string(&path, "../");
-    
-    project_set_property(proj, "_pathup", path.data);
-    project_set_property(proj, "topdir", path.data);
-    
-    estring_truncate(&path);
-    estring_append_string(&path, proj->basedir);
-    if (path.length)
-    	estring_append_char(&path, '/');
-    project_set_property(proj, "_pathdown", path.data);
-
-    
-    estring_free(&path);
-    tok_free(&tok);
-}
-
 /* TODO: support nested <property> tags */
 /* TODO: cache projects to avoid re-reading them every execute */
 
@@ -161,8 +128,6 @@ cant_execute(task_t *task)
     strassign(proj->basedir, dir_e);
     g_free(dir_e);
     
-    cant_setup_magical_paths(proj);
-
 #if DEBUG
     dump_project(proj);
 #endif

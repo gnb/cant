@@ -18,8 +18,9 @@
  */
 
 #include "cant.h"
+#include "tok.h"
 
-CVSID("$Id: project.c,v 1.13 2002-02-10 15:31:05 gnb Exp $");
+CVSID("$Id: project.c,v 1.14 2002-02-11 06:28:08 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -122,6 +123,39 @@ project_set_default_target(project_t *proj, const char *s)
     strassign(proj->default_target, s);
 }
 
+/*
+ * Setup the magical variables _PATHUP and _PATHDOWN
+ */
+static void
+project_update_magic_paths(project_t *proj)
+{
+    const char *d;
+    estring path;
+    tok_t tok;
+
+    tok_init_m(&tok, file_normalise(proj->basedir, 0), "/");
+    estring_init(&path);
+    
+    /* TODO: We need something like a file_denormalise() */
+    
+    while ((d = tok_next(&tok)) != 0)
+	estring_append_string(&path, (!strcmp(d, ".") ? "./" : "../"));
+    
+    project_set_property(proj, "_pathup", path.data);
+    project_set_property(proj, "topdir", path.data);
+    
+    estring_truncate(&path);
+    estring_append_string(&path, proj->basedir);
+    if (path.length)
+    	estring_append_char(&path, '/');
+    project_set_property(proj, "_pathdown", path.data);
+
+    
+    estring_free(&path);
+    tok_free(&tok);
+}
+
+
 void
 project_set_basedir(project_t *proj, const char *s)
 {
@@ -135,6 +169,7 @@ project_set_basedir(project_t *proj, const char *s)
     	strassign(proj->basedir, s);
     }
     props_set(proj->fixed_properties, "basedir", proj->basedir);
+    project_update_magic_paths(proj);
 }
 
 void
