@@ -20,9 +20,6 @@
 #ifndef _common_h_
 #define _common_h_ 1
 
-#define DEBUG 1
-
-
 /* Include autoconf defines */
 #include <config.h>
 
