@@ -20,7 +20,7 @@
 #include "cant.H"
 #include "tok.H"
 
-CVSID("$Id: project.C,v 1.6 2002-04-07 05:28:50 gnb Exp $");
+CVSID("$Id: project.C,v 1.7 2002-04-07 07:46:28 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -67,14 +67,14 @@ static gboolean
 project_delete_one_taglist(char *key, taglist_t *value, void *userdata)
 {
     g_free(key);
-    taglist_unref(value);
+    value->unref();
     return TRUE;    /* so remove it already */
 }
 
 static gboolean
 project_delete_one_tl_def(const char *key, tl_def_t *value, void *userdata)
 {
-    tl_def_delete(value);
+    delete value;
     return TRUE;    /* so remove it already */
 }
 
@@ -231,13 +231,13 @@ project_find_tl_def(const project_t *proj, const char *name)
 void
 project_add_tl_def(project_t *proj, tl_def_t *tldef)
 {
-    proj->tl_defs->insert(tldef->name, tldef);
+    proj->tl_defs->insert(tldef->name_space(), tldef);
 }
 
 void
 project_remove_tl_def(project_t *proj, tl_def_t *tldef)
 {
-    proj->tl_defs->remove(tldef->name);
+    proj->tl_defs->remove(tldef->name_space());
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -264,7 +264,7 @@ project_find_taglist(project_t *proj, const char *name_space, const char *id)
 void
 project_add_taglist(project_t *proj, taglist_t *tl)
 {
-    char *key = build_taglist_key(tl->name_space, tl->id);
+    char *key = build_taglist_key(tl->name_space(), tl->id());
     
     proj->taglists->insert(key, tl);
 }
@@ -272,7 +272,7 @@ project_add_taglist(project_t *proj, taglist_t *tl)
 void
 project_remove_taglist(project_t *proj, taglist_t *tl)
 {
-    char *key = build_taglist_key(tl->name_space, tl->id);
+    char *key = build_taglist_key(tl->name_space(), tl->id());
     char *okey = 0;
     taglist_t *ovalue = 0;
     

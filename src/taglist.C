@@ -20,101 +20,73 @@
 #include "cant.H"
 #include "tok.H"
 
-CVSID("$Id: taglist.C,v 1.7 2002-04-07 04:22:31 gnb Exp $");
+CVSID("$Id: taglist.C,v 1.8 2002-04-07 07:46:28 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static tl_def_tag_t *
-tl_def_tag_new(
+tl_def_t::tag_t::tag_t(
     const char *name,
     availability_t name_avail,
     availability_t value_avail)
 {
-    tl_def_tag_t *tltag;
-    
-    tltag = new(tl_def_tag_t);
-    
-    strassign(tltag->name, name);
-    tltag->name_avail = name_avail;
-    tltag->value_avail = value_avail;
-    
-    return tltag;
+    strassign(name_, name);
+    name_avail_ = name_avail;
+    value_avail_ = value_avail;
 }
 
-static void
-tl_def_tag_delete(tl_def_tag_t *tltag)
+tl_def_t::tag_t::~tag_t()
 {
-    strdelete(tltag->name);
-    g_free(tltag);
+    strdelete(name_);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-tl_def_t *
-tl_def_new(const char *name)
+tl_def_t::tl_def_t(const char *name_space)
 {
-    tl_def_t *tldef;
-    
-    tldef = new(tl_def_t);
-    
-    strassign(tldef->name, name);
-    tldef->tags = new hashtable_t<const char *, tl_def_tag_t>;
-    
-    return tldef;
+    strassign(name_space_, name_space);
+    tags_ = new hashtable_t<const char *, tag_t>;
 }
 
 static gboolean
-remove_one_tag(const char *key, tl_def_tag_t *value, void *userdata)
+remove_one_tag(const char *key, tl_def_t::tag_t *value, void *userdata)
 {
-    tl_def_tag_delete(value);
+    delete value;
     return TRUE;    /* remove me please */
 }
 
-void
-tl_def_delete(tl_def_t *tldef)
+tl_def_t::~tl_def_t()
 {
-    tldef->tags->foreach_remove(remove_one_tag, 0);
-    delete tldef->tags;
-    strdelete(tldef->name);
-    g_free(tldef);
+    tags_->foreach_remove(remove_one_tag, 0);
+    delete tags_;
+    strdelete(name_space_);
 }
 
-tl_def_tag_t *
-tl_def_add_tag(
-    tl_def_t *tldef,
+tl_def_t::tag_t *
+tl_def_t::add_tag(
     const char *name,
     availability_t name_avail,
     availability_t value_avail)
 {
-    tl_def_tag_t *tltag;
+    tag_t *tltag;
     
-    tltag = tl_def_tag_new(name, name_avail, value_avail);
-    tldef->tags->insert(tltag->name, tltag);
+    tltag = new tag_t(name, name_avail, value_avail);
+    tags_->insert(tltag->name_, tltag);
     
     return tltag;
 }
 
-const tl_def_tag_t *
-tl_def_find_tag(
-    const tl_def_t *tldef,
-    const char *name)
+const tl_def_t::tag_t *
+tl_def_t::find_tag(const char *name) const
 {
-    return tldef->tags->lookup(name);
+    return tags_->lookup(name);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-tagexp_t *
-tagexp_new(const char *name_space)
+tagexp_t::tagexp_t(const char *name_space)
 {
-    tagexp_t *te;
-    
-    te = new(tagexp_t);
-    
-    strassign(te->name_space, name_space);
-    te->exps = new hashtable_t<char *, strarray_t>;
-    
-    return te;
+    strassign(name_space_, name_space);
+    expansions_ = new hashtable_t<char *, strarray_t>;
 }
 
 static gboolean
@@ -125,137 +97,162 @@ remove_one_expansion(char *key, strarray_t *value, void *userdata)
     return TRUE;    /* remove me please */
 }
 
-void
-tagexp_delete(tagexp_t *te)
+tagexp_t::~tagexp_t()
 {
-    strdelete(te->name_space);
-    if (te->default_exps != 0)
-	delete te->default_exps;
-    te->exps->foreach_remove(remove_one_expansion, 0);
-    delete te->exps;
-    g_free(te);
+    strdelete(name_space_);
+    if (default_expansions_ != 0)
+	delete default_expansions_;
+    expansions_->foreach_remove(remove_one_expansion, 0);
+    delete expansions_;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 void
-tagexp_add_default_expansion(tagexp_t *te, const char *s)
+tagexp_t::add_default_expansion(const char *s)
 {
-    if (te->default_exps == 0)
-    	te->default_exps = new strarray_t;
-    te->default_exps->append(s);
+    if (default_expansions_ == 0)
+    	default_expansions_ = new strarray_t;
+    default_expansions_->append(s);
 }
 
 void
-tagexp_add_expansion(tagexp_t *te, const char *tag, const char *exp)
+tagexp_t::add_expansion(const char *tag, const char *exp)
 {
     strarray_t *sa;
     
-    if ((sa = te->exps->lookup((char *)tag)) == 0)
+    if ((sa = expansions_->lookup((char *)tag)) == 0)
     {
     	sa = new strarray_t;
-	te->exps->insert(g_strdup(tag), sa);
+	expansions_->insert(g_strdup(tag), sa);
     }
     sa->append(exp);
 }
 
+const strarray_t *
+tagexp_t::find_expansions(const char *tag) const
+{
+    const strarray_t *sa;
+    
+    if ((sa = expansions_->lookup((char *)tag)) == 0)
+    	sa = default_expansions_;
+    return sa;
+}
+
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static tl_item_t *
-tl_item_new(
+taglist_t::item_t::item_t(
     const char *tag,
     const char *name,
-    tl_item_type_t type,
+    taglist_t::item_type_t type,
     const char *value)
 {
-    tl_item_t *tlitem;
+    strassign(tag_, tag);
+    strassign(name_, name);
+    type_ = type;
+    strassign(value_, value);
+}
+
+taglist_t::item_t::~item_t()
+{
+    strdelete(tag_);
+    strdelete(name_);
+    strdelete(value_);
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+taglist_t::taglist_t(const char *name_space)
+{
+    refcount_ = 1;
+    strassign(name_space_, name_space);
+}
+
+taglist_t::~taglist_t()
+{
+    items_.delete_all();
+    strdelete(name_space_);
+    strdelete(id_);
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+void
+taglist_t::ref()
+{
+    refcount_++;
+}
+
+void
+taglist_t::unref()
+{
+    if (--refcount_ == 0)
+    	delete this;
+}
+
+void
+unref(taglist_t *tl)
+{
+    tl->unref();
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+void
+taglist_t::set_id(const char *s)
+{
+    strassign(id_, s);
+}
+
+taglist_t::item_t *
+taglist_t::add_item(
+    const char *tag,
+    const char *name,
+    item_type_t type,
+    const char *value)
+{
+    item_t *tlitem;
     
-    tlitem = new(tl_item_t);
-    
-    strassign(tlitem->tag, tag);
-    strassign(tlitem->name, name);
-    tlitem->type = type;
-    strassign(tlitem->value, value);
+    tlitem = new item_t(tag, name, type, value);
+    items_.append(tlitem);
     
     return tlitem;
 }
 
-static void
-tl_item_delete(tl_item_t *tlitem)
-{
-    strdelete(tlitem->tag);
-    strdelete(tlitem->name);
-    strdelete(tlitem->value);
-    g_free(tlitem);
-}
-
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
-
-taglist_t *
-taglist_new(const char *name_space)
-{
-    taglist_t *tl;
-    
-    tl = new(taglist_t);
-    
-    tl->refcount = 1;
-    strassign(tl->name_space, name_space);
-    
-    return tl;
-}
-
-static void
-taglist_delete(taglist_t *tl)
-{
-    tl->items.apply_remove(tl_item_delete);
-    strdelete(tl->name_space);
-    strdelete(tl->id);
-    g_free(tl);
-}
-
-void
-taglist_ref(taglist_t *tl)
-{
-    tl->refcount++;
-}
-
-void
-taglist_unref(taglist_t *tl)
-{
-    if (--tl->refcount == 0)
-    	taglist_delete(tl);
-}
-
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
-
-void
-taglist_set_id(taglist_t *tl, const char *s)
-{
-    strassign(tl->id, s);
-}
-
-tl_item_t *
-taglist_add_item(
-    taglist_t *tl,
+taglist_t::item_t *
+taglist_t::add_value(
     const char *tag,
     const char *name,
-    tl_item_type_t type,
     const char *value)
 {
-    tl_item_t *tlitem;
-    
-    tlitem = tl_item_new(tag, name, type, value);
-    tl->items.append(tlitem);
-    
-    return tlitem;
+    return add_item(tag, name, TL_VALUE, value);
 }
     
+taglist_t::item_t *
+taglist_t::add_line(
+    const char *tag,
+    const char *name,
+    const char *value)
+{
+    return add_item(tag, name, TL_LINE, value);
+}
+
+taglist_t::item_t *
+taglist_t::add_file(
+    const char *tag,
+    const char *name,
+    const char *value)
+{
+    return add_item(tag, name, TL_FILE, value);
+}
+    
+
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static void
 gather_exps(
-    props_t *localprops,
-    strarray_t *exps,
+    const props_t *localprops,
+    const strarray_t *exps,
     strarray_t *sa)
 {
     char *expexp;
@@ -269,34 +266,34 @@ gather_exps(
 	{
 	    sa->appendm(expexp);
 #if DEBUG
-	    fprintf(stderr, "taglist_gather:     -> \"%s\"\n", expexp);
+	    fprintf(stderr, "taglist_t::gather:     -> \"%s\"\n", expexp);
 #endif
     	}
     }
 }
 
 void
-taglist_gather(
-    taglist_t *tl,  	/* taglist to expand */
-    tagexp_t *te,   	/* definition of expansions */
-    props_t *props, 	/* for evaluating conditions & expansions */
+taglist_t::gather(
+    const tagexp_t *te, /* definition of expansions */
+    const props_t *props,/* for evaluating conditions & expansions */
     strarray_t *sa) 	/* results appended to this */
+    const
 {
-    list_iterator_t<tl_item_t> iter;
-    strarray_t *exps;
+    list_iterator_t<item_t> iter;
+    const strarray_t *exps;
     char *expvalue;
     props_t *localprops;
 
-    if (strcmp(tl->name_space, te->name_space))
+    if (strcmp(name_space_, te->name_space()))
     {
-    	logf("ERROR: namespace mismatch in taglist_gather, taglist=%s::%s tagexpand=%s::\n",
-	    	tl->name_space, tl->id, te->name_space);
+    	logf("ERROR: namespace mismatch in taglist_t::gather, taglist=%s::%s tagexpand=%s::\n",
+	    	name_space_, id_, te->name_space());
 	return;
     }
 
 #if DEBUG
-    fprintf(stderr, "taglist_gather: gathering %s::%s {\n",
-    	    	tl->name_space, tl->id);
+    fprintf(stderr, "taglist_t::gather: gathering %s::%s {\n",
+    	    	name_space_, id_);
 #endif
 
     /*
@@ -308,37 +305,34 @@ taglist_gather(
     
     localprops = new props_t(/*parent*/props);
     
-    for (iter = tl->items.first() ; iter != 0 ; ++iter)
+    for (iter = items_.first() ; iter != 0 ; ++iter)
     {
-    	tl_item_t *tlitem = *iter;
+    	item_t *tlitem = *iter;
 	
-	if (!tlitem->condition.evaluate(props))
+	if (!tlitem->condition_.evaluate(props))
 	    continue;
 	
-	exps = te->exps->lookup(tlitem->tag);
-	if (exps == 0)
-	    exps = te->default_exps;
-	if (exps == 0)
+	if ((exps = te->find_expansions(tlitem->tag_)) == 0)
 	    continue;
 
 #if DEBUG
-	fprintf(stderr, "taglist_gather:     tag=\"%s\" name=\"%s\" value=\"%s\"\n",
-	    	    	    tlitem->tag, tlitem->name, tlitem->value);
+	fprintf(stderr, "taglist_t::gather:     tag=\"%s\" name=\"%s\" value=\"%s\"\n",
+	    	    	    tlitem->tag_, tlitem->name_, tlitem->value_);
 #endif
 
-	localprops->set("name", tlitem->name);
-	localprops->set("tag", tlitem->tag);
+	localprops->set("name", tlitem->name_);
+	localprops->set("tag", tlitem->tag_);
 
-	switch (tlitem->type)
+	switch (tlitem->type_)
 	{
 	case TL_VALUE:
-	    localprops->set("value", tlitem->value);
+	    localprops->set("value", tlitem->value_);
     	    gather_exps(localprops, exps, sa);
 	    break;
 
 	case TL_LINE:
 	    /* to get whitespace semantics right, need to pre-expand */
-	    expvalue = props->expand(tlitem->value);
+	    expvalue = props->expand(tlitem->value_);
 	    if (expvalue != 0)
 	    {
 		/* tokenise value on whitespace */
@@ -355,7 +349,7 @@ taglist_gather(
 
 	case TL_FILE:
 	    /* to canonicalise the right filename, need to pre-expand */
-	    expvalue = props->expand(tlitem->value);
+	    expvalue = props->expand(tlitem->value_);
 	    strnullnorm(expvalue);
 	    if (expvalue != 0)
 	    {
@@ -369,16 +363,16 @@ taglist_gather(
     delete localprops;
 
 #if DEBUG
-    fprintf(stderr, "taglist_gather: }\n");
+    fprintf(stderr, "taglist_t::gather: }\n");
 #endif
 
 }
 
 void
-taglist_list_gather(
+taglist_t::list_gather(
     const list_t<taglist_t> *list,
-    tagexp_t *te,
-    props_t *props,
+    const tagexp_t *te,
+    const props_t *props,
     strarray_t *sa)
 {
     list_iterator_t<taglist_t> iter;
@@ -387,8 +381,8 @@ taglist_list_gather(
     {
     	taglist_t *tl = *iter;
 	
-	if (!strcmp(tl->name_space, te->name_space))
-	    taglist_gather(tl, te, props, sa);
+	if (!strcmp(tl->name_space_, te->name_space()))
+	    tl->gather(te, props, sa);
     }
 }
 

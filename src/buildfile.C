@@ -20,7 +20,7 @@
 #include "cant.H"
 #include "xtask.H"
 
-CVSID("$Id: buildfile.C,v 1.7 2002-04-07 05:28:49 gnb Exp $");
+CVSID("$Id: buildfile.C,v 1.8 2002-04-07 07:46:28 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -375,17 +375,17 @@ parse_tagexpand(project_t *proj, xmlNode *node)
 	return 0;
     }
     
-    te = tagexp_new(buf);
+    te = new tagexp_t(buf);
     xmlFree(buf);
 
 #if 0 /* TODO */
-    te->follow_depends = cantXmlGetBooleanProp(node, "followdepends", FALSE);
-    te->reverse_order = cantXmlGetBooleanProp(node, "reverse", FALSE);
+    te->set_follow_depends(cantXmlGetBooleanProp(node, "followdepends", FALSE));
+    te->set_reverse_order(cantXmlGetBooleanProp(node, "reverse", FALSE));
 #endif
 
     if ((buf = cantXmlGetProp(node, "default")) != 0)
     {
-    	tagexp_add_default_expansion(te, buf);
+    	te->add_default_expansion(buf);
     	xmlFree(buf);
     }
     
@@ -415,7 +415,7 @@ parse_tagexpand(project_t *proj, xmlNode *node)
 	    /* TODO: check no other attributes are present */
 	    
     	    if (tag != 0 && to != 0)
-	    	tagexp_add_expansion(te, tag, to);
+	    	te->add_expansion(tag, to);
 
 	    if (!check_childless(child))
 	    	failed = TRUE;
@@ -438,7 +438,7 @@ parse_tagexpand(project_t *proj, xmlNode *node)
 	    /* TODO: check no other attributes are present */
 	    
     	    if (to != 0)
-	    	tagexp_add_default_expansion(te, to);
+	    	te->add_default_expansion(to);
 
 	    if (!check_childless(child))
 	    	failed = TRUE;
@@ -456,7 +456,7 @@ parse_tagexpand(project_t *proj, xmlNode *node)
     
     if (failed)
     {
-    	tagexp_delete(te);
+    	delete te;
 	te = 0;
     }
         
@@ -472,7 +472,7 @@ parse_taglist(project_t *proj, xmlNode *node)
     char *buf, *buf2;
     tl_def_t *tldef;
     taglist_t *tl;
-    const tl_def_tag_t *tag;
+    const tl_def_t::tag_t *tag;
     xmlNode *child;
     gboolean failed = FALSE;
     const char *name_space = cantXmlNodeGetName(node);
@@ -509,7 +509,7 @@ parse_taglist(project_t *proj, xmlNode *node)
 	/* TODO: refcount to prevent problems deleting the project */
 	
     	xmlFree(buf);
-	taglist_ref(tl);
+	tl->ref();
 	return tl;
     }
 
@@ -520,8 +520,8 @@ parse_taglist(project_t *proj, xmlNode *node)
 	return 0;
     }
 
-    tl = taglist_new(name_space);
-    taglist_set_id(tl, buf);
+    tl = new taglist_t(name_space);
+    tl->set_id(buf);
     xmlFree(buf);
     
     /* TODO: parse optional "depends" attribute */
@@ -532,42 +532,42 @@ parse_taglist(project_t *proj, xmlNode *node)
     	if (child->type != XML_ELEMENT_NODE)
 	    continue;
 
-    	if ((tag = tl_def_find_tag(tldef, cantXmlNodeGetName(child))) != 0)
+    	if ((tag = tldef->find_tag(cantXmlNodeGetName(child))) != 0)
 	{
 	    char *name = cantXmlGetProp(child, "name");
 	    char *value = 0;
-	    tl_item_t *tlitem = 0;
+	    taglist_t::item_t *tlitem = 0;
 
-	    if (name == 0 && tag->name_avail == AV_MANDATORY)
+	    if (name == 0 && tag->name_avail_ == AV_MANDATORY)
 	    {
 		parse_error_required_attribute(child, "name");
 		failed = TRUE;
 	    }
-	    else if (name != 0 && tag->name_avail == AV_FORBIDDEN)
+	    else if (name != 0 && tag->name_avail_ == AV_FORBIDDEN)
 	    {
 	    	parse_node_error(child, "Attribute \"name\" not allowed at this point\n");
 	    	failed = TRUE;
 	    }
 
 	    if ((value = cantXmlGetProp(child, "value")) != 0)
-		tlitem = taglist_add_item(tl, cantXmlNodeGetName(child), name, TL_VALUE, value);
+		tlitem = tl->add_value(cantXmlNodeGetName(child), name, value);
 	    else if ((value = cantXmlGetProp(child, "line")) != 0)
-		tlitem = taglist_add_item(tl, cantXmlNodeGetName(child), name, TL_LINE, value);
+		tlitem = tl->add_line(cantXmlNodeGetName(child), name, value);
 	    else if ((value = cantXmlGetProp(child, "file")) != 0)
-		tlitem = taglist_add_item(tl, cantXmlNodeGetName(child), name, TL_FILE, value);
+		tlitem = tl->add_file(cantXmlNodeGetName(child), name, value);
 	    
-	    if (value == 0 && tag->value_avail == AV_MANDATORY)
+	    if (value == 0 && tag->value_avail_ == AV_MANDATORY)
 	    {
 		parse_node_error(child, "One of \"value\", \"line\" or \"file\" must be present\n");
 		failed = TRUE;
 	    }
-	    else if (value != 0 && tag->value_avail == AV_FORBIDDEN)
+	    else if (value != 0 && tag->value_avail_ == AV_FORBIDDEN)
 	    {
 	    	parse_node_error(child, "None of \"value\", \"line\" or \"file\" may be present\n");
 	    	failed = TRUE;
 	    }
 
-    	    if (tlitem != 0 && !parse_condition(&tlitem->condition, child))
+    	    if (tlitem != 0 && !parse_condition(&tlitem->condition_, child))
 	    	failed = TRUE;
 
 	    if (name != 0)
@@ -585,7 +585,7 @@ parse_taglist(project_t *proj, xmlNode *node)
     
     if (failed)
     {
-    	taglist_unref(tl);
+    	tl->unref();	// should delete
 	tl = 0;
     }
         
@@ -600,10 +600,10 @@ parse_project_taglist(project_t *proj, xmlNode *node)
     if ((tl = parse_taglist(proj, node)) == 0)
     	return FALSE;
 	
-    if (project_find_taglist(proj, tl->name_space, tl->id) != 0)
+    if (project_find_taglist(proj, tl->name_space(), tl->id()) != 0)
     {
-    	parse_node_error(node, "Duplicate taglist %s::%s\n", tl->name_space, tl->id);
-	taglist_unref(tl);
+    	parse_node_error(node, "Duplicate taglist %s::%s\n", tl->name_space(), tl->id());
+	tl->unref();	    // should delete
 	return FALSE;
     }
 
@@ -830,7 +830,6 @@ parse_taglistdef(project_t *proj, xmlNode *node)
 {
     char *buf;
     tl_def_t *tldef;
-    tl_def_tag_t *tltag;
     xmlNode *child;
     gboolean failed = FALSE;
     
@@ -844,7 +843,7 @@ parse_taglistdef(project_t *proj, xmlNode *node)
 	return FALSE;
     }
 
-    tldef = tl_def_new(buf);
+    tldef = new tl_def_t(buf);
     xmlFree(buf);
 
     /* TODO: syntax check other attributes */
@@ -854,7 +853,6 @@ parse_taglistdef(project_t *proj, xmlNode *node)
     	if (child->type != XML_ELEMENT_NODE)
 	    continue;
 
-    	tltag = 0;
     	if (!strcmp(cantXmlNodeGetName(child), "tag"))
 	{
 	    char *tag = 0;
@@ -874,7 +872,7 @@ parse_taglistdef(project_t *proj, xmlNode *node)
 
     	    if (tag != 0)	    
 	    {
-		tltag = tl_def_add_tag(tldef, tag, name_avail, value_avail);
+		tldef->add_tag(tag, name_avail, value_avail);
 		xmlFree(tag);
 	    }
 	}

@@ -34,18 +34,13 @@
 #include "hashtable.H"
 #include "list.H"
 #include "task.H"
+#include "taglist.H"
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 /*
  * Data Structures
  */
  
-
-typedef struct taglist_s    	taglist_t;
-typedef struct tl_item_s    	tl_item_t;
-typedef struct tagexp_s     	tagexp_t;
-typedef struct tl_def_s     	tl_def_t;
-typedef struct tl_def_tag_s 	tl_def_tag_t;
 
 
 struct project_t
@@ -80,75 +75,6 @@ struct target_t
     list_t<target_t> depends;
     condition_t condition;
     list_t<task_t> tasks;
-};
-
-/*
- * Taglist is a sequence of tagged name=value pairs.
- * This data structure is used to store all sorts of
- * stuff, but especially the definitions of C libraries.
- */
-struct taglist_s
-{
-    char *name_space;	    /* e.g. "library" -- fixed at creation */
-    char *id;     	    /* must be fixed before attachment to project */
-    int refcount;
-    list_t<tl_item_t> items;
-};
-
-typedef enum
-{
-    TL_VALUE,
-    TL_LINE,
-    TL_FILE
-} tl_item_type_t;
-
-struct tl_item_s
-{
-    char *tag;
-    char *name;
-    tl_item_type_t type;
-    char *value;
-    condition_t condition;
-};
-
-/*
- * Tagexp is a definition of how to expand a taglist
- * to a sequence of strings in a atringarray.
- */
-struct tagexp_s
-{
-    char *name_space;
-    /* TODO: gboolean follow_depends:1; */
-    /* TODO: gboolean reverse_order:1; */
-    strarray_t *default_exps;
-    hashtable_t<char *, strarray_t> *exps;
-};
-
-
-/*
- * Tl_def is used to define the allowable structure
- * of taglists, so various kinds of taglists can be
- * parsed generically.
- */
-struct tl_def_s
-{
-    char *name;
-    hashtable_t<const char *, tl_def_tag_t> *tags;
-    /* TODO: GList *depends */
-};
-
-typedef enum
-{
-    AV_MANDATORY,
-    AV_OPTIONAL,
-    AV_FORBIDDEN
-} availability_t;
- 
-struct tl_def_tag_s
-{
-    char *name;
-    availability_t name_avail;
-    availability_t value_avail;
 };
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -234,26 +160,6 @@ void target_add_depend(target_t *targ, target_t *dep);
 void target_set_is_defined(target_t *targ, gboolean b);
 #define target_is_depended_on(targ) \
     ((targ)->flags & T_DEPENDED_ON)
-
-tl_def_t *tl_def_new(const char *name_space);
-void tl_def_delete(tl_def_t *);
-tl_def_tag_t *tl_def_add_tag(tl_def_t*, const char *name,
-    	    	    availability_t name_avail, availability_t value_avail);
-const tl_def_tag_t *tl_def_find_tag(const tl_def_t *, const char *name);
-tagexp_t *tagexp_new(const char *name_space);
-void tagexp_delete(tagexp_t *te);
-void tagexp_add_default_expansion(tagexp_t *te, const char *s);
-void tagexp_add_expansion(tagexp_t *te, const char *tag, const char *exp);
-taglist_t *taglist_new(const char *name_space);
-void taglist_ref(taglist_t *tl);
-void taglist_unref(taglist_t *tl);
-void taglist_set_id(taglist_t *tl, const char *s);
-tl_item_t *taglist_add_item(taglist_t *tl, const char *tag,
-		const char *name, tl_item_type_t type, const char *value);
-void taglist_gather(taglist_t *tl, tagexp_t *te,
-		    props_t *props, strarray_t *sa);
-void taglist_list_gather(const list_t<taglist_t> *, tagexp_t *te,
-		    props_t *props, strarray_t *sa);
 
 
 /* process.c */

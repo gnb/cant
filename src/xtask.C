@@ -20,7 +20,7 @@
 #include "xtask.H"
 #include "job.H"
 
-CVSID("$Id: xtask.C,v 1.8 2002-04-07 05:28:50 gnb Exp $");
+CVSID("$Id: xtask.C,v 1.9 2002-04-07 07:46:28 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -37,8 +37,7 @@ xtask_t::~xtask_t()
     fprintf(stderr, "~xtask_t: deleting \"%s\"\n", name_);
 #endif
 
-    /* TODO: delete unrefed filesets */
-    taglists_.apply_remove(taglist_unref);
+    taglists_.apply_remove(unref);
     
     delete properties_;
 }
@@ -128,7 +127,7 @@ xtask_t::build_command(strarray_t *command)
 	    break;
 	    
 	case xtask_class_t::XT_TAGEXPAND:  /* <tagexpand> child */
-	    taglist_list_gather(&taglists_, xa->data.tagexp,
+	    taglist_t::list_gather(&taglists_, xa->data.tagexp,
 	    	    	    	properties_, command);
 	    break;
 	}
@@ -302,7 +301,7 @@ xtask_class_t::arg_t::~arg_t()
     case XT_FILES:  	/* <files> child */
     	break;
     case XT_TAGEXPAND:	/* <tagexpand> child */
-    	tagexp_delete(data.tagexp);
+    	delete data.tagexp;
     	break;
     }
 }
