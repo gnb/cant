@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+
+<!-- 
+  Test C libraries
+  $Id: build.xml.in,v 1.1 2001-11-21 16:23:32 gnb Exp $
+-->
+
+<project name="test006" default="all" basedir=".">
+
+  <!-- The C source files for the foo program -->
+  <fileset id="foo-sources" dir="." includes="a.c"/>
+
+  <!-- CUT HERE -->
+
+  <target name="all">
+    <compile refid="foo-sources">
+      <library refid="glib"/>
+    </compile>
+    <link program="foo" refid="foo-sources">
+      <library refid="glib"/>
+    </link>
+  </target>
+
+  <target name="install">
+    <copy file="foo" todir="${bindir}"/>
+  </target>
+
+  <target name="clean">
+    <delete>
+      <fileset dir="." includes="foo,*.o"/>
+    </delete>
+  </target>
+  
+  <target name="null"/>
+
+  <xtaskdef
+    	name="test-taglist"
+	logmessage="Testing taglists"
+	fileset="false"
+	executable="echo">
+    <arg value="TEST:"/>
+    <taglist namespace="library"/>
+    <tagexpand namespace="library">
+      <default to="TAG=&quot;${tag}&quot;"/>
+      <default to="NAME=&quot;${name}&quot;"/>
+      <default to="VALUE=&quot;${value}&quot;"/>
+    </tagexpand>
+  </xtaskdef>
+
+  <target name="test">
+    <test-taglist>
+      <library refid="glib"/>
+    </test-taglist>
+  </target>
+  
+</project>

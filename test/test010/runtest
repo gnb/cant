@@ -1,0 +1,42 @@
+#!/bin/sh
+#
+# $Id: runtest,v 1.1 2001-11-21 16:23:32 gnb Exp $
+#
+
+. ../testfunctions.sh
+
+create_buildfile ()
+{
+    vmessage "Building build.xml"
+    /bin/rm -f build.xml
+    (
+	sed -e '/CUT HERE/,$d' < build.xml.in
+	echo '  <library id="glib">'
+	glib-config --cflags glib | sed -e 's|[ 	]\+|\
+|g' | sed -e 's|^-I\(.*\)$|    <incdir file="\1"/>|'
+	echo '    <define name="FOO" value="&quot;bar&quot;"/>'
+	glib-config --libs glib | sed -e 's|[ 	]\+|\
+|g' | sed -e 's|^-L\(.*\)$|    <libdir file="\1"/>|' -e 's|^-l\(.*\)$|    <lib value="\1"/>|'
+	echo '  </library>'
+	sed -e '1,/CUT HERE/d' < build.xml.in
+    ) > build.xml
+}
+
+compile_test ()
+{
+    start_test "library compile"
+
+    create_buildfile
+    
+    /bin/rm -rf *.o foo
+    cant all --verbose
+
+    check_output_re "\[compile\].* -I/.* -DFOO=\"bar\""
+    check_output_re "\[link\].* -L/.* -lglib"
+    check_file_executable foo
+    run_prog ./foo bar baz
+}
+
+compile_test
+
+
