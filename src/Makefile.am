@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 # 
-# $Id: Makefile.am,v 1.12 2001-11-16 04:22:41 gnb Exp $
+# $Id: Makefile.am,v 1.13 2001-11-16 10:38:18 gnb Exp $
 #
 
 bin_PROGRAMS=	cant
@@ -83,3 +83,4 @@ builtin-mappers.h: $(MAPPER_SOURCES)
 CLEANFILES=	builtin-tasks.h builtin-mappers.h
 
 pkgdata_DATA=	globals.xml
+EXTRA_DIST=	$(pkgdata_DATA)
