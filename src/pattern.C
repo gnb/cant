@@ -21,7 +21,33 @@
 #include "estring.H"
 #include "log.H"
 
-CVSID("$Id: pattern.C,v 1.1 2002-03-29 12:36:26 gnb Exp $");
+CVSID("$Id: pattern.C,v 1.2 2002-04-06 12:40:16 gnb Exp $");
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+pattern_t::pattern_t()
+{
+}
+
+
+void
+pattern_t::hacky_dtor()
+{
+    int i;
+    
+#if DEBUG
+    strdelete(pattern_);
+#endif
+    for (i = 0 ; i < _PAT_NGROUPS ; i++)
+	strdelete(groups_[i]);
+    regfree(&regex_);
+}
+
+
+pattern_t::~pattern_t()
+{
+    hacky_dtor();
+}
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -33,7 +59,7 @@ CVSID("$Id: pattern.C,v 1.1 2002-03-29 12:36:26 gnb Exp $");
 extern void parse_error(const char *fmt, ...);
 
 gboolean
-pattern_init(pattern_t *pat, const char *pattern, unsigned flags)
+pattern_t::init(const char *pattern, unsigned flags)
 {
     const char *p = pattern;
     estring restr;
@@ -41,7 +67,7 @@ pattern_init(pattern_t *pat, const char *pattern, unsigned flags)
     int errcode;
     
 #if DEBUG
-    strassign(pat->pattern, pattern);
+    strassign(pattern_, pattern);
 #endif
 
     estring_init(&restr);
@@ -84,49 +110,36 @@ pattern_init(pattern_t *pat, const char *pattern, unsigned flags)
     }
         
 #if DEBUG
-    fprintf(stderr, "pattern_init: \"%s\" -> \"%s\"\n",
+    fprintf(stderr, "pattern_t::init: \"%s\" -> \"%s\"\n",
     	    	    	pattern, restr.data);
 #endif
     if (!(flags & PAT_CASE)) reflags |= REG_ICASE;
     if (!(flags & PAT_GROUPS)) reflags |= REG_NOSUB;
-    errcode = regcomp(&pat->regex, restr.data, reflags);
+    errcode = regcomp(&regex_, restr.data, reflags);
     if (errcode != 0)
     {
 	char errbuf[1024];
 
-	regerror(errcode, &pat->regex, errbuf, sizeof(errbuf));
+	regerror(errcode, &regex_, errbuf, sizeof(errbuf));
 	parse_error("\"%s\": %s\n", pattern, errbuf);
     }
     estring_free(&restr);
-    memset(&pat->groups, 0, sizeof(pat->groups));
+    memset(&groups_, 0, sizeof(groups_));
     return (errcode == 0);
-}
-
-void
-pattern_free(pattern_t *pat)
-{
-    int i;
-    
-#if DEBUG
-    strdelete(pat->pattern);
-#endif
-    for (i = 0 ; i < _PAT_NGROUPS ; i++)
-	strdelete(pat->groups[i]);
-    regfree(&pat->regex);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 pattern_t *
-pattern_new(const char *pattern, unsigned flags)
+pattern_t::create(const char *pattern, unsigned flags)
 {
     pattern_t *pat;
     
-    pat = new(pattern_t);
+    pat = new pattern_t;
     
-    if (!pattern_init(pat, pattern, flags))
+    if (!pat->init(pattern, flags))
     {
-    	pattern_delete(pat);
+    	delete pat;
     	return 0;
     }
     
@@ -135,43 +148,34 @@ pattern_new(const char *pattern, unsigned flags)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-void
-pattern_delete(pattern_t *pat)
-{
-    pattern_free(pat);	
-    g_free(pat);
-}
-
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
-
 gboolean
-pattern_match(pattern_t *pat, const char *filename)
+pattern_t::match(const char *filename)
 {
     gboolean ret;
     int i;
     regmatch_t matches[_PAT_NGROUPS];
     
     for (i = 0 ; i < _PAT_NGROUPS ; i++)
-	strdelete(pat->groups[i]);
+	strdelete(groups_[i]);
 
     memset(matches, 0xff, sizeof(matches));
-    ret = (regexec(&pat->regex, filename,
+    ret = (regexec(&regex_, filename,
     	    	    _PAT_NGROUPS, matches, /*eflags*/0) == 0);
 #if DEBUG
-    fprintf(stderr, "pattern_match: pattern=\"%s\" filename=\"%s\" -> %s\n",
-    	    pat->pattern, filename, (ret ? "true" : "false"));
+    fprintf(stderr, "pattern_t::match: pattern=\"%s\" filename=\"%s\" -> %s\n",
+    	    pattern_, filename, (ret ? "true" : "false"));
 #endif
 
     if (ret)
     {
 	for (i = 0 ; i < _PAT_NGROUPS && matches[i].rm_so >= 0 ; i++)
 	{
-	    pat->groups[i] = g_strndup(
+	    groups_[i] = g_strndup(
 	    	    	    	    filename+matches[i].rm_so,
 				    matches[i].rm_eo-matches[i].rm_so);
 #if DEBUG
 	    fprintf(stderr, "               \\%d=\"%s\" [%d,%d]\n",
-	    	    	    	i, pat->groups[i],
+	    	    	    	i, groups_[i],
 				matches[i].rm_so, matches[i].rm_eo);
 #endif				    
 	}
@@ -181,15 +185,15 @@ pattern_match(pattern_t *pat, const char *filename)
 }
 
 gboolean
-pattern_match_c(const pattern_t *pat, const char *filename)
+pattern_t::match_c(const char *filename) const
 {
     gboolean ret;
     
-    ret = (regexec(&pat->regex, filename,
+    ret = (regexec(&regex_, filename,
     	    	    /*nmatches*/0, /*matches*/0, /*eflags*/0) == 0);
 #if DEBUG
-    fprintf(stderr, "pattern_match_c: pattern=\"%s\" filename=\"%s\" -> %s\n",
-    	    pat->pattern, filename, (ret ? "true" : "false"));
+    fprintf(stderr, "pattern_t::match_c: pattern=\"%s\" filename=\"%s\" -> %s\n",
+    	    pattern_, filename, (ret ? "true" : "false"));
 #endif
 
     return ret;
@@ -198,13 +202,13 @@ pattern_match_c(const pattern_t *pat, const char *filename)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 const char *
-pattern_group(const pattern_t *pat, unsigned int /*0-9*/i)
+pattern_t::group(unsigned int /*0-9*/i) const
 {
-    return (i >= _PAT_NGROUPS ? 0 : pat->groups[i]);
+    return (i >= _PAT_NGROUPS ? 0 : groups_[i]);
 }
 
 char *
-pattern_replace(const pattern_t *pat, const char *replace)
+pattern_t::replace(const char *replace) const
 {
     const char *rep = replace;
     estring e;
@@ -218,7 +222,7 @@ pattern_replace(const pattern_t *pat, const char *replace)
     {
     	if (rep[0] == '\\' && isdigit(rep[1]))
 	{
-	    estring_append_string(&e, pat->groups[rep[1]-'0']);
+	    estring_append_string(&e, groups_[rep[1]-'0']);
 	    rep += 2;
 	}
 	else
@@ -226,7 +230,7 @@ pattern_replace(const pattern_t *pat, const char *replace)
     }
     
 #if DEBUG
-    fprintf(stderr, "pattern_replace: \"%s\" -> \"%s\"\n",
+    fprintf(stderr, "pattern_t::replace: \"%s\" -> \"%s\"\n",
     	    replace, e.data);
 #endif
     return e.data;

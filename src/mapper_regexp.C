@@ -19,12 +19,12 @@
 
 #include "cant.H"
 
-CVSID("$Id: mapper_regexp.C,v 1.2 2002-04-06 11:21:55 gnb Exp $");
+CVSID("$Id: mapper_regexp.C,v 1.3 2002-04-06 12:40:16 gnb Exp $");
 
 class mapper_regexp_t : public mapper_t
 {
 private:
-    pattern_t *pattern_;
+    pattern_t pattern_;
 
 public:
 
@@ -36,8 +36,6 @@ mapper_regexp_t()
 
 ~mapper_regexp_t()
 {
-    if (pattern_ != 0)
-	pattern_delete(pattern_);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -45,16 +43,15 @@ mapper_regexp_t()
 gboolean
 init()
 {
-    pattern_ = pattern_new(from_, PAT_GROUPS|PAT_REGEXP);
-    return (pattern_ != 0);
+    return pattern_.init(from_, PAT_GROUPS|PAT_REGEXP);
 }
 
 char *
 map(const char *filename)
 {
-    if (!pattern_match(pattern_, filename))
+    if (!pattern_.match(filename))
     	return 0;
-    return pattern_replace(pattern_, to_);
+    return pattern_.replace(to_);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

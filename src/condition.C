@@ -22,7 +22,7 @@
 #include "estring.H"
 #endif
 
-CVSID("$Id: condition.C,v 1.2 2002-04-06 11:34:39 gnb Exp $");
+CVSID("$Id: condition.C,v 1.3 2002-04-06 12:40:16 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -36,7 +36,7 @@ void
 condition_free(condition_t *cond)
 {
     strdelete(cond->property);
-    pattern_free(&cond->pattern);
+    cond->pattern.hacky_dtor();
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -95,8 +95,8 @@ condition_set_match(
     const char *pattern)
 {
     if (cond->flags & COND_MATCHES)
-	pattern_free(&cond->pattern);
-    pattern_init(&cond->pattern, pattern, patt_flags);
+	cond->pattern.hacky_dtor();
+    cond->pattern.init(pattern, patt_flags);
     cond->flags |= COND_MATCHES;
 }
 
@@ -140,7 +140,7 @@ condition_evaluate(const condition_t *cond, const props_t *props)
     if (cond->flags & COND_MATCHES)
     {
     	/* match against pattern to get a boolean */
-    	res = pattern_match_c(&cond->pattern, (expvalue == 0 ? "" : expvalue));
+    	res = cond->pattern.match_c((expvalue == 0 ? "" : expvalue));
     }
     else
     {

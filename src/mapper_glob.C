@@ -19,12 +19,12 @@
 
 #include "cant.H"
 
-CVSID("$Id: mapper_glob.C,v 1.2 2002-04-06 11:21:55 gnb Exp $");
+CVSID("$Id: mapper_glob.C,v 1.3 2002-04-06 12:40:16 gnb Exp $");
 
 class mapper_glob_t : public mapper_t
 {
 private:
-    pattern_t *pattern_;
+    pattern_t pattern_;
 
 public:
 
@@ -36,8 +36,6 @@ mapper_glob_t()
 
 ~mapper_glob_t()
 {
-    if (pattern_ != 0)
-	pattern_delete(pattern_);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -62,7 +60,7 @@ init()
     	parse_error("bad \"from\" expression \"%s\"\n", from_);
     	return FALSE;
     }
-    if ((pattern_ = pattern_new(from_, PAT_GROUPS)) == 0)
+    if (!pattern_.init(from_, PAT_GROUPS))
     	return FALSE;
     
 
@@ -103,10 +101,10 @@ map(const char *filename)
     
     base = file_basename_c(filename);
     
-    if (!pattern_match(pattern_, base))
+    if (!pattern_.match(base))
     	return 0;
 	
-    rep = pattern_replace(pattern_, to_);
+    rep = pattern_.replace(to_);
     
     if (base != filename)
     {

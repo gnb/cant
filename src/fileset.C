@@ -24,7 +24,7 @@
 #include "log.H"
 #include <dirent.h>
 
-CVSID("$Id: fileset.C,v 1.5 2002-04-06 11:28:43 gnb Exp $");
+CVSID("$Id: fileset.C,v 1.6 2002-04-06 12:40:16 gnb Exp $");
 
 static void fs_spec_delete(fs_spec_t *fss);
 
@@ -99,7 +99,7 @@ fs_spec_add(
     fss->flags = flags;
     
     if (pattern != 0)
-    	pattern_init(&fss->pattern, pattern,
+    	fss->pattern.init(pattern,
 	    	    	(fs->case_sensitive ? PAT_CASE : 0));
     
     strassign(fss->filename, filename);
@@ -114,7 +114,7 @@ static void
 fs_spec_delete(fs_spec_t *fss)
 {
     strdelete(fss->filename);
-    pattern_free(&fss->pattern);
+    fss->pattern.hacky_dtor();
     condition_free(&fss->condition);
 
     g_free(fss);
@@ -207,7 +207,7 @@ glob_part(
 
     if ((dir = file_opendir(*base == '\0' ? "." : base)) != 0)
     {
-	pattern_init(&pat, globpart, (state->case_sens ? PAT_CASE : 0));
+	pat.init(globpart, (state->case_sens ? PAT_CASE : 0));
 
 	while ((de = readdir(dir)) != 0)
 	{
@@ -215,7 +215,7 @@ glob_part(
 		!strcmp(de->d_name, ".."))
 		continue;
 
-    	    if (pattern_match_c(&pat, de->d_name))
+    	    if (pat.match_c(de->d_name))
 	    {
 		newpath = (*base == '\0' ?
 			    g_strdup(de->d_name) :
@@ -229,7 +229,6 @@ glob_part(
 	}
 
 	closedir(dir);
-	pattern_free(&pat);
     }
 
 
@@ -266,7 +265,7 @@ glob_recurse(
 	    	glob_recurse(state, pat, newpath);
 		g_free(newpath);
 	    }
-    	    else if (pattern_match_c(pat, newpath))
+    	    else if (pat->match_c(newpath))
 	    {
 #if DEBUG
     		fprintf(stderr, "glob_recurse(\"%s\") -> \"%s\"\n",
@@ -302,7 +301,7 @@ glob_path(
 	    pattern_t pat;
 	    list_t<char> oldpending;
 	    
-    	    pattern_init(&pat, globpath, (state->case_sens ? PAT_CASE : 0));
+    	    pat.init(globpath, (state->case_sens ? PAT_CASE : 0));
 
     	    oldpending.take(&state->pending);
 	    char *base;
@@ -402,7 +401,7 @@ fs_exclude(
     	char *fn = *iter;
     	next = iter.peek_next();
 	
-	if (pattern_match_c(pat, fn))
+	if (pat->match_c(fn))
 	{
 #if DEBUG
     	    fprintf(stderr, "fs_exclude(\"%s\"): removing \"%s\"\n",
@@ -443,9 +442,8 @@ fs_apply_file(
 	{
 	    pattern_t pat;
 	    
-	    pattern_init(&pat, buf, (state->case_sens ? PAT_CASE : 0));
+	    pat.init(buf, (state->case_sens ? PAT_CASE : 0));
 	    fs_exclude(state, &pat);
-	    pattern_free(&pat);
 	}
     }
     
