@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 # 
-# $Id: Makefile.am,v 1.19 2002-02-04 04:57:55 gnb Exp $
+# $Id: Makefile.am,v 1.20 2002-02-08 07:12:13 gnb Exp $
 #
 
 bin_PROGRAMS=	cant
@@ -28,7 +28,8 @@ TASK_SOURCES=	\
 		task_enumerate.c \
 		task_copy.c \
 		task_echo.c \
-		task_cant.c
+		task_cant.c \
+		task_foreach.c
 
 MAPPER_SOURCES=	\
 		mapper_identity.c \
@@ -44,6 +45,7 @@ cant_SOURCES=	common.h thread.h cant.h \
 		xtask.h xtask.c \
 		props.h props.c \
 		estring.h estring.c \
+		tok.h tok.c \
 		log.h log.c \
 		filename.h filename.c \
 		fileset.h fileset.c \
