@@ -24,7 +24,7 @@
 #include "log.h"
 #include <dirent.h>
 
-CVSID("$Id: fileset.c,v 1.14 2002-02-08 17:15:23 gnb Exp $");
+CVSID("$Id: fileset.c,v 1.15 2002-02-10 10:11:23 gnb Exp $");
 
 static void fs_spec_delete(fs_spec_t *fss);
 
@@ -37,6 +37,7 @@ fileset_new(void)
     
     fs = new(fileset_t);
     fs->refcount = 1;
+    fs->directory = g_strdup(".");
 
     return fs;
 }
@@ -219,7 +220,8 @@ glob_part(
 			    g_strdup(de->d_name) :
 	    	    	    g_strconcat(base, "/", de->d_name, 0));
 #if DEBUG
-    		fprintf(stderr, "glob_part(\"%s\") -> \"%s\"\n", base, newpath);
+    		fprintf(stderr, "glob_part(\"%s\", \"%s\") -> \"%s\"\n",
+		    	base, globpart, newpath);
 #endif
 		results = g_list_append(results, newpath);
 	    }
@@ -355,6 +357,10 @@ fs_include(
     fs_glob_state_t *state,
     char *glob)
 {
+#if DEBUG
+    char *glob_saved = g_strdup(glob);
+#endif
+
     state->pending = g_list_append(0, g_strdup(*glob == '/' ? "/" : ""));
     state->check_exists = FALSE;
     
@@ -363,7 +369,7 @@ fs_include(
     if (state->pending == 0 || ((char *)state->pending->data)[0] == '\0')
     {
 #if DEBUG
-    	fprintf(stderr, "fs_include(\"%s\") matched no files\n", glob);
+    	fprintf(stderr, "fs_include(\"%s\") matched no files\n", glob_saved);
 #endif
     	listdelete(state->pending, char, g_free);
     }
@@ -371,13 +377,17 @@ fs_include(
     {
 #if DEBUG
     	GList *iter;
-    	fprintf(stderr, "fs_include(\"%s\") adding", glob);
+    	fprintf(stderr, "fs_include(\"%s\") adding", glob_saved);
 	for (iter = state->pending ; iter != 0 ; iter = iter->next)
 	    fprintf(stderr, " \"%s\"", (char *)iter->data);
 	fprintf(stderr, "\n");
 #endif
 	state->filenames = g_list_concat(state->filenames, state->pending);
     }
+
+#if DEBUG
+    g_free(glob_saved);
+#endif
 }
 
 
