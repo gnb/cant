@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 # 
-# $Id: Makefile.am,v 1.10 2001-11-14 06:30:26 gnb Exp $
+# $Id: Makefile.am,v 1.11 2001-11-14 10:59:03 gnb Exp $
 #
 
 bin_PROGRAMS=	cant
@@ -45,6 +45,7 @@ cant_SOURCES=	common.h thread.h cant.h \
 		filename.h filename.c \
 		fileset.h fileset.c \
 		mapper.h mapper.c \
+		condition.h condition.c \
 		pattern.h pattern.c \
 		xml.h xml.c \
 		common.c process.c \

@@ -27,27 +27,27 @@
 typedef struct xtask_arg_s    	xtask_arg_t;
 typedef struct xtask_ops_s    	xtask_ops_t;
 
-
-#define XT_ARG	    	    1
-#define XT_FILESET  	    2
-#define XT_ENV	    	    3
-#define XT_FILES    	    4
-#define _XT_TYPE_MASK	    0xf
-#define XT_WHITESPACE	    (1<<4)  	/* escape whitespace in `arg' */
-#define XT_IFCOND	    (1<<5)  	/* `if' condition specified */
-#define XT_UNLESSCOND	    (1<<6)  	/* `unless' condition specified */
+typedef enum
+{
+    XT_VALUE,	    /* argument used directly, whitespace-safe */
+    XT_LINE,	    /* argument is split on whitespace */
+    XT_FILESET,     /* insert list of files from fileset child. */
+    /* TODO: XT_FILELIST */
+    /* TODO: XT_ENV */
+    XT_FILES	    /* insert list of files from task's own fileset */
+} xtask_arg_type_t;
 
 struct xtask_arg_s
 {
-    unsigned flags;
+    xtask_arg_type_t type;
     
     union
     {
-	char *arg;	    	/* for XT_ARG */
+	char *arg;	    	/* for XT_VALUE, XT_LINE */
 	fileset_t *fileset;     /* for XT_FILESET */
     } data;
     
-    char *condition;
+    condition_t condition;
 };
 
 struct xtask_ops_s
@@ -70,8 +70,6 @@ struct xtask_ops_s
 /* xtask.c */
 xtask_ops_t *xtask_ops_new(const char *name);
 void xtask_ops_delete(xtask_ops_t *xops);
-void xtask_arg_set_if_condition(xtask_arg_t *xa, const char *prop);
-void xtask_arg_set_unless_condition(xtask_arg_t *xa, const char *prop);
 xtask_arg_t *xtask_ops_add_line(xtask_ops_t *xops, const char *s);
 xtask_arg_t *xtask_ops_add_value(xtask_ops_t *xops, const char *s);
 xtask_arg_t *xtask_ops_add_fileset(xtask_ops_t *xops, fileset_t *fs);

@@ -20,7 +20,7 @@
 #include "pattern.h"
 #include "estring.h"
 
-CVSID("$Id: pattern.c,v 1.6 2001-11-13 04:08:05 gnb Exp $");
+CVSID("$Id: pattern.c,v 1.7 2001-11-14 10:59:03 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -149,6 +149,21 @@ pattern_match(pattern_t *pat, const char *filename)
 #endif				    
 	}
     }
+
+    return ret;
+}
+
+gboolean
+pattern_match_c(const pattern_t *pat, const char *filename)
+{
+    gboolean ret;
+    
+    ret = (regexec(&pat->regex, filename,
+    	    	    /*nmatches*/0, /*matches*/0, /*eflags*/0) == 0);
+#if DEBUG
+    fprintf(stderr, "pattern_match_c: pattern=\"%s\" filename=\"%s\" -> %s\n",
+    	    pat->pattern, filename, (ret ? "true" : "false"));
+#endif
 
     return ret;
 }

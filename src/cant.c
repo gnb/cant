@@ -21,7 +21,7 @@
 #include "cant.h"
 #include "job.h"
 
-CVSID("$Id: cant.c,v 1.10 2001-11-14 06:30:26 gnb Exp $");
+CVSID("$Id: cant.c,v 1.11 2001-11-14 10:59:03 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -170,47 +170,6 @@ find_buildfile(void)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static gboolean
-build_target(project_t *proj, target_t *targ)
-{
-    GList *iter;
-
-    log_push_context(targ->name);
-    logf("\n");
-    
-    /* TODO: check if finished first */
-
-    /* go to depends first */
-    for (iter = targ->depends ; iter != 0 ; iter = iter->next)
-    {
-    	target_t *dep = (target_t *)iter->data;
-	
-	if (!build_target(proj, dep))
-	{
-	    log_pop_context();
-	    return FALSE;
-	}
-    }
-    
-    /* now handle this target's tasks */
-    for (iter = targ->tasks ; iter != 0 ; iter = iter->next)
-    {
-    	task_t *task = (task_t *)iter->data;
-	
-	if (!task_execute(task))
-	{
-	    job_clear();
-	    log_pop_context();
-	    return FALSE;
-	}
-    }
-    
-    job_run();
-    
-    log_pop_context();
-    return TRUE;
-}
-
-static gboolean
 build_target_by_name(project_t *proj, const char *name)
 {
     target_t *targ;
@@ -220,7 +179,7 @@ build_target_by_name(project_t *proj, const char *name)
     	fprintf(stderr, "%s: no such target \"%s\"\n", argv0, name);
     	return FALSE;
     }
-    return build_target(proj, targ);
+    return target_execute(targ);
 }    
     
 static gboolean
@@ -417,12 +376,15 @@ dump_one_target(gpointer key, gpointer value, gpointer userdata)
 {
     target_t *targ = (target_t *)value;
     GList *iter;
+    char *cond_desc;
     
     fprintf(stderr, "    TARGET {\n");
     fprintf(stderr, "        NAME=\"%s\"\n", targ->name);
     fprintf(stderr, "        DESCRIPTION=\"%s\"\n", targ->description);
     fprintf(stderr, "        FLAGS=\"%08x\"\n", targ->flags);
-    fprintf(stderr, "        CONDITION=\"%s\"\n", targ->condition);
+    cond_desc = condition_describe(&targ->condition);
+    fprintf(stderr, "        CONDITION=%s\n", cond_desc);
+    g_free(cond_desc);
     fprintf(stderr, "        DEPENDS {\n");
     for (iter = targ->depends ; iter != 0 ; iter = iter->next)
     {

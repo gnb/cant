@@ -20,7 +20,7 @@
 #include "xtask.h"
 #include "job.h"
 
-CVSID("$Id: xtask.c,v 1.9 2001-11-14 06:30:26 gnb Exp $");
+CVSID("$Id: xtask.c,v 1.10 2001-11-14 10:59:03 gnb Exp $");
 
 typedef struct
 {
@@ -124,38 +124,41 @@ xtask_build_command(task_t *task, strarray_t *command)
     {
     	xtask_arg_t *xa = (xtask_arg_t *)iter->data;
 
-    	switch (xa->flags & _XT_TYPE_MASK)
+    	if (!condition_evaluate(&xa->condition, xp->properties))
+	    continue;
+	
+    	switch (xa->type)
 	{
-	case XT_FILESET:    /* <fileset> child */
-    	    xtask_fileset_apply_mappers(xa->data.fileset, command, /*mappers*/0);
-	    break;
-
-	case XT_ARG:	    /* <arg> child */
+	case XT_VALUE:	    /* <arg value=""> child */
 	    /* TODO: <arg arglistref=""> child */
-	    /* TODO: implement "if", "unless" conditions */
 	    exp = props_expand(xp->properties, xa->data.arg);
 	    strnullnorm(exp);
-	    
+	    if (exp != 0)
+		strarray_appendm(command, exp);
+	    break;
+
+	case XT_LINE:	    /* <arg line=""> child */
+	    exp = props_expand(xp->properties, xa->data.arg);
+	    strnullnorm(exp);
 	    if (exp != 0)
 	    {
-	    	if (xa->flags & XT_WHITESPACE)
-		    strarray_appendm(command, exp);
-		else
+		/* tokenise value on whitespace */
+		char *x, *buf2 = exp;
+
+		while ((x = strtok(buf2, " \t\n\r")) != 0)
 		{
-		    /* tokenise value on whitespace */
-		    char *x, *buf2 = exp;
-		    
-		    while ((x = strtok(buf2, " \t\n\r")) != 0)
-		    {
-		    	buf2 = 0;
-			strarray_append(command, x);
-		    }
-		    g_free(exp);
+		    buf2 = 0;
+		    strarray_append(command, x);
 		}
+		g_free(exp);
 	    }
 	    break;
 	    /* TODO: <env> child */
 	
+	case XT_FILESET:    /* <fileset> child */
+    	    xtask_fileset_apply_mappers(xa->data.fileset, command, /*mappers*/0);
+	    break;
+
 	case XT_FILES:	    /* <files> child */
 	    if (task->fileset != 0)
     	    	xtask_fileset_apply_mappers(task->fileset, command, xops->mappers);
@@ -334,55 +337,32 @@ xtask_arg_new(void)
     
     xa = new(xtask_arg_t);
     
+    condition_init(&xa->condition);
+    
     return xa;
 }
 
 static void
 xtask_arg_delete(xtask_arg_t *xa)
 {
-    switch (xa->flags & _XT_TYPE_MASK)
+    switch (xa->type)
     {
+    case XT_VALUE:    	/* <arg value=""> child */
+    case XT_LINE:    	/* <arg line=""> child */
+	strdelete(xa->data.arg);
+    	break;
     case XT_FILESET:    /* <fileset> child */
 	if (xa->data.fileset != 0)
-	{
     	    fileset_delete(xa->data.fileset);
-	    xa->data.fileset = 0;
-	}
-    	break;
-    case XT_ARG:    	/* <arg> child */
-	strdelete(xa->data.arg);
     	break;
     case XT_FILES:  	/* <files> child */
     	break;
     }
     
-    strdelete(xa->condition);
+    condition_free(&xa->condition);
     
     g_free(xa);
 }
-
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
-
-static void
-_xtask_arg_set_condition(xtask_arg_t *xa, unsigned flags, const char *prop)
-{
-    strassign(xa->condition, prop);
-    xa->flags = (xa->flags & ~(XT_IFCOND|XT_UNLESSCOND)) | flags;
-}
-
-
-void
-xtask_arg_set_if_condition(xtask_arg_t *xa, const char *prop)
-{
-    _xtask_arg_set_condition(xa, XT_IFCOND, prop);
-}
-
-void
-xtask_arg_set_unless_condition(xtask_arg_t *xa, const char *prop)
-{
-    _xtask_arg_set_condition(xa, XT_UNLESSCOND, prop);
-}
-
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -427,13 +407,13 @@ xtask_ops_delete(xtask_ops_t *xops)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static xtask_arg_t *
-xtask_ops_add_arg(xtask_ops_t *xops, unsigned flags)
+xtask_ops_add_arg(xtask_ops_t *xops, xtask_arg_type_t type)
 {
     xtask_arg_t *xa;
     
     xa = xtask_arg_new();
     
-    xa->flags = flags;
+    xa->type = type;
     xops->args = g_list_append(xops->args, xa);
     
     return xa;
@@ -444,7 +424,7 @@ xtask_ops_add_line(xtask_ops_t *xops, const char *s)
 {
     xtask_arg_t *xa;
     
-    xa = xtask_ops_add_arg(xops, XT_ARG);
+    xa = xtask_ops_add_arg(xops, XT_LINE);
     strassign(xa->data.arg, s);
     
     return xa;
@@ -455,7 +435,7 @@ xtask_ops_add_value(xtask_ops_t *xops, const char *s)
 {
     xtask_arg_t *xa;
     
-    xa = xtask_ops_add_arg(xops, XT_ARG|XT_WHITESPACE);
+    xa = xtask_ops_add_arg(xops, XT_VALUE);
     strassign(xa->data.arg, s);
     
     return xa;

@@ -39,7 +39,7 @@ void props_copy_contents(props_t *props, const props_t *orig);
  * Get a property value from this props_t or any of
  * its ancestors.  Set a property value in this props_t.
  */
-const char *props_get(props_t *, const char *name);
+const char *props_get(const props_t *, const char *name);
 void props_set(props_t *, const char *name, const char *value);
 /*
  * Same as props_set() except that `value' is not
@@ -53,7 +53,7 @@ void props_setm(props_t *, const char *name, char *value);
  * all ancestor props_t's, in indeterminate order.
  * Probably quite slow.
  */
-void props_apply(props_t *, void (*func)(const char *name, const char *value,
+void props_apply(const props_t *, void (*func)(const char *name, const char *value,
     	    	    void *userdata), void *userdata);
 
 /*
@@ -61,7 +61,7 @@ void props_apply(props_t *, void (*func)(const char *name, const char *value,
  * properties defined in the given props_t and not
  * any of its ancestors.
  */
-void props_apply_local(props_t *, void (*func)(const char *name,
+void props_apply_local(const props_t *, void (*func)(const char *name,
     	    	    const char *value, void *userdata), void *userdata);
 
 /*
@@ -69,7 +69,7 @@ void props_apply_local(props_t *, void (*func)(const char *name,
  * the value of the corresponding property, i.e. expand
  * all property references.
  */
-char *props_expand(props_t *, const char *string);
+char *props_expand(const props_t *, const char *string);
 
 
 

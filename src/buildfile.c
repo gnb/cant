@@ -21,7 +21,7 @@
 #include "xtask.h"
 #include <parser.h>
 
-CVSID("$Id: buildfile.c,v 1.9 2001-11-14 06:30:26 gnb Exp $");
+CVSID("$Id: buildfile.c,v 1.10 2001-11-14 10:59:03 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -48,6 +48,63 @@ parse_error(const char *fmt, ...)
     va_end(args);
     
     num_errs++;
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+/*
+ * Parse the condition-related attributes on a node
+ * into the condition_t and return TRUE iff the
+ * parse was successful.
+ */
+ 
+gboolean
+parse_condition(condition_t *cond, xmlNode *node)
+{
+    char *if_attr = xmlGetProp(node, "if");
+    char *unless_attr = xmlGetProp(node, "unless");
+    char *matches_attr = xmlGetProp(node, "matches");
+    char *matchesregex_attr = xmlGetProp(node, "matchesregex");
+    gboolean case_sens = cantXmlGetBooleanProp(node, "matchsensitive", TRUE);
+    gboolean res = FALSE;
+    
+    if (if_attr != 0 && unless_attr != 0)
+    	parse_error("Cannot specify both \"if\" and \"unless\" attributes\n");
+    else if (matches_attr != 0 && matchesregex_attr != 0)
+    	parse_error("Cannot specify both \"matches\" and \"matchesregex\" attributes\n");
+    else if ((matches_attr != 0 || matchesregex_attr != 0) &&
+    	     (if_attr == 0 && unless_attr == 0))
+    	parse_error("Cannot specify \"matches\" or \"matchesregex\" attributes without \"if\" or \"unless\"\n");
+    else
+    {
+    	if (if_attr != 0)
+	    condition_set_if(cond, if_attr);
+    	else if (unless_attr != 0)
+	    condition_set_unless(cond, unless_attr);
+	    
+	if (matches_attr != 0)
+	    condition_set_matches(cond, matches_attr, case_sens);
+	else if (matchesregex_attr != 0)
+	    condition_set_matches_regex(cond, matchesregex_attr, case_sens);
+
+    	res = TRUE; 	/* success!! */
+    }
+    
+    xmlFree(if_attr);
+    xmlFree(unless_attr);
+    xmlFree(matches_attr);
+    xmlFree(matchesregex_attr);
+    return res;
+}
+
+static gboolean
+is_condition_attribute(const char *attrname)
+{
+    return (!strcmp(attrname, "if") ||
+    	    !strcmp(attrname, "unless") ||
+    	    !strcmp(attrname, "matches") ||
+    	    !strcmp(attrname, "matchesregex") ||
+    	    !strcmp(attrname, "matchsensitive"));
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -271,18 +328,8 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
     	if (xa == 0)
 	    continue;
 
-    	/* TODO: need a condition.c with condition_parse() */
-    	if ((buf = xmlGetProp(child, "if")) != 0)
-	{
-	    xtask_arg_set_if_condition(xa, buf);
-	    xmlFree(buf);
-	}	    
-    	else if ((buf = xmlGetProp(child, "unless")) != 0)
-	{
-	    xtask_arg_set_unless_condition(xa, buf);
-	    xmlFree(buf);
-	}	    
-	
+    	if (!parse_condition(&xa->condition, child))
+	    continue;	/* TODO: do something more drastic */
     }    
 
     /* TODO: handle duplicate registrations cleanly */
@@ -425,17 +472,8 @@ parse_fileset(project_t *proj, xmlNode *node, const char *dirprop)
 	if (fss == 0)
 	    continue;
 
-    	if ((buf = xmlGetProp(child, "if")) != 0)
-	{
-	    fs_spec_set_if_condition(fss, buf);
-	    xmlFree(buf);
-	}	    
-    	else if ((buf = xmlGetProp(child, "unless")) != 0)
-	{
-	    fs_spec_set_unless_condition(fss, buf);
-	    xmlFree(buf);
-	}	    
-
+    	if (!parse_condition(&fss->condition, child))
+	    continue;	    /* TODO: do something more drastic!!! */
     }
     
     return fs;
@@ -665,7 +703,7 @@ add_depends(project_t *proj, target_t *targ, const char *str)
 }
 
 
-static void
+static gboolean
 parse_target(project_t *proj, xmlNode *node)
 {
     target_t *targ;
@@ -684,16 +722,34 @@ parse_target(project_t *proj, xmlNode *node)
     
     if (name == 0)
     {
-    	parse_error("Required attribute \"name\" missing from \"task\"\n");
-    	return;
+    	parse_error("Required attribute \"name\" missing from \"target\"\n");
+    	return FALSE;
     }
     
-    targ = target_new();
-    target_set_name(targ, name);
+    if ((targ = project_find_target(proj, name)) == 0)
+    {
+	targ = target_new();
+	target_set_name(targ, name);
+	project_add_target(proj, targ);
+    }
+    else
+    {
+    	if (targ->flags & T_DEFINED)
+	{
+	    parse_error("Target \"%s\" already defined\n", name);
+	    xmlFree(name);
+	    return FALSE;
+	}
+    }
     xmlFree(name);
-    
     targ->flags |= T_DEFINED;
-    project_add_target(proj, targ);
+    
+    if (!parse_condition(&targ->condition, node))
+    {
+    	project_remove_target(proj, targ);
+    	target_delete(targ);
+	return FALSE;
+    }
 
 
     /*
@@ -709,10 +765,8 @@ parse_target(project_t *proj, xmlNode *node)
 	    target_set_description(targ, value);
     	else if (!strcmp(attr->name, "depends"))
 	    add_depends(proj, targ, value);
-    	else if (!strcmp(attr->name, "if"))
-	    target_set_if_condition(targ, value);
-    	else if (!strcmp(attr->name, "unless"))
-	    target_set_unless_condition(targ, value);
+    	else if (is_condition_attribute(attr->name))
+	    ;
 	else
 	    parse_error("Unknown attribute \"%s\" on \"target\"\n", attr->name);
 
@@ -728,6 +782,8 @@ parse_target(project_t *proj, xmlNode *node)
 		target_add_task(targ, task);
 	}
     }
+    
+    return TRUE;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -794,6 +850,7 @@ parse_project(xmlNode *node, project_t *parent)
     	else if (!strcmp(child->name, "xtaskdef"))
 	    parse_xtaskdef(proj, child);
 	else if (!globals && !strcmp(child->name, "target"))
+	    /* TODO: propagate failure */
 	    parse_target(proj, child);
 	else
 	    /* TODO: fileset */

@@ -27,6 +27,7 @@
 #include "pattern.h"
 #include "filename.h"
 #include "fileset.h"
+#include "condition.h"
 #include "mapper.h"
 #include "xml.h"
 #include "log.h"
@@ -62,8 +63,6 @@ struct project_s
 
 #define T_DEFINED   	    (1<<0)  	/* defined with <target> element */
 #define T_DEPENDED_ON	    (1<<1)  	/* referenced in at least one `depends' attribute */
-#define T_IFCOND	    (1<<2)  	/* `if' attribute specified */
-#define T_UNLESSCOND	    (1<<3)  	/* `unless' attribute specified */
 
 struct target_s
 {
@@ -72,7 +71,7 @@ struct target_s
     project_t *project;
     unsigned flags;
     GList *depends;
-    char *condition;	    	/* property referenced in `if' or `unless' attr */
+    condition_t condition;
     GList *tasks;
 };
 
@@ -159,6 +158,7 @@ void fatal(const char *fmt, ...);
 
 /* buildfile.c */
 void parse_error(const char *fmt, ...);
+extern gboolean parse_condition(condition_t *cond, xmlNode *node);
 extern fileset_t *parse_fileset(project_t *, xmlNode *, const char *dirprop);	/* for e.g. <delete> */
 mapper_t *parse_mapper(project_t *proj, xmlNode *node);
 extern task_t *parse_task(project_t *, xmlNode *);	/* for recursives e.g. <condition> */
@@ -175,6 +175,7 @@ void project_set_filename(project_t *, const char *s);
 void project_override_properties(project_t *proj, props_t *props);
 target_t *project_find_target(project_t *, const char *name);
 void project_add_target(project_t*, target_t*);
+void project_remove_target(project_t *proj, target_t *targ);
 const char *project_get_property(project_t *, const char *name);
 void project_set_property(project_t *, const char *name, const char *value);
 void project_add_fileset(project_t *, fileset_t *);
@@ -188,9 +189,8 @@ target_t *target_new(void);
 void target_delete(target_t *);
 void target_set_name(target_t *, const char *name);
 void target_set_description(target_t *, const char *description);
-void target_set_if_condition(target_t *, const char *cond);
-void target_set_unless_condition(target_t *, const char *cond);
 void target_add_task(target_t *, task_t *task);
+gboolean target_execute(target_t *targ);
 
 /* task.c */
 task_t *task_new(void);

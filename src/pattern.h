@@ -49,10 +49,13 @@ void pattern_init(pattern_t *, const char *s, unsigned flags);
 void pattern_free(pattern_t *);
 pattern_t *pattern_new(const char *s, unsigned flags);
 void pattern_delete(pattern_t *);
-gboolean pattern_match(pattern_t *, const char *filename);
-/* retrieve the n'th group */
+/* Note that `pat' is const if the PAT_GROUPS flag was not supplied */
+gboolean pattern_match(pattern_t *pat, const char *filename);
+/* This function is const-only so doesn't support PAT_GROUPS */
+gboolean pattern_match_c(const pattern_t *pat, const char *filename);
+/* retrieve the n'th group, if PAT_GROUPS was set */
 const char *pattern_group(const pattern_t *, unsigned int /*0-9*/i);
-/* replace instances of \N with the N'th group */
+/* replace instances of \N with the N'th group, if PAT_GROUPS was set */
 char *pattern_replace(const pattern_t *, const char *rep);
 
 /*

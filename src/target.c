@@ -18,8 +18,9 @@
  */
 
 #include "cant.h"
+#include "job.h"
 
-CVSID("$Id: target.c,v 1.4 2001-11-13 04:08:05 gnb Exp $");
+CVSID("$Id: target.c,v 1.5 2001-11-14 10:59:03 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -63,33 +64,58 @@ target_set_description(target_t *targ, const char *s)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void
-_target_set_condition(target_t *targ, int which, const char *s)
-{
-    strassign(targ->condition, s);
-    
-    targ->flags = (targ->flags & ~(T_IFCOND|T_UNLESSCOND)) | which;
-}
-
-void
-target_set_if_condition(target_t *targ, const char *s)
-{
-    _target_set_condition(targ, T_IFCOND, s);
-}
-
-void
-target_set_unless_condition(target_t *targ, const char *s)
-{
-    _target_set_condition(targ, T_UNLESSCOND, s);
-}
-
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
-
 void
 target_add_task(target_t *targ, task_t *task)
 {
     targ->tasks = g_list_append(targ->tasks, task);
     task->target = targ;
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+gboolean
+target_execute(target_t *targ)
+{
+    GList *iter;
+
+    if (!condition_evaluate(&targ->condition,
+    	    	    	    project_get_props(targ->project)))
+	return TRUE;	    /* disabled target: trivially successful */
+    
+    log_push_context(targ->name);
+    logf("\n");
+    
+    /* TODO: check if finished first */
+
+    /* go to depends first */
+    for (iter = targ->depends ; iter != 0 ; iter = iter->next)
+    {
+    	target_t *dep = (target_t *)iter->data;
+	
+	if (!target_execute(dep))
+	{
+	    log_pop_context();
+	    return FALSE;
+	}
+    }
+    
+    /* now handle this target's tasks */
+    for (iter = targ->tasks ; iter != 0 ; iter = iter->next)
+    {
+    	task_t *task = (task_t *)iter->data;
+	
+	if (!task_execute(task))
+	{
+	    job_clear();
+	    log_pop_context();
+	    return FALSE;
+	}
+    }
+    
+    job_run();
+    
+    log_pop_context();
+    return TRUE;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

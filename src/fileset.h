@@ -24,6 +24,7 @@
 #include "filename.h"
 #include "props.h"
 #include "pattern.h"
+#include "condition.h"
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
  
@@ -47,9 +48,7 @@ struct fileset_s
 
 #define FS_INCLUDE  	(1<<0)
 #define FS_FILE  	(1<<1)
-#define FS_IFCOND  	(1<<2)
-#define FS_UNLESSCOND  	(1<<3)
-#define FS_FILEREAD  	(1<<4)
+#define FS_FILEREAD  	(1<<2)
 
 struct fs_spec_s
 {
@@ -60,13 +59,10 @@ struct fs_spec_s
     
     pattern_t pattern;
     
-    char *condition;
+    condition_t condition;
 };
 
 
-
-void fs_spec_set_if_condition(fs_spec_t *fss, const char *prop);
-void fs_spec_set_unless_condition(fs_spec_t *fss, const char *prop);
 
 fileset_t *fileset_new(props_t *);
 void fileset_delete(fileset_t *);

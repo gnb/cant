@@ -22,7 +22,7 @@
 #include "log.h"
 #include <dirent.h>
 
-CVSID("$Id: fileset.c,v 1.8 2001-11-14 06:30:26 gnb Exp $");
+CVSID("$Id: fileset.c,v 1.9 2001-11-14 10:59:03 gnb Exp $");
 
 typedef enum { FS_IN, FS_EX, FS_UNKNOWN } fs_result_t;
 
@@ -45,6 +45,7 @@ fs_spec_new(
     	pattern_init(&fss->pattern, pattern, (case_sens ? PAT_CASE : 0));
     
     strassign(fss->filename, filename);
+    condition_init(&fss->condition);
     
     return fss;
 }
@@ -61,31 +62,9 @@ fs_spec_delete(fs_spec_t *fss)
     
     strdelete(fss->filename);
     pattern_free(&fss->pattern);
-    strdelete(fss->condition);
+    condition_free(&fss->condition);
 
     g_free(fss);
-}
-
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
-
-static void
-_fs_spec_set_condition(fs_spec_t *fss, unsigned flags, const char *prop)
-{
-    strassign(fss->condition, prop);
-    fss->flags = (fss->flags & ~(FS_IFCOND|FS_UNLESSCOND)) | flags;
-}
-
-
-void
-fs_spec_set_if_condition(fs_spec_t *fss, const char *prop)
-{
-    _fs_spec_set_condition(fss, FS_IFCOND, prop);
-}
-
-void
-fs_spec_set_unless_condition(fs_spec_t *fss, const char *prop)
-{
-    _fs_spec_set_condition(fss, FS_UNLESSCOND, prop);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -160,17 +139,8 @@ fs_spec_file_read(fileset_t *fs, fs_spec_t *fss)
 static fs_result_t
 fs_spec_match(fileset_t *fs, fs_spec_t *fss, const char *filename)
 {
-    if (fss->flags & FS_IFCOND)
-    {    
-    	if (props_get(fs->props, fss->condition) == 0)
+    if (!condition_evaluate(&fss->condition, fs->props))
 	    return FS_UNKNOWN;
-    }
-
-    if (fss->flags & FS_UNLESSCOND)
-    {
-    	if (props_get(fs->props, fss->condition) != 0)
-	    return FS_UNKNOWN;
-    }
     
     if (fss->flags & FS_FILE)
     {

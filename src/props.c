@@ -26,7 +26,7 @@ struct props_s
     GHashTable *values;
 };
 
-CVSID("$Id: props.c,v 1.7 2001-11-13 04:08:05 gnb Exp $");
+CVSID("$Id: props.c,v 1.8 2001-11-14 10:59:03 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -77,7 +77,7 @@ props_delete(props_t *props)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 const char *
-props_get(props_t *props, const char *name)
+props_get(const props_t *props, const char *name)
 {
     const char *value;
     
@@ -133,7 +133,7 @@ _props_consolidate_one(gpointer key, gpointer value, gpointer userdata)
 
 void
 props_apply(
-    props_t *props,
+    const props_t *props,
     void (*func)(const char *name, const char *value, void *userdata),
     void *userdata)
 {
@@ -157,7 +157,7 @@ props_apply(
 
 void
 props_apply_local(
-    props_t *props,
+    const props_t *props,
     void (*func)(const char *name, const char *value, void *userdata),
     void *userdata)
 {
@@ -173,7 +173,7 @@ props_apply_local(
 
 static void
 _props_expand_1(
-    props_t *props,
+    const props_t *props,
     estring *rep,
     const char *str,
     int depth)
@@ -220,7 +220,7 @@ _props_expand_1(
 }
 
 char *
-props_expand(props_t *props, const char *str)
+props_expand(const props_t *props, const char *str)
 {
     estring rep;
     

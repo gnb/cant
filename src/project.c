@@ -19,7 +19,7 @@
 
 #include "cant.h"
 
-CVSID("$Id: project.c,v 1.6 2001-11-14 06:30:26 gnb Exp $");
+CVSID("$Id: project.c,v 1.7 2001-11-14 10:59:03 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -130,6 +130,13 @@ target_t *
 project_find_target(project_t *proj, const char *name)
 {
     return (target_t *)g_hash_table_lookup(proj->targets, name);
+}
+
+void
+project_remove_target(project_t *proj, target_t *targ)
+{
+    g_hash_table_remove(proj->targets, targ->name);
+    targ->project = 0;
 }
 
 void
