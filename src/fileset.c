@@ -20,7 +20,7 @@
 #include "cant.h"
 #include <dirent.h>
 
-CVSID("$Id: fileset.c,v 1.3 2001-11-06 09:29:06 gnb Exp $");
+CVSID("$Id: fileset.c,v 1.4 2001-11-06 14:05:56 gnb Exp $");
 
 typedef enum { FS_IN, FS_EX, FS_UNKNOWN } fs_result_t;
 
@@ -316,8 +316,11 @@ fileset_apply_1(
 	    
 	/* TODO: estring_truncate_to() */
 	estring_truncate(&child);
-	estring_append_string(&child, filename);
-	estring_append_char(&child, '/');
+	if (strcmp(filename, "."))
+	{
+	    estring_append_string(&child, filename);
+	    estring_append_char(&child, '/');
+	}
 	estring_append_string(&child, de->d_name);
 	
 	if (file_is_directory(child.data) == 0)
