@@ -2,7 +2,7 @@
 
 <!--
   Test filesets using the the <enumerate> task
-  $Id: build.xml,v 1.1 2001-11-21 12:40:14 gnb Exp $
+  $Id: build.xml,v 1.2 2001-11-21 16:28:07 gnb Exp $
 -->
 
 <project name="test002" default="all" basedir=".">
@@ -19,8 +19,15 @@
   
   <target name="test1b">
     <enumerate>
-    	<!-- should match none TODO??? -->
+    	<!-- should match t.c -->
     	<fileset dir="." includes="*.c"/>
+    </enumerate>
+  </target>
+
+  <target name="test1c">
+    <enumerate>
+    	<!-- should match t.c -->
+    	<fileset dir="." includes="?.c"/>
     </enumerate>
   </target>
 
