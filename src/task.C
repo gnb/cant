@@ -19,7 +19,7 @@
 
 #include "cant.H"
 
-CVSID("$Id: task.C,v 1.8 2002-04-13 09:26:06 gnb Exp $");
+CVSID("$Id: task.C,v 1.9 2002-04-13 12:29:12 gnb Exp $");
 
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -35,10 +35,6 @@ task_t::task_t(task_class_t *tclass, project_t *proj)
 
 task_t::~task_t()
 {
-    strdelete(id_);
-    strdelete(name_);
-    strdelete(description_);
-    
     if (fileset_ != 0)
     	fileset_->unref();
 
@@ -114,7 +110,7 @@ task_t::execute()
     if (!exec())
     {
     	/* TODO: be more gracious, e.g. for <condition> */
-    	log::errorf("FAILED\n");
+    	log::infof("FAILED\n");
 	return FALSE;
     }
 
