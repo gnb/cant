@@ -1,0 +1,50 @@
+#!/bin/sh
+#
+# $Id: runtest,v 1.1 2001-11-19 01:19:43 gnb Exp $
+#
+CANT="${CANT:-../../src/cant} --globals-file globals.xml"
+
+TMP1=cant$$.stdout
+TMP2=cant$$.od
+trap "/bin/rm -f $TMP1 $TMP2" 0
+
+failed ()
+{
+    echo "FAILED"
+    exit 1
+}
+
+echo_test ()
+{
+    VALUE="$1"
+    
+    echo "================================================================"
+    echo "echo test, value=$VALUE"
+    
+    /bin/rm -f $TMP1
+    $CANT test-"$VALUE" > $TMP1 || failed
+}
+
+
+check_file ()
+{
+    FILE="$1"
+    HEXSTRING="$2"
+    
+    /bin/rm -f $TMP2
+    od -A none -t x1 "$FILE" > $TMP2
+    echo "$HEXSTRING" | diff -u - $TMP2 || failed
+}
+
+
+#set -x
+
+echo_test messages
+diff -u $TMP1 stdout.expected || failed
+
+/bin/rm -f wfile afile
+echo_test files
+test -f wfile || failed
+test -f afile || failed
+check_file wfile " 46 6f 6f 0a"
+check_file afile " 42 61 72 42 61 7a 0a"

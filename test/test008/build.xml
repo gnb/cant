@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+
+<!-- 
+  Test the "echo" task
+  $Id: build.xml,v 1.1 2001-11-19 01:19:43 gnb Exp $
+-->
+
+<project name="test006" default="test" basedir=".">
+
+  <target name="test" depends="test-messages,test-files"/>
+
+  <target name="test-messages">
+    <echo newline="false">Contents with no newline</echo>
+    <echo>Simple contents</echo>
+    <echo>Contents with
+embedded newline</echo>
+    <echo>
+This is the contents of an echo task.
+It takes up three lines and has newlines
+before and after as well.
+</echo>
+    <echo message="Value of the message attribute"/>
+  </target>
+
+  <target name="test-files">
+    <echo message="Foo" file="wfile"/>
+    <echo message="Bar" file="afile" newline="false"/>
+    <echo message="Baz" file="afile" append="true"/>
+  </target>
+
+</project>
