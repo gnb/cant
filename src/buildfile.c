@@ -20,7 +20,7 @@
 #include "cant.h"
 #include <parser.h>
 
-CVSID("$Id: buildfile.c,v 1.2 2001-11-06 09:10:30 gnb Exp $");
+CVSID("$Id: buildfile.c,v 1.3 2001-11-06 14:10:02 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -169,6 +169,88 @@ parse_property(project_t *proj, xmlNode *node)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
+static void
+parse_xtaskdef(project_t *proj, xmlNode *node)
+{
+    char *buf;
+    xtask_ops_t *xops;
+    xmlNode *child;
+    xtask_arg_t *xa;
+    fileset_t *fs;
+    
+#if DEBUG
+    fprintf(stderr, "Parsing xtaskdef\n");
+#endif
+
+    if ((buf = xmlGetProp(node, "name")) == 0)
+    {
+    	parse_error("Required attribute \"name\" missing\n");
+	return;
+    }
+
+    xops = xtask_ops_new(buf);
+    xmlFree(buf);
+
+    /* TODO: xtask_ops_set_*() functions */
+    xops->executable = xml2g(xmlGetProp(node, "executable"));
+    xops->logmessage = xml2g(xmlGetProp(node, "logmessage"));
+    xops->fileset_flag = cantXmlGetBooleanProp(node, "fileset", FALSE);
+    xops->foreach = cantXmlGetBooleanProp(node, "foreach", FALSE);
+
+    /* TODO: syntax check other attributes */
+    
+    for (child = node->childs ; child != 0 ; child = child->next)
+    {
+    	if (child->type != XML_ELEMENT_NODE)
+	    continue;
+
+    	xa = 0;
+    	if (!strcmp(child->name, "arg"))
+	{
+	    if ((buf = xmlGetProp(child, "value")) != 0)
+	    {
+	    	xa = xtask_ops_add_value(xops, buf);
+	    	xmlFree(buf);
+	    }
+	    else if ((buf = xmlGetProp(child, "line")) != 0)
+	    {
+	    	xa = xtask_ops_add_line(xops, buf);
+	    	xmlFree(buf);
+	    }
+	    else
+	    	parse_error("One of \"line\" or \"value\" must be set\n");
+	}
+	else if (!strcmp(child->name, "fileset"))
+	{
+	    if ((fs = parse_fileset(proj, child, "dir")) != 0)
+	    	xa = xtask_ops_add_fileset(xops, fs);
+	}
+	else
+	    parse_error("Unexpected child \"%s\"\n", child->name);
+
+    	if (xa == 0)
+	    continue;
+
+    	/* TODO: need a condition.c with condition_parse() */
+    	if ((buf = xmlGetProp(child, "if")) != 0)
+	{
+	    xtask_arg_set_if_condition(xa, buf);
+	    xmlFree(buf);
+	}	    
+    	else if ((buf = xmlGetProp(child, "unless")) != 0)
+	{
+	    xtask_arg_set_unless_condition(xa, buf);
+	    xmlFree(buf);
+	}	    
+	
+    }    
+
+    /* TODO: handle duplicate registrations cleanly */
+    task_ops_register((task_ops_t *)xops);
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
 fileset_t *
 parse_fileset(project_t *proj, xmlNode *node, const char *dirprop)
 {
@@ -186,7 +268,7 @@ parse_fileset(project_t *proj, xmlNode *node, const char *dirprop)
     if (dirprop != 0 && (buf = xmlGetProp(node, dirprop)) == 0)
     {
     	parse_error("Required attribute \"%s\" not present\n", dirprop);
-    	return;
+    	return 0;
     }
 
     fs = fileset_new(proj);
@@ -532,6 +614,8 @@ parse_project(xmlNode *node)
 	    parse_path(proj, child);
     	else if (!strcmp(child->name, "fileset"))
 	    parse_project_fileset(proj, child);
+    	else if (!strcmp(child->name, "xtaskdef"))
+	    parse_xtaskdef(proj, child);
 	else if (!strcmp(child->name, "target"))
 	    parse_target(proj, child);
 	else

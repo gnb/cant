@@ -19,7 +19,7 @@
 
 #include "cant.h"
 
-CVSID("$Id: project.c,v 1.3 2001-11-06 09:29:06 gnb Exp $");
+CVSID("$Id: project.c,v 1.4 2001-11-06 14:10:02 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -110,6 +110,14 @@ project_set_filename(project_t *proj, const char *s)
 
     props_setm(proj->fixed_properties, "ant.file",
     	    	file_make_absolute(proj->filename));
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+void
+project_override_properties(project_t *proj, props_t *props)
+{
+    props_copy_contents(proj->properties, props);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

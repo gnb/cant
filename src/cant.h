@@ -35,6 +35,8 @@ typedef struct project_s    	project_t;
 typedef struct target_s    	target_t;
 typedef struct task_s    	task_t;
 typedef struct task_ops_s    	task_ops_t;
+typedef struct xtask_arg_s    	xtask_arg_t;
+typedef struct xtask_ops_s    	xtask_ops_t;
 typedef struct pattern_s    	pattern_t;
 typedef struct fileset_s    	fileset_t;
 typedef struct fs_spec_s    	fs_spec_t;
@@ -82,11 +84,37 @@ struct task_s
 
 struct task_ops_s
 {
-    const char *name;
+    char *name;
     gboolean (*init)(void);
     gboolean (*parse)(task_t *, xmlNode *);
     gboolean (*execute)(task_t *);
     void (*delete)(task_t *);
+};
+
+#define XT_WHITESPACE	    (1<<0)  	/* escape whitespace in `arg' */
+#define XT_IFCOND	    (1<<1)  	/* `if' condition specified */
+#define XT_UNLESSCOND	    (1<<2)  	/* `unless' condition specified */
+
+struct xtask_arg_s
+{
+    unsigned flags;
+    
+    char *arg;
+    fileset_t *fileset;
+    
+    char *condition;
+};
+
+struct xtask_ops_s
+{
+    task_ops_t task_ops;
+    
+    char *executable;
+    char *logmessage;
+    GList *args;    	    	/* list of xtask_arg_t */
+    
+    gboolean fileset_flag:1;
+    gboolean foreach:1;
 };
 
 struct pattern_s
@@ -171,6 +199,7 @@ void project_set_description(project_t *, const char *description);
 void project_set_default_target(project_t *, const char *s);
 void project_set_basedir(project_t *, const char *s);
 void project_set_filename(project_t *, const char *s);
+void project_override_properties(project_t *proj, props_t *props);
 target_t *project_find_target(project_t *, const char *name);
 void project_add_target(project_t*, target_t*);
 const char *project_get_property(project_t *, const char *name);
@@ -206,6 +235,16 @@ gboolean task_execute(task_t *);
     project_expand((task)->project, (str))
 #define task_get_attribute_expanded(task, name) \
     task_expand((task), task_get_attribute((task), (name)))
+
+/* xtask.c */
+xtask_ops_t *xtask_ops_new(const char *name);
+void xtask_ops_delete(xtask_ops_t *xops);
+void xtask_arg_set_if_condition(xtask_arg_t *xa, const char *prop);
+void xtask_arg_set_unless_condition(xtask_arg_t *xa, const char *prop);
+xtask_arg_t *xtask_ops_add_line(xtask_ops_t *xops, const char *s);
+xtask_arg_t *xtask_ops_add_value(xtask_ops_t *xops, const char *s);
+xtask_arg_t *xtask_ops_add_fileset(xtask_ops_t *xops, fileset_t *fs);
+
 
 /* fileset.c */
 void fs_spec_set_if_condition(fs_spec_t *fss, const char *prop);

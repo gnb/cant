@@ -20,11 +20,12 @@
 #define _DEFINE_GLOBALS 1
 #include "cant.h"
 
-CVSID("$Id: cant.c,v 1.2 2001-11-06 09:10:30 gnb Exp $");
+CVSID("$Id: cant.c,v 1.3 2001-11-06 14:10:02 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static gboolean find_flag = FALSE;
+static props_t *command_defines;   /* -Dfoo=bar on the commandline */
 static GList *command_targets;     /* targets specified on the commandline */
 static char *buildfile = "build.xml";
 
@@ -164,6 +165,7 @@ static const char usage_str[] =
 " options are:\n"
 "-find              search in parent directories for build.xml\n"
 "-buildfile FILE    specify build file (default \"build.xml\")\n"
+"-Dname=value       override property \"name\"\n"
 ;
 
 static void
@@ -188,6 +190,29 @@ usagef(int ec, const char *fmt, ...)
     usage(ec);
 }
 
+
+static void
+add_commandline_define(const char *pair)
+{
+    char *buf, *x;
+    
+    if (pair == 0 || *pair == '*')
+    	usagef(1, "No argument to -D\n");
+	
+    buf = g_strdup(pair);
+
+    x = strchr(buf, '=');
+    if (x == 0)
+    	usagef(1, "Argument to -D should contain an \"=\"\n");    
+    *x++ = '\0';
+    
+    if (command_defines == 0)
+    	command_defines = props_new(0);
+    props_set(command_defines, buf, x);
+    
+    g_free(buf);
+}
+
 static void
 parse_args(int argc, char **argv)
 {
@@ -207,6 +232,10 @@ parse_args(int argc, char **argv)
 	    {
 	    	if ((buildfile = argv[++i]) == 0)
 		    usagef(1, "no argument for -buildfile\n");
+	    }
+	    else if (!strncmp(argv[i], "-D", 2))
+	    {
+	    	add_commandline_define(argv[i]+2);
 	    }
 	    else if (!strcmp(argv[i], "-help"))
 	    {
@@ -318,7 +347,10 @@ main(int argc, char **argv)
 
     if ((proj = read_buildfile(buildfile)) == 0)
     	fatal("Can't read buildfile \"%s\"\n", buildfile);
-	
+
+    if (command_defines != 0)
+	project_override_properties(proj, command_defines);
+    	
 #if DEBUG
     dump_project(proj);
 #endif
