@@ -21,7 +21,7 @@
 #include "cant.H"
 #include "job.H"
 
-CVSID("$Id: cant.C,v 1.6 2002-04-07 05:28:50 gnb Exp $");
+CVSID("$Id: cant.C,v 1.7 2002-04-07 06:20:41 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -374,15 +374,15 @@ static void
 dump_one_taglist(gpointer key, gpointer value, gpointer userdata)
 {
     taglist_t *tl = (taglist_t *)value;
-    GList *iter;
+    list_iterator_t<tl_item_t> iter;
     
     fprintf(stderr, "    TAGLIST {\n");
     fprintf(stderr, "        NAMESPACE=\"%s\"\n", tl->name_space);
     fprintf(stderr, "        ID=\"%s\"\n", tl->id);
 
-    for (iter = tl->items ; iter != 0 ; iter = iter->next)
+    for (iter = tl->items.first() ; iter != 0 ; ++iter)
     {
-    	tl_item_t *tlitem = (tl_item_t *)iter->data;
+    	tl_item_t *tlitem = *iter;
 	
 	fprintf(stderr, "        TL_SPEC {\n");
 	fprintf(stderr, "            TAG=\"%s\"\n", tlitem->tag);
@@ -399,7 +399,7 @@ static void
 dump_one_fileset(gpointer key, gpointer value, gpointer userdata)
 {
     fileset_t *fs = (fileset_t *)value;
-    list_t<fileset_t::spec_t> iter;
+    list_iterator_t<fileset_t::spec_t> iter;
     char *cond_desc;
     
     fprintf(stderr, "    FILESET {\n");
@@ -431,7 +431,8 @@ static void
 dump_one_target(gpointer key, gpointer value, gpointer userdata)
 {
     target_t *targ = (target_t *)value;
-    GList *iter;
+    list_iterator_t<target_t> diter;
+    list_iterator_t<task_t> titer;
     char *cond_desc;
     
     fprintf(stderr, "    TARGET {\n");
@@ -442,15 +443,15 @@ dump_one_target(gpointer key, gpointer value, gpointer userdata)
     fprintf(stderr, "        CONDITION=%s\n", cond_desc);
     g_free(cond_desc);
     fprintf(stderr, "        DEPENDS {\n");
-    for (iter = targ->depends ; iter != 0 ; iter = iter->next)
+    for (diter = targ->depends.first() ; diter != 0 ; ++diter)
     {
-    	target_t *dep = (target_t *)iter->data;
+    	target_t *dep = *diter;
 	fprintf(stderr, "            \"%s\"\n", dep->name);
     }
     fprintf(stderr, "        }\n");
-    for (iter = targ->tasks ; iter != 0 ; iter = iter->next)
+    for (titer = targ->tasks.first() ; titer != 0 ; ++titer)
     {
-    	task_t *task = (task_t *)iter->data;
+    	task_t *task = *titer;
 	fprintf(stderr, "        TASK {\n");
 	fprintf(stderr, "            NAME = \"%s\"\n", task->name());
 	fprintf(stderr, "            ID = \"%s\"\n", task->id());
