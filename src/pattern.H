@@ -35,25 +35,21 @@
 class pattern_t
 {
 private:
-    regex_t regex_;
-    
-    char *groups_[_PAT_NGROUPS];
-    
-#if DEBUG
     char *pattern_;
-#endif
+    regex_t regex_;
+    char *groups_[_PAT_NGROUPS];
 
 public:
     pattern_t();
     ~pattern_t();
 
     /* init() is separate from the ctor so it can fail sensibly */
-    gboolean init(const char *s, unsigned flags);
+    gboolean set_pattern(const char *s, unsigned flags);
+    const char *get_pattern() const;
+
     /* combined new and init(), returns 0 on failure */
     static pattern_t *create(const char *s, unsigned flags);
     
-    void hacky_dtor();
-
     /* Note that `pat' is const if the PAT_GROUPS flag was not supplied */
     gboolean match(const char *filename);
     /* This function is const-only so doesn't support PAT_GROUPS */

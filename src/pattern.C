@@ -21,32 +21,23 @@
 #include "estring.H"
 #include "log.H"
 
-CVSID("$Id: pattern.C,v 1.2 2002-04-06 12:40:16 gnb Exp $");
+CVSID("$Id: pattern.C,v 1.3 2002-04-07 04:21:52 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 pattern_t::pattern_t()
 {
+    memset(this, 0, sizeof(*this));
 }
-
-
-void
-pattern_t::hacky_dtor()
-{
-    int i;
-    
-#if DEBUG
-    strdelete(pattern_);
-#endif
-    for (i = 0 ; i < _PAT_NGROUPS ; i++)
-	strdelete(groups_[i]);
-    regfree(&regex_);
-}
-
 
 pattern_t::~pattern_t()
 {
-    hacky_dtor();
+    int i;
+    
+    strdelete(pattern_);
+    for (i = 0 ; i < _PAT_NGROUPS ; i++)
+	strdelete(groups_[i]);
+    regfree(&regex_);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -59,16 +50,26 @@ pattern_t::~pattern_t()
 extern void parse_error(const char *fmt, ...);
 
 gboolean
-pattern_t::init(const char *pattern, unsigned flags)
+pattern_t::set_pattern(const char *pattern, unsigned flags)
 {
     const char *p = pattern;
     estring restr;
     unsigned reflags = 0;
     int errcode;
+
+    if (pattern_ != 0)
+    {
+    	int i;
+    	strdelete(pattern_);
+	for (i = 0 ; i < _PAT_NGROUPS ; i++)
+	    strdelete(groups_[i]);
+    	regfree(&regex_);
+    }
     
-#if DEBUG
+    if (pattern == 0)
+	return TRUE;
+        
     strassign(pattern_, pattern);
-#endif
 
     estring_init(&restr);
     
@@ -121,11 +122,17 @@ pattern_t::init(const char *pattern, unsigned flags)
 	char errbuf[1024];
 
 	regerror(errcode, &regex_, errbuf, sizeof(errbuf));
-	parse_error("\"%s\": %s\n", pattern, errbuf);
+    	parse_error("\"%s\": %s\n", pattern, errbuf);
     }
     estring_free(&restr);
     memset(&groups_, 0, sizeof(groups_));
     return (errcode == 0);
+}
+
+const char *
+pattern_t::get_pattern() const
+{
+    return pattern_;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -137,7 +144,7 @@ pattern_t::create(const char *pattern, unsigned flags)
     
     pat = new pattern_t;
     
-    if (!pat->init(pattern, flags))
+    if (!pat->set_pattern(pattern, flags))
     {
     	delete pat;
     	return 0;

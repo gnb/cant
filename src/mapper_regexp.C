@@ -19,7 +19,7 @@
 
 #include "cant.H"
 
-CVSID("$Id: mapper_regexp.C,v 1.3 2002-04-06 12:40:16 gnb Exp $");
+CVSID("$Id: mapper_regexp.C,v 1.4 2002-04-07 04:21:33 gnb Exp $");
 
 class mapper_regexp_t : public mapper_t
 {
@@ -43,7 +43,7 @@ mapper_regexp_t()
 gboolean
 init()
 {
-    return pattern_.init(from_, PAT_GROUPS|PAT_REGEXP);
+    return pattern_.set_pattern(from_, PAT_GROUPS|PAT_REGEXP);
 }
 
 char *

@@ -19,7 +19,7 @@
 
 #include "cant.H"
 
-CVSID("$Id: mapper_glob.C,v 1.3 2002-04-06 12:40:16 gnb Exp $");
+CVSID("$Id: mapper_glob.C,v 1.4 2002-04-07 04:21:19 gnb Exp $");
 
 class mapper_glob_t : public mapper_t
 {
@@ -60,7 +60,7 @@ init()
     	parse_error("bad \"from\" expression \"%s\"\n", from_);
     	return FALSE;
     }
-    if (!pattern_.init(from_, PAT_GROUPS))
+    if (!pattern_.set_pattern(from_, PAT_GROUPS))
     	return FALSE;
     
 
