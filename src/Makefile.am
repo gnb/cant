@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 # 
-# $Id: Makefile.am,v 1.25 2002-03-29 16:12:31 gnb Exp $
+# $Id: Makefile.am,v 1.26 2002-04-02 11:52:28 gnb Exp $
 #
 
 bin_PROGRAMS=	cant
@@ -42,7 +42,8 @@ MAPPER_SOURCES=	\
 		mapper_null.C
 
 cant_SOURCES=	common.H thread.H cant.H \
-		cant.C buildfile.C project.C target.C task.C \
+		cant.C buildfile.C project.C target.C \
+		task.H task.C \
 		taglist.C \
 		xtask.H xtask.C \
 		props.H props.C \
@@ -78,7 +79,7 @@ task.o: builtin-tasks.H
 builtin-tasks.H: $(TASK_SOURCES)
 	$(RM) $@
 	for file in $(TASK_SOURCES) ; do \
-	    sed -n -e 's|^task_ops_t[ 	][ 	]*\([a-z_][a-z_]*\).*$$|TASKOPS(\1)|p' < $$file >> $@ ;\
+	    sed -n -e 's|^TASK_DEFINE_CLASS_BEGIN[ 	]*(\([a-z_][a-z_]*\).*$$|TASK_CLASS(\1)|p' < $$file >> $@ ;\
 	done
 
 mapper.o: builtin-mappers.H

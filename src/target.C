@@ -20,7 +20,7 @@
 #include "cant.H"
 #include "job.H"
 
-CVSID("$Id: target.C,v 1.2 2002-03-29 17:57:11 gnb Exp $");
+CVSID("$Id: target.C,v 1.3 2002-04-02 11:52:28 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -39,7 +39,7 @@ target_new(void)
 void
 target_delete(target_t *targ)
 {
-    listdelete(targ->tasks, task_t, task_delete);
+    listdelete(targ->tasks, task_t, delete);
     strdelete(targ->name);
     strdelete(targ->description);
     condition_free(&targ->condition);
@@ -70,7 +70,7 @@ void
 target_add_task(target_t *targ, task_t *task)
 {
     targ->tasks = g_list_append(targ->tasks, task);
-    task_attach(task, targ);
+    task->attach(targ);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -106,7 +106,7 @@ target_execute(target_t *targ)
     {
     	task_t *task = (task_t *)iter->data;
 	
-	if (!task_execute(task))
+	if (!task->execute())
 	{
 	    job_t::clear();
 	    log_pop_context();

@@ -19,113 +19,105 @@
 
 #include "cant.H"
 
-typedef struct
-{
-    char *file;
-    char *directory;
-    GList *filesets;
-    gboolean verbose:1;
-    gboolean quiet:1;
-    gboolean fail_on_error:1;
-    gboolean include_empty_dirs:1;
-    gboolean result:1;
-} delete_private_t;
+CVSID("$Id: task_delete.C,v 1.2 2002-04-02 11:52:28 gnb Exp $");
 
-CVSID("$Id: task_delete.C,v 1.1 2002-03-29 12:36:27 gnb Exp $");
+class delete_task_t : public task_t
+{
+private:
+    char *file_;
+    char *directory_;
+    GList *filesets_;
+    gboolean verbose_:1;
+    gboolean quiet_:1;
+    gboolean fail_on_error_:1;
+    gboolean include_empty_dirs_:1;
+    gboolean result_:1;
+
+public:
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void
-delete_new(task_t *task)
+delete_task_t(task_class_t *tclass, project_t *proj)
+ :  task_t(tclass, proj)
 {
-    delete_private_t *dp;
-
-    task->private_data = dp = new(delete_private_t);
-    
     /* default values */
-    dp->verbose = FALSE;
-    dp->quiet = FALSE;
-    dp->fail_on_error = TRUE;
-    dp->include_empty_dirs = FALSE;
+    verbose_ = FALSE;
+    quiet_ = FALSE;
+    fail_on_error_ = TRUE;
+    include_empty_dirs_ = FALSE;
+}
+
+~delete_task_t()
+{
+    strdelete(file_);
+    strdelete(directory_);
+    
+    /* delete filesets */
+    listdelete(filesets_, fileset_t, fileset_unref);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static void delete_delete(task_t *);
     
-static gboolean
-delete_set_file(task_t *task, const char *name, const char *value)
+gboolean
+set_file(const char *name, const char *value)
 {
-    delete_private_t *dp = (delete_private_t *)task->private_data;
-
-    strassign(dp->file, value);
+    strassign(file_, value);
     return TRUE;
 }
 
-static gboolean
-delete_set_dir(task_t *task, const char *name, const char *value)
+gboolean
+set_dir(const char *name, const char *value)
 {
-    delete_private_t *dp = (delete_private_t *)task->private_data;
-
-    strassign(dp->directory, value);
+    strassign(directory_, value);
     return TRUE;
 }
     
-static gboolean
-delete_set_verbose(task_t *task, const char *name, const char *value)
+gboolean
+set_verbose(const char *name, const char *value)
 {
-    delete_private_t *dp = (delete_private_t *)task->private_data;
-
-    boolassign(dp->verbose, value);
+    boolassign(verbose_, value);
     return TRUE;
 }
 
-static gboolean
-delete_set_quiet(task_t *task, const char *name, const char *value)
+gboolean
+set_quiet(const char *name, const char *value)
 {
-    delete_private_t *dp = (delete_private_t *)task->private_data;
-
-    boolassign(dp->quiet, value);
+    boolassign(quiet_, value);
     return TRUE;
 }
 
-static gboolean
-delete_set_failonerror(task_t *task, const char *name, const char *value)
+gboolean
+set_failonerror(const char *name, const char *value)
 {
-    delete_private_t *dp = (delete_private_t *)task->private_data;
-
-    boolassign(dp->fail_on_error, value);
+    boolassign(fail_on_error_, value);
     return TRUE;
 }
 
-static gboolean
-delete_set_includeEmptyDirs(task_t *task, const char *name, const char *value)
+gboolean
+set_includeEmptyDirs(const char *name, const char *value)
 {
-    delete_private_t *dp = (delete_private_t *)task->private_data;
-
-    boolassign(dp->include_empty_dirs, value);
+    boolassign(include_empty_dirs_, value);
     return TRUE;
 }
 
-static gboolean
-delete_add_fileset(task_t *task, xmlNode *node)
+gboolean
+add_fileset(xmlNode *node)
 {
-    delete_private_t *dp = (delete_private_t *)task->private_data;
     fileset_t *fs;
 
-    if ((fs = parse_fileset(task->project, node, "dir")) == 0)
+    if ((fs = parse_fileset(project_, node, "dir")) == 0)
     	return FALSE;
 	
-    dp->filesets = g_list_append(dp->filesets, fs);
+    filesets_ = g_list_append(filesets_, fs);
     return TRUE;
 }
 
-static gboolean
-delete_post_parse(task_t *task)
+gboolean
+post_parse()
 {
-    delete_private_t *dp = (delete_private_t *)task->private_data;
-
-    if (dp->file == 0 && dp->directory == 0 && dp->filesets == 0)
+    if (file_ == 0 && directory_ == 0 && filesets_ == 0)
     {
     	parse_error("At least one of \"file\", \"dir\" or \"<fileset>\" must be present\n");
 	return FALSE;
@@ -137,18 +129,17 @@ delete_post_parse(task_t *task)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static gboolean
-delete_delete_one(const char *filename/*unnormalised*/, void *userdata)
+delete_one(const char *filename/*unnormalised*/, void *userdata)
 {
-    task_t *task = (task_t *)userdata;
-    delete_private_t *dp = (delete_private_t *)task->private_data;
+    delete_task_t *dt = (delete_task_t *)userdata;
     int r;
     
-    if (dp->verbose)
+    if (dt->verbose_)
     	logf("%s\n", filename);
 	
     if (file_is_directory(filename) == 0)
     {
-    	r = file_apply_children(filename, delete_delete_one, task);
+    	r = file_apply_children(filename, delete_one, dt);
 
 	if (r < 0)
 	{
@@ -156,12 +147,12 @@ delete_delete_one(const char *filename/*unnormalised*/, void *userdata)
 	}
 	else if (r == 1)
 	{
-	    if (dp->include_empty_dirs && file_rmdir(filename) < 0)
+	    if (dt->include_empty_dirs_ && file_rmdir(filename) < 0)
 	    {
-	    	if (!dp->quiet)
+	    	if (!dt->quiet_)
 		    log_perror(filename);
-		if (dp->fail_on_error)
-		    dp->result = FALSE;
+		if (dt->fail_on_error_)
+		    dt->result_ = FALSE;
     	    }
 	}	    
     }
@@ -169,71 +160,55 @@ delete_delete_one(const char *filename/*unnormalised*/, void *userdata)
     {
 	if (file_unlink(filename) < 0)
 	{
-	    if (!dp->quiet)
+	    if (!dt->quiet_)
 		log_perror(filename);
-	    if (dp->fail_on_error)
-		dp->result = FALSE;
+	    if (dt->fail_on_error_)
+		dt->result_ = FALSE;
 	}
     }
         
     return TRUE;    /* keep going */
 }
 
-static gboolean
-delete_execute(task_t *task)
+gboolean
+exec()
 {
-    delete_private_t *dp = (delete_private_t *)task->private_data;
     char *expfile;
     GList *iter;
     
-    dp->result = TRUE;
+    result_ = TRUE;
     
-    if (!dp->verbose)
+    if (!verbose_)
     	logf("\n");
     
-    if (dp->file != 0)
+    if (file_ != 0)
     {
-    	expfile = task_expand(task, dp->file);
-    	delete_delete_one(expfile, task);
+    	expfile = expand(file_);
+    	delete_one(expfile, this);
 	g_free(expfile);
     }
-    if (dp->directory != 0)
+    if (directory_ != 0)
     {
-    	expfile = task_expand(task, dp->directory);
-    	delete_delete_one(expfile, task);
+    	expfile = expand(directory_);
+    	delete_one(expfile, this);
 	g_free(expfile);
     }
 
     /* execute for <fileset> children */
     
-    for (iter = dp->filesets ; iter != 0 ; iter = iter->next)
+    for (iter = filesets_ ; iter != 0 ; iter = iter->next)
     {
     	fileset_t *fs = (fileset_t *)iter->data;
 	
-	fileset_apply(fs, project_get_props(task->project),
-	    	      delete_delete_one, task);
+	fileset_apply(fs, project_get_props(project_), delete_one, this);
     }
 
-    return dp->result;
+    return result_;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void
-delete_delete(task_t *task)
-{
-    delete_private_t *dp = (delete_private_t *)task->private_data;
-    
-    strdelete(dp->file);
-    strdelete(dp->directory);
-    
-    /* delete filesets */
-    listdelete(dp->filesets, fileset_t, fileset_unref);
-    
-    task->private_data = 0;
-}
-
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+}; // end of class
 
 static task_attr_t delete_attrs[] = 
 {
@@ -252,20 +227,13 @@ static task_child_t delete_children[] =
     {0}
 };
 
-task_ops_t delete_ops = 
-{
-    "delete",
-    /*init*/0,
-    delete_new,
-    /*set_content*/0,
-    delete_post_parse,
-    delete_execute,
-    delete_delete,
-    delete_attrs,
-    delete_children,
-    /*is_fileset*/FALSE,
-    /*fileset_dir_name*/0
-};
+TASK_DEFINE_CLASS_BEGIN(delete,
+			delete_attrs,
+			delete_children,
+			/*is_fileset*/FALSE,
+			/*fileset_dir_name*/0,
+			/*is_composite*/FALSE)
+TASK_DEFINE_CLASS_END(delete)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 /*END*/

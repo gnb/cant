@@ -19,106 +19,99 @@
 
 #include "cant.H"
 
-CVSID("$Id: task.C,v 1.2 2002-03-29 16:12:31 gnb Exp $");
+CVSID("$Id: task.C,v 1.3 2002-04-02 11:52:28 gnb Exp $");
 
-task_scope_t *tscope_builtins;
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-task_t *
-task_new(void)
+task_t::task_t(task_class_t *tclass, project_t *proj)
 {
-    task_t *task;
+    tclass_ = tclass;
+    project_ = proj;
+    set_name(tclass->name());
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+task_t::~task_t()
+{
+    strdelete(id_);
+    strdelete(name_);
+    strdelete(description_);
     
-    task = new(task_t);
-    
-    return task;
+    // TODO: delete fileset_
+
+    listdelete(subtasks_, task_t, delete);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 void
-task_delete(task_t *task)
+task_t::add_subtask(task_t *subtask)
 {
-    if (task->ops != 0 && task->ops->dtor != 0)
-    	(*task->ops->dtor)(task);
-    strdelete(task->id);
+    assert(tclass_->is_composite());
+    subtasks_ = g_list_append(subtasks_, subtask);
+}
 
-    listdelete(task->subtasks, task_t, task_delete);
-    	
-    g_free(task);
+void
+task_t::set_fileset(fileset_t *fs)
+{
+    // TODO: refcount filesets
+    fileset_ = fs;
+}
+
+gboolean
+task_t::set_content(const char *content)
+{
+    return FALSE;   /* base class doesn't know what to do with content */
+}
+
+gboolean
+task_t::post_parse()
+{
+    return TRUE;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 void
-task_set_id(task_t *task, const char *s)
-{
-    strassign(task->id, s);
-}
-
-void
-task_set_name(task_t *task, const char *s)
-{
-    strassign(task->name, s);
-}
-
-void
-task_set_description(task_t *task, const char *s)
-{
-    strassign(task->description, s);
-}
-
-void
-task_add_subtask(task_t *task, task_t *subtask)
-{
-    assert(task->ops->is_composite);
-    task->subtasks = g_list_append(task->subtasks, subtask);
-}
-
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
-
-void
-task_attach(task_t *task, target_t *targ)
+task_t::attach(target_t *targ)
 {
     GList *iter;
     
-    task->target = targ;
-    for (iter = task->subtasks ; iter != 0 ; iter = iter->next)
+    target_ = targ;
+    for (iter = subtasks_ ; iter != 0 ; iter = iter->next)
     {
     	task_t *subtask = (task_t *)iter->data;
 	
-	task_attach(subtask, targ);
+	subtask->attach(targ);
     }
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 gboolean
-task_set_attribute(task_t *task, const char *name, const char *value)
+task_t::set_attribute(const char *name, const char *value)
 {
-    task_attr_t *ta = 0;
-    
-    if (task->ops->attrs_hashed != 0)
-	ta = task->ops->attrs_hashed->lookup(name);
+    const task_attr_t *ta = 0;
 
-    if (ta == 0)
+    if ((ta = tclass_->find_attr(name)) == 0)
     	return FALSE;
 
-    return (*ta->setter)(task, name, value);
+    return (this->*ta->setter)(name, value);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 gboolean
-task_execute(task_t *task)
+task_t::execute()
 {
     gboolean ret = TRUE;
 
     /* TODO: filename, linenumber?? */
-    log_push_context(task->name);
+    log_push_context(name_);
         
-    if (task->ops->execute != 0 && !(*task->ops->execute)(task))
+    if (!exec())
     {
     	/* TODO: be more gracious, e.g. for <condition> */
     	logf("FAILED\n");
@@ -130,100 +123,33 @@ task_execute(task_t *task)
 }
 
 gboolean
-task_execute_subtasks(task_t *task)
+task_t::execute_subtasks()
 {
     GList *iter;
 
-    for (iter = task->subtasks ; iter != 0 ; iter = iter->next)
+    for (iter = subtasks_ ; iter != 0 ; iter = iter->next)
     {
 	task_t *subtask = (task_t *)iter->data;
 
-	if (!task_execute(subtask))
+	if (!subtask->execute())
 	    return FALSE;
     }
     return TRUE;
 }
 
-
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-void
-task_ops_add_attribute(task_ops_t *ops, const task_attr_t *proto)
+char *
+task_t::expand(const char *str) const
 {
-    task_attr_t *ta;
-    
-    /* TODO: somehow we have to delete these again!! */
-    ta = new(task_attr_t);
-    *ta = *proto;
-    ta->name = g_strdup(ta->name);
-    
-    if (ops->attrs_hashed == 0)
-	ops->attrs_hashed = new hashtable_t<const char *, task_attr_t>;
-    ops->attrs_hashed->insert(ta->name, ta);
-}
-
-
-typedef struct
-{
-    void (*function)(const task_attr_t *ta, void *userdata);
-    void *userdata;
-} task_ops_foreach_attr_rec_t;
-
-static void
-task_ops_attributes_apply_one(const char *key, task_attr_t *ta, void *userdata)
-{
-    task_ops_foreach_attr_rec_t *recp = (task_ops_foreach_attr_rec_t *)userdata;
-    
-    (*recp->function)(ta, recp->userdata);
-}
-
-void
-task_ops_attributes_apply(
-    task_ops_t *ops,
-    void (*function)(const task_attr_t *ta, void *userdata),
-    void *userdata)
-{
-    if (ops->attrs_hashed != 0)
-    {
-    	task_ops_foreach_attr_rec_t rec;
-	
-	rec.function = function;
-	rec.userdata = userdata;
-	
-    	ops->attrs_hashed->foreach(task_ops_attributes_apply_one, &rec);
-    }
+    return project_expand(project_, str);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-const task_child_t *
-task_ops_find_child(const task_ops_t *ops, const char *name)
+task_class_t::task_class_t()
 {
-    task_child_t *tc;
-    
-    if (ops->children_hashed == 0)
-    	return 0;
-    if ((tc = ops->children_hashed->lookup(name)) != 0)
-    	return tc;
-    return ops->children_hashed->lookup("*");
 }
-
-void
-task_ops_add_child(task_ops_t *ops, const task_child_t *proto)
-{
-    task_child_t *tc;
-    
-    /* TODO: somehow we have to delete these again!! */
-    tc = new(task_child_t);
-    *tc = *proto;
-    tc->name = g_strdup(tc->name);
-    
-    if (ops->children_hashed == 0)
-	ops->children_hashed = new hashtable_t<const char *, task_child_t>;
-    ops->children_hashed->insert(tc->name, tc);
-}
-
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static gboolean
 remove_one_attr(const char *key, task_attr_t *ta, void *userdata)
@@ -243,125 +169,220 @@ remove_one_child(const char *key, task_child_t *tc, void *userdata)
     return TRUE;    /* remove me */
 }
 
-static void
-task_ops_cleanup(task_ops_t *ops)
+task_class_t::~task_class_t()
 {
-    if (ops->cleanup != 0)
-    	(*ops->cleanup)(ops);
-   
-    if (ops->attrs_hashed != 0)
+    if (attrs_hashed_ != 0)
     {
-	ops->attrs_hashed->foreach_remove(remove_one_attr, 0);
-	delete ops->attrs_hashed;
+	attrs_hashed_->foreach_remove(remove_one_attr, 0);
+	delete attrs_hashed_;
     }
 
-    if (ops->children_hashed != 0)
+    if (children_hashed_ != 0)
     {
-	ops->children_hashed->foreach_remove(remove_one_child, 0);
-	delete ops->children_hashed;
+	children_hashed_->foreach_remove(remove_one_child, 0);
+	delete children_hashed_;
     }
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-task_scope_t *
-tscope_new(task_scope_t *parent)
+void
+task_class_t::add_attribute(const task_attr_t *proto)
 {
-    task_scope_t *ts;
+    task_attr_t *ta;
     
-    ts = new(task_scope_t);
-
-    ts->parent = parent;
-    ts->taskdefs = new hashtable_t<const char *, task_ops_t>;
+    /* TODO: somehow we have to delete these again!! */
+    ta = new(task_attr_t);
+    *ta = *proto;
+    ta->name = g_strdup(ta->name);
     
-    return ts;
+    if (attrs_hashed_ == 0)
+	attrs_hashed_ = new hashtable_t<const char *, task_attr_t>;
+    attrs_hashed_->insert(ta->name, ta);
 }
 
-static gboolean
-cleanup_one_taskdef(const char *key, task_ops_t *value, void *userdata)
+const task_attr_t *
+task_class_t::find_attr(const char *name) const
 {
-    task_ops_cleanup(value);
-    return TRUE;    /* remove me */
+    task_attr_t *ta;
+    
+    if (attrs_hashed_ == 0)
+    	return 0;
+    if ((ta = attrs_hashed_->lookup(name)) != 0)
+    	return ta;
+    return attrs_hashed_->lookup("*");
+}
+
+
+typedef struct
+{
+    void (*function)(const task_attr_t *ta, void *userdata);
+    void *userdata;
+} task_class_foreach_attr_rec_t;
+
+static void
+task_class_attributes_apply_one(const char *key, task_attr_t *ta, void *userdata)
+{
+    task_class_foreach_attr_rec_t *recp = (task_class_foreach_attr_rec_t *)userdata;
+    
+    (*recp->function)(ta, recp->userdata);
 }
 
 void
-tscope_delete(task_scope_t *ts)
+task_class_t::attributes_apply(
+    void (*function)(const task_attr_t *ta, void *userdata),
+    void *userdata)
 {
-    ts->taskdefs->foreach_remove(cleanup_one_taskdef, 0);
-    delete ts->taskdefs;
-    g_free(ts);
+    if (attrs_hashed_ != 0)
+    {
+    	task_class_foreach_attr_rec_t rec;
+	
+	rec.function = function;
+	rec.userdata = userdata;
+	
+    	attrs_hashed_->foreach(task_class_attributes_apply_one, &rec);
+    }
 }
 
-gboolean
-tscope_register(task_scope_t *ts, task_ops_t *ops)
-{
-    if (ts->taskdefs->lookup(ops->name) != 0)
-    {
-    	logf("Task operations \"%s\" already registered, ignoring new definition\n",
-	    	ops->name);
-    	return FALSE;
-    }
-    
-    ts->taskdefs->insert(ops->name, ops);
-#if DEBUG
-    fprintf(stderr, "tscope_register: registering \"%s\"\n", ops->name);
-#endif
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-    if (ops->attrs != 0)
+const task_child_t *
+task_class_t::find_child(const char *name) const
+{
+    task_child_t *tc;
+    
+    if (children_hashed_ == 0)
+    	return 0;
+    if ((tc = children_hashed_->lookup(name)) != 0)
+    	return tc;
+    return children_hashed_->lookup("*");
+}
+
+void
+task_class_t::add_child(const task_child_t *proto)
+{
+    task_child_t *tc;
+    
+    /* TODO: somehow we have to delete these again!! */
+    tc = new(task_child_t);
+    *tc = *proto;
+    tc->name = g_strdup(tc->name);
+    
+    if (children_hashed_ == 0)
+	children_hashed_ = new hashtable_t<const char *, task_child_t>;
+    children_hashed_->insert(tc->name, tc);
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+void
+task_class_t::init()
+{
+    if (attrs_ != 0)
     {
 	task_attr_t *ta;
 
-	for (ta = ops->attrs ; ta->name != 0 ; ta++)
-	    task_ops_add_attribute(ops, ta);
+	for (ta = attrs_ ; ta->name != 0 ; ta++)
+	    add_attribute(ta);
     }
     
-    if (ops->children != 0)
+    if (children_ != 0)
     {
 	task_child_t *tc;
 
-	for (tc = ops->children ; tc->name != 0 ; tc++)
-	    task_ops_add_child(ops, tc);
+	for (tc = children_ ; tc->name != 0 ; tc++)
+	    add_child(tc);
     }
+}
 
-    if (ops->init != 0)
-    	(*ops->init)();
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+void
+task_class_t::cleanup()
+{
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+task_scope_t::task_scope_t(task_scope_t *parent)
+{
+    parent_ = parent;
+    taskdefs_ = new hashtable_t<const char *, task_class_t>;
+}
+
+static gboolean
+cleanup_one_taskdef(const char *key, task_class_t *value, void *userdata)
+{
+    value->cleanup();
+    return TRUE;    /* remove me */
+}
+
+task_scope_t::~task_scope_t()
+{
+    taskdefs_->foreach_remove(cleanup_one_taskdef, 0);
+    delete taskdefs_;
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+gboolean
+task_scope_t::add(task_class_t *tclass)
+{
+    if (taskdefs_->lookup(tclass->name()) != 0)
+    {
+    	logf("Task operations \"%s\" already registered, ignoring new definition\n",
+	    	tclass->name());
+    	return FALSE;
+    }
+    
+    taskdefs_->insert(tclass->name(), tclass);
+#if DEBUG
+    fprintf(stderr, "task_scope_t::register_class: registering \"%s\"\n",
+    	    	tclass->name());
+#endif
+
+    tclass->init();
 	
     return TRUE;
 }
 
 void
-tscope_unregister(task_scope_t *ts, task_ops_t *ops)
+task_scope_t::remove(task_class_t *tclass)
 {
-    ts->taskdefs->remove(ops->name);
+    taskdefs_->remove(tclass->name());
 }
 
-task_ops_t *
-tscope_find(task_scope_t *ts, const char *name)
+task_class_t *
+task_scope_t::find(const char *name) const
 {
-    for ( ; ts != 0 ; ts = ts->parent)
+    const task_scope_t *ts;
+    
+    for (ts = this ; ts != 0 ; ts = ts->parent_)
     {
-    	task_ops_t *ops;
+    	task_class_t *tclass;
 	
-	if ((ops = ts->taskdefs->lookup(name)) != 0)
-	    return ops;
+	if ((tclass = ts->taskdefs_->lookup(name)) != 0)
+	    return tclass;
     }
     return 0;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-#define TASKOPS(t)  	extern task_ops_t t;
+#define TASK_CLASS(t)  	TASK_DECLARE_CLASS(t);
 #include "builtin-tasks.H"
-#undef TASKOPS
+#undef TASK_CLASS
+
+task_scope_t *task_scope_t::builtins;
 
 void
-task_initialise_builtins(void)
+task_scope_t::initialise_builtins()
 {
-    tscope_builtins = tscope_new(0);
+    builtins = new task_scope_t(/*parent*/0);
     
-#define TASKOPS(t)  tscope_register(tscope_builtins, &t);
+#define TASK_CLASS(t)  builtins->add(&t##_task_class);
 #include "builtin-tasks.H"
-#undef TASKOPS
+#undef TASK_CLASS
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

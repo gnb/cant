@@ -20,7 +20,7 @@
 #include "cant.H"
 #include "xtask.H"
 
-CVSID("$Id: buildfile.C,v 1.2 2002-03-29 16:12:31 gnb Exp $");
+CVSID("$Id: buildfile.C,v 1.3 2002-04-02 11:52:28 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -619,9 +619,9 @@ static gboolean
 parse_xtaskdef(project_t *proj, xmlNode *node)
 {
     char *buf;
-    xtask_ops_t *xops;
+    xtask_class_t *xtclass;
     xmlNode *child;
-    xtask_arg_t *xa;
+    xtask_class_t::arg_t *xa;
     fileset_t *fs;
     gboolean failed = FALSE;
     
@@ -636,16 +636,26 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
     }
 
     parse_node_push(node);
-    xops = xtask_ops_new(buf);
+    xtclass = new xtask_class_t(buf);
     xmlFree(buf);
 
-    /* TODO: xtask_ops_set_*() functions */
-    xops->executable = xml2g(cantXmlGetProp(node, "executable"));
-    xops->logmessage = xml2g(cantXmlGetProp(node, "logmessage"));
-    xops->task_ops.is_fileset = cantXmlGetBooleanProp(node, "fileset", FALSE);
-    xops->task_ops.fileset_dir_name = "dir";	/* TODO */
-    xops->foreach = cantXmlGetBooleanProp(node, "foreach", FALSE);
-    xops->dep_target = xml2g(cantXmlGetProp(node, "deptarget"));
+    buf = cantXmlGetProp(node, "executable");
+    xtclass->set_executable(buf);
+    xmlFree(buf);
+    
+    buf = cantXmlGetProp(node, "logmessage");
+    xtclass->set_logmessage(buf);
+    xmlFree(buf);
+
+    xtclass->set_is_fileset(cantXmlGetBooleanProp(node, "fileset", FALSE));
+    
+    xtclass->set_fileset_dir_name("dir");	/* TODO */
+    
+    xtclass->set_foreach(cantXmlGetBooleanProp(node, "foreach", FALSE));
+    
+    buf = cantXmlGetProp(node, "deptarget");
+    xtclass->set_dep_target(buf);
+    xmlFree(buf);
 
     /* TODO: syntax check other attributes */
     
@@ -660,17 +670,17 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
 	{
 	    if ((buf = cantXmlGetProp(child, "value")) != 0)
 	    {
-	    	xa = xtask_ops_add_value(xops, buf);
+	    	xa = xtclass->add_value(buf);
 	    	xmlFree(buf);
 	    }
 	    else if ((buf = cantXmlGetProp(child, "line")) != 0)
 	    {
-	    	xa = xtask_ops_add_line(xops, buf);
+	    	xa = xtclass->add_line(buf);
 	    	xmlFree(buf);
 	    }
 	    else if ((buf = cantXmlGetProp(child, "file")) != 0)
 	    {
-	    	xa = xtask_ops_add_file(xops, buf);
+	    	xa = xtclass->add_file(buf);
 	    	xmlFree(buf);
 	    }
 	    else
@@ -692,7 +702,7 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
 	    	to = xmlMemStrdup(from);
 
     	    if (from != 0)
-    	    	xtask_ops_add_attribute(xops, from, to,
+    	    	xtclass->add_attribute(from, to,
 		    	cantXmlGetBooleanProp(child, "required", FALSE));
 	    /* TODO: specify default value */
 	    if (from != 0)
@@ -710,7 +720,7 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
 		failed = TRUE;
 	    }
 
-	    xtask_ops_add_child(xops, name_space);
+	    xtclass->add_child(name_space);
 	    
 	    if (name_space != 0)
 		xmlFree(name_space);
@@ -720,11 +730,11 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
 	    if ((fs = parse_fileset(proj, child, "dir")) == 0)
 	    	failed = TRUE;
 	    else
-	    	xa = xtask_ops_add_fileset(xops, fs);
+	    	xa = xtclass->add_fileset(fs);
 	}
 	else if (!strcmp(cantXmlNodeGetName(child), "files"))
 	{
-	    xa = xtask_ops_add_files(xops);
+	    xa = xtclass->add_files();
 	}
 	else if (!strcmp(cantXmlNodeGetName(child), "tagexpand"))
 	{
@@ -733,7 +743,7 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
 	    if ((te = parse_tagexpand(proj, child)) == 0)
 	    	failed = TRUE;
 	    else
-		xa = xtask_ops_add_tagexpand(xops, te);
+		xa = xtclass->add_tagexpand(te);
 	}
 	else if (!strcmp(cantXmlNodeGetName(child), "mapper"))
 	{
@@ -742,7 +752,7 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
 	    if ((ma = parse_mapper(proj, child)) == 0)
 	    	failed = TRUE;
 	    else
-		xops->mappers = g_list_append(xops->mappers, ma);
+		xtclass->add_mapper(ma);
 	}
 	else if (!strcmp(cantXmlNodeGetName(child), "depmapper"))
 	{
@@ -751,7 +761,7 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
 	    if ((ma = parse_mapper(proj, child)) == 0)
 	    	failed = TRUE;
 	    else
-		xops->dep_mappers = g_list_append(xops->dep_mappers, ma);
+		xtclass->add_dep_mapper(ma);
 	}
 	else
 	{
@@ -773,12 +783,12 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
     parse_node_pop();
     if (failed)
     {
-    	xtask_ops_delete(xops);
+    	delete xtclass;
 	return FALSE;
     }
     
     /* TODO: handle duplicate registrations cleanly */
-    tscope_register(proj->tscope, (task_ops_t *)xops);
+    proj->tscope->add(xtclass);
     return TRUE;
 }
 
@@ -1179,7 +1189,7 @@ parse_task(project_t *proj, xmlNode *node)
     task_t *task;
     xmlAttr *attr;
     xmlNode *child;
-    task_ops_t *ops;
+    task_class_t *tclass;
     const task_child_t *tc;
     char *content;
     gboolean failed = FALSE;
@@ -1188,7 +1198,7 @@ parse_task(project_t *proj, xmlNode *node)
     fprintf(stderr, "parse_task: parsing task \"%s\"\n", cantXmlNodeGetName(node));
 #endif
 
-    if ((ops = tscope_find(proj->tscope, cantXmlNodeGetName(node))) == 0)
+    if ((tclass = proj->tscope->find(cantXmlNodeGetName(node))) == 0)
     {
     	parse_node_error(node, "Unknown task \"%s\"\n", cantXmlNodeGetName(node));
 	return 0;
@@ -1196,28 +1206,22 @@ parse_task(project_t *proj, xmlNode *node)
 
     parse_node_push(node);
     
-    task = task_new();
-    task->project = proj;
-    task->ops = ops;
-    task_set_name(task, ops->name);
-    
-    if (ops->ctor != 0)
-    	(*ops->ctor)(task);
+    task = tclass->create_task(proj);
     
     for (attr = node->properties ; attr != 0 ; attr = attr->next)
     {
     	char *value = cantXmlAttrValue(attr);
 	
     	if (!strcmp(cantXmlAttrName(attr), "id"))
-	    task_set_id(task, value);
+	    task->set_id(value);
     	else if (!strcmp(cantXmlAttrName(attr), "taskname"))
-	    task_set_name(task, value);
+	    task->set_name(value);
     	else if (!strcmp(cantXmlAttrName(attr), "description"))
-	    task_set_description(task, value);
-	else if (ops->is_fileset &&
-	    	 is_fileset_attribute(cantXmlAttrName(attr), ops->fileset_dir_name))
+	    task->set_description(value);
+	else if (tclass->is_fileset() &&
+	    	 is_fileset_attribute(cantXmlAttrName(attr), tclass->fileset_dir_name()))
 	    ;	/* parse_fileset will get it later */
-	else if (!task_set_attribute(task, cantXmlAttrName(attr), value))
+	else if (!task->set_attribute(cantXmlAttrName(attr), value))
 	{
 	    parse_error_unknown_attribute(attr);
 	    failed = TRUE;
@@ -1231,13 +1235,18 @@ parse_task(project_t *proj, xmlNode *node)
 	
 	rec.node = node;
 	rec.failed = failed;
-	task_ops_attributes_apply(ops, check_one_attribute, &rec);
+	tclass->attributes_apply(check_one_attribute, &rec);
 	failed = rec.failed;
     }
 
-    if (ops->is_fileset &&
-    	(task->fileset = parse_fileset(proj, node, ops->fileset_dir_name)) == 0)
-    	failed = TRUE;
+    if (tclass->is_fileset())
+    {
+    	fileset_t *fs = parse_fileset(proj, node, tclass->fileset_dir_name());
+	if (fs != 0)
+	    task->set_fileset(fs);
+	else
+    	    failed = TRUE;
+    }
 
     /* parse the child nodes */
     for (child = node->childs ; child != 0 ; child = child->next)
@@ -1245,23 +1254,23 @@ parse_task(project_t *proj, xmlNode *node)
     	if (child->type != XML_ELEMENT_NODE)
 	    continue;
 	/* TODO: handle character data */
-	
-	if ((tc = task_ops_find_child(ops, cantXmlNodeGetName(child))) != 0)
+
+	if ((tc = tclass->find_child(cantXmlNodeGetName(child))) != 0)
 	{
 	    parse_node_push(child);
-	    if (!(*tc->adder)(task, child))
+	    if (!(task->*tc->adder)(child))
 		failed = TRUE;
 	    parse_node_pop();
 	    continue;
 	}
 	
-	if (ops->is_composite)
+	if (tclass->is_composite())
 	{
 	    task_t *subtask = parse_task(proj, child);
 	    if (subtask == 0)
 	    	failed = TRUE;
 	    else
-	    	task_add_subtask(task, subtask);
+	    	task->add_subtask(subtask);
 	    continue;
 	}
 	
@@ -1274,23 +1283,20 @@ parse_task(project_t *proj, xmlNode *node)
     /* handle text content */
     if ((content = cantXmlNodeGetContent(node)) != 0)
     {
-    	if (ops->set_content != 0 && !(*ops->set_content)(task, content))
+    	if (!task->set_content(content))
 	    failed = TRUE;
     	xmlFree(content);
     }
 
     /* call the task's post-parse function */    
-    if (!failed && ops->post_parse != 0)
-    {
-	if (!(*ops->post_parse)(task))
-	    failed = TRUE;
-    }
+    if (!failed && !task->post_parse())
+	failed = TRUE;
 
     parse_node_pop();
 
     if (failed)
     {
-    	task_delete(task);
+    	delete task;
 	task = 0;
     }
     return task;

@@ -20,117 +20,116 @@
 #include "xtask.H"
 #include "job.H"
 
-CVSID("$Id: xtask.C,v 1.3 2002-03-29 17:57:11 gnb Exp $");
-
-typedef struct
-{
-    gboolean result;
-    props_t *properties;    /* local properties, overriding the project */
-    GList *taglists;	    /* list of taglist_t */
-} xtask_private_t;
+CVSID("$Id: xtask.C,v 1.4 2002-04-02 11:52:28 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void
-xtask_new(task_t *task)
+xtask_t::xtask_t(task_class_t *tclass, project_t *proj)
+ :  task_t(tclass, proj)
 {
-    xtask_private_t *xp;
-    
-    task->private_data = xp = new(xtask_private_t);
+    /* TODO: delay attachment to project? */
+    properties_ = props_new(project_get_props(project_));
+}
 
-    xp->properties = props_new(project_get_props(task->project));
+xtask_t::~xtask_t()
+{
+#if DEBUG
+    fprintf(stderr, "~xtask_t: deleting \"%s\"\n", name_);
+#endif
+
+    /* TODO: delete unrefed filesets */
+    listdelete(taglists_, taglist_t, taglist_unref);
+    
+    props_delete(properties_);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static gboolean
-xtask_generic_setter(task_t *task, const char *name, const char *value)
+gboolean
+xtask_t::generic_setter(const char *name, const char *value)
 {
-    xtask_private_t *xp = (xtask_private_t *)task->private_data;
-    xtask_ops_t *xops = (xtask_ops_t *)task->ops;
+    xtask_class_t *xtclass = (xtask_class_t *)tclass_;	/* downcast */
     const char *propname;
     
-    if ((propname = props_get(xops->property_map, name)) == 0)
+    if ((propname = props_get(xtclass->property_map_, name)) == 0)
     	return FALSE;
-    props_set(xp->properties, propname, value);
+    props_set(properties_, propname, value);
     return TRUE;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static gboolean
-xtask_generic_adder(task_t *task, xmlNode *node)
+gboolean
+xtask_t::generic_adder(xmlNode *node)
 {
-    xtask_private_t *xp = (xtask_private_t *)task->private_data;
     taglist_t *tl;
     
-    if ((tl = parse_taglist(task->project, node)) == 0)
+    if ((tl = parse_taglist(project_, node)) == 0)
     	return FALSE;
     
-    xp->taglists = g_list_append(xp->taglists, tl);
+    taglists_ = g_list_append(taglists_, tl);
     return TRUE;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 /* TODO: build env too */
-static gboolean
-xtask_build_command(task_t *task, strarray_t *command)
+gboolean
+xtask_t::build_command(strarray_t *command)
 {
-    xtask_private_t *xp = (xtask_private_t *)task->private_data;
-    xtask_ops_t *xops = (xtask_ops_t *)task->ops;
+    xtask_class_t *xtclass = (xtask_class_t *)tclass_;     /* downcast */
     GList *iter;
     char *exp;
 
-    if (xops->executable != 0)
-    	command->appendm(props_expand(xp->properties, xops->executable));
+    if (xtclass->executable_ != 0)
+    	command->appendm(props_expand(properties_, xtclass->executable_));
     
-    for (iter = xops->args ; iter != 0 ; iter = iter->next)
+    for (iter = xtclass->args_ ; iter != 0 ; iter = iter->next)
     {
-    	xtask_arg_t *xa = (xtask_arg_t *)iter->data;
+    	xtask_class_t::arg_t *xa = (xtask_class_t::arg_t *)iter->data;
 
-    	if (!condition_evaluate(&xa->condition, xp->properties))
+    	if (!condition_evaluate(&xa->condition, properties_))
 	    continue;
 	
     	switch (xa->type)
 	{
-	case XT_VALUE:	    /* <arg value=""> child */
+	case xtask_class_t::XT_VALUE:	    /* <arg value=""> child */
 	    /* TODO: <arg arglistref=""> child */
-	    exp = props_expand(xp->properties, xa->data.arg);
+	    exp = props_expand(properties_, xa->data.arg);
 	    strnullnorm(exp);
 	    if (exp != 0)
 		command->appendm(exp);
 	    break;
 
-	case XT_LINE:	    /* <arg line=""> child */
-	    exp = props_expand(xp->properties, xa->data.arg);
+	case xtask_class_t::XT_LINE:	    /* <arg line=""> child */
+	    exp = props_expand(properties_, xa->data.arg);
 	    strnullnorm(exp);
 	    if (exp != 0)
 	    	command->split_tom(exp, /*sep*/0);
 	    break;
 	    /* TODO: <env> child */
 	
-	case XT_FILE:	    /* <arg file=""> child */
-	    exp = props_expand(xp->properties, xa->data.arg);
+	case xtask_class_t::XT_FILE:	    /* <arg file=""> child */
+	    exp = props_expand(properties_, xa->data.arg);
 	    strnullnorm(exp);
 	    if (exp != 0)
-	    	command->appendm(file_normalise_m(exp, task->project->basedir));
+	    	command->appendm(file_normalise_m(exp, project_->basedir));
 	    break;
 	    
-	case XT_FILESET:    /* <fileset> child */
-    	    fileset_gather_mapped(xa->data.fileset, xp->properties,
+	case xtask_class_t::XT_FILESET:    /* <fileset> child */
+    	    fileset_gather_mapped(xa->data.fileset, properties_,
 	    	    	    	  command, /*mappers*/0);
 	    break;
 
-	case XT_FILES:	    /* <files> child */
-	    if (task->fileset != 0)
-    	    	fileset_gather_mapped(task->fileset, xp->properties,
-		    	    	      command, xops->mappers);
+	case xtask_class_t::XT_FILES:	    /* <files> child */
+	    if (fileset_ != 0)
+    	    	fileset_gather_mapped(fileset_, properties_,
+		    	    	      command, xtclass->mappers_);
 	    break;
 	    
-	case XT_TAGEXPAND:  /* <tagexpand> child */
-	    taglist_list_gather(xp->taglists, xa->data.tagexp,
-	    	    	    	xp->properties, command);
+	case xtask_class_t::XT_TAGEXPAND:  /* <tagexpand> child */
+	    taglist_list_gather(taglists_, xa->data.tagexp,
+	    	    	    	properties_, command);
 	    break;
 	}
     }
@@ -148,11 +147,10 @@ xtask_build_command(task_t *task, strarray_t *command)
 
 
 
-static gboolean
-xtask_execute_command(task_t *task)
+gboolean
+xtask_t::execute_command()
 {
-    xtask_private_t *xp = (xtask_private_t *)task->private_data;
-    xtask_ops_t *xops = (xtask_ops_t *)task->ops;
+    xtask_class_t *xtclass = (xtask_class_t *)tclass_;	/* downcast */
     logmsg_t *logmsg = 0;
     strarray_t *command;
     strarray_t *depfiles;
@@ -163,17 +161,17 @@ xtask_execute_command(task_t *task)
 
     depfiles = new strarray_t;
 
-    if (xops->task_ops.is_fileset)
+    if (xtclass->is_fileset_)
     {
-	if (xops->foreach)
+	if (xtclass->foreach_)
 	{
 	    GList *iter;
 	    char *depfile;
 
-	    depfile = props_expand(xp->properties, "${file}");
+	    depfile = props_expand(properties_, "${file}");
 	    depfiles->appendm(depfile);
 	    
-	    for (iter = xops->dep_mappers ; iter != 0 ; iter = iter->next)
+	    for (iter = xtclass->dep_mappers_ ; iter != 0 ; iter = iter->next)
 	    {
 		mapper_t *ma = (mapper_t *)iter->data;
 
@@ -184,22 +182,22 @@ xtask_execute_command(task_t *task)
 	}
 	else
 	{
-    	    fileset_gather_mapped(task->fileset, xp->properties,
-	    	    	    	  depfiles, xops->mappers);
+    	    fileset_gather_mapped(fileset_, properties_,
+	    	    	    	  depfiles, xtclass->mappers_);
 
-    	    targfile = props_expand(xp->properties, xops->dep_target);
+    	    targfile = props_expand(properties_, xtclass->dep_target_);
     	}
     }
 
     strnullnorm(targfile);
     if (targfile != 0)
-	props_set(xp->properties, "targfile", targfile);
+	props_set(properties_, "targfile", targfile);
 
 
     /* build the command from args and properties */
     command = new strarray_t;
     
-    if (!xtask_build_command(task, command))
+    if (!build_command(command))
     {
     	strdelete(targfile);
     	delete command;
@@ -210,14 +208,14 @@ xtask_execute_command(task_t *task)
     
     if (verbose)
     	logmsg = logmsg_newnm(command->join(" "));
-    else if (xops->logmessage != 0)
-    	logmsg = logmsg_newnm(props_expand(xp->properties, xops->logmessage));
+    else if (xtclass->logmessage_ != 0)
+    	logmsg = logmsg_newnm(props_expand(properties_, xtclass->logmessage_));
 
     if (targfile == 0)
     {
     	/* no dependency information -- job barrier, serialised */
     	if (!job_t::immediate(new command_job_op_t(command, /*env*/0, logmsg)))
-	    xp->result = FALSE;
+	    result_ = FALSE;
     }
     else
     {
@@ -233,236 +231,193 @@ xtask_execute_command(task_t *task)
     strdelete(targfile);
     delete depfiles;
 
-    return xp->result;    /* keep going unless failure */
+    return result_;    /* keep going unless failure */
 }
 
 
-static gboolean
-xtask_execute_one(const char *filename, void *userdata)
+gboolean
+xtask_t::execute_one(const char *filename, void *userdata)
 {
-    task_t *task = (task_t *)userdata;
-    xtask_private_t *xp = (xtask_private_t *)task->private_data;
+    xtask_t *xtask = (xtask_t *)userdata;
     
-    props_set(xp->properties, "file", filename);
-    return xtask_execute_command(task);
+    props_set(xtask->properties_, "file", filename);
+    return xtask->execute_command();
 }
 
-static gboolean
-xtask_execute(task_t *task)
+gboolean
+xtask_t::exec()
 {
-    xtask_private_t *xp = (xtask_private_t *)task->private_data;
-    xtask_ops_t *xops = (xtask_ops_t *)task->ops;
+    xtask_class_t *xtclass = (xtask_class_t *)tclass_; /* downcast */
     
 #if DEBUG
-    fprintf(stderr, "xtask_execute: executing \"%s\"\n", task->name);
+    fprintf(stderr, "xtask_execute: executing \"%s\"\n", name_);
 #endif
 
     /* default result */
-    xp->result = TRUE;
+    result_ = TRUE;
     
-    if (xops->task_ops.is_fileset)
+    if (xtclass->is_fileset_)
     {
-    	if (xops->foreach)
+    	if (xtclass->foreach_)
 	{
 	    /* run the command once for each file in the fileset */
-	    fileset_apply(task->fileset, xp->properties,
-	    	    	  xtask_execute_one, task);
+	    fileset_apply(fileset_, properties_, execute_one, this);
 	}
 	else
 	{
     	    /* run the command just once */
-	    xtask_execute_command(task);
+	    execute_command();
 	}
     }
     else
     {
     	/* run the command just once */
-	xtask_execute_command(task);
+	execute_command();
     }
     
     /* wipe out any temporary properties */
-    props_setm(xp->properties, "file", 0);
+    props_setm(properties_, "file", 0);
     
-    return xp->result;
+    return result_;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void
-xtask_delete(task_t *task)
+xtask_class_t::arg_t::arg_t(xtask_class_t::arg_type_t ty)
+ :  type(ty)
 {
-    xtask_private_t *xp = (xtask_private_t *)task->private_data;
-    
-#if DEBUG
-    fprintf(stderr, "xtask_delete: deleting \"%s\"\n", task->name);
-#endif
-
-    /* TODO: delete unrefed filesets */
-    listdelete(xp->taglists, taglist_t, taglist_unref);
-    
-    props_delete(xp->properties);
-	
-    g_free(xp);
-
-    task->private_data = 0;
+    condition_init(&condition);
 }
 
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
-
-static xtask_arg_t *
-xtask_arg_new(void)
+xtask_class_t::arg_t::~arg_t()
 {
-    xtask_arg_t *xa;
-    
-    xa = new(xtask_arg_t);
-    
-    condition_init(&xa->condition);
-    
-    return xa;
-}
-
-static void
-xtask_arg_delete(xtask_arg_t *xa)
-{
-    switch (xa->type)
+    switch (type)
     {
     case XT_VALUE:    	/* <arg value=""> child */
     case XT_LINE:    	/* <arg line=""> child */
     case XT_FILE:    	/* <arg file=""> child */
-	strdelete(xa->data.arg);
+	strdelete(data.arg);
     	break;
     case XT_FILESET:    /* <fileset> child */
-	if (xa->data.fileset != 0)
-    	    fileset_unref(xa->data.fileset);
+	if (data.fileset != 0)
+    	    fileset_unref(data.fileset);
     	break;
     case XT_FILES:  	/* <files> child */
     	break;
     case XT_TAGEXPAND:	/* <tagexpand> child */
-    	tagexp_delete(xa->data.tagexp);
+    	tagexp_delete(data.tagexp);
     	break;
     }
     
-    condition_free(&xa->condition);
-    
-    g_free(xa);
+    condition_free(&condition);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-xtask_ops_t *
-xtask_ops_new(const char *name)
+xtask_class_t::xtask_class_t(const char *name)
 {
-    xtask_ops_t *xops;
-
-    xops = new(xtask_ops_t);
-    
-    strassign(xops->task_ops.name, name);
-
-    xops->task_ops.init = 0;
-    xops->task_ops.ctor = xtask_new;
-    xops->task_ops.set_content = 0;
-    xops->task_ops.post_parse = 0;
-    xops->task_ops.execute = xtask_execute;
-    xops->task_ops.dtor = xtask_delete;
-    xops->task_ops.cleanup = (void (*)(task_ops_t*))xtask_ops_delete;
-    
-    xops->property_map = props_new(0);
-
-    return xops;
+    strassign(name_, name);
+    property_map_ = props_new(0);
 }
 
-void
-xtask_ops_delete(xtask_ops_t *xops)
+xtask_class_t::~xtask_class_t()
 {
-    listdelete(xops->args, xtask_arg_t, xtask_arg_delete);
-    listdelete(xops->mappers, mapper_t, mapper_delete);
-    listdelete(xops->dep_mappers, mapper_t, mapper_delete);
+    listdelete(args_, xtask_class_t::arg_t, delete);
+    listdelete(mappers_, mapper_t, mapper_delete);
+    listdelete(dep_mappers_, mapper_t, mapper_delete);
     
-    strdelete(xops->task_ops.name);
-    strdelete(xops->executable);
-    strdelete(xops->logmessage);
-    strdelete(xops->dep_target);
+    strdelete(name_);
+    strdelete(executable_);
+    strdelete(logmessage_);
+    strdelete(dep_target_);
     
-    props_delete(xops->property_map);
-
-    g_free(xops);
+    props_delete(property_map_);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static xtask_arg_t *
-xtask_ops_add_arg(xtask_ops_t *xops, xtask_arg_type_t type)
+const char *
+xtask_class_t::name() const
 {
-    xtask_arg_t *xa;
+    return name_;
+}
+
+task_t *
+xtask_class_t::create_task(project_t *proj)
+{
+    return new xtask_t(this, proj);
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+xtask_class_t::arg_t *
+xtask_class_t::add_arg(xtask_class_t::arg_type_t type)
+{
+    arg_t *xa;
     
-    xa = xtask_arg_new();
+    xa = new arg_t(type);
     
-    xa->type = type;
-    xops->args = g_list_append(xops->args, xa);
+    args_ = g_list_append(args_, xa);
     
     return xa;
 }
 
-xtask_arg_t *
-xtask_ops_add_line(xtask_ops_t *xops, const char *s)
+xtask_class_t::arg_t *
+xtask_class_t::add_line(const char *s)
 {
-    xtask_arg_t *xa;
+    arg_t *xa;
     
-    xa = xtask_ops_add_arg(xops, XT_LINE);
+    xa = add_arg(XT_LINE);
     strassign(xa->data.arg, s);
     
     return xa;
 }
 
-xtask_arg_t *
-xtask_ops_add_value(xtask_ops_t *xops, const char *s)
+xtask_class_t::arg_t *
+xtask_class_t::add_value(const char *s)
 {
-    xtask_arg_t *xa;
+    arg_t *xa;
     
-    xa = xtask_ops_add_arg(xops, XT_VALUE);
+    xa = add_arg(XT_VALUE);
     strassign(xa->data.arg, s);
     
     return xa;
 }
 
-xtask_arg_t *
-xtask_ops_add_file(xtask_ops_t *xops, const char *s)
+xtask_class_t::arg_t *
+xtask_class_t::add_file(const char *s)
 {
-    xtask_arg_t *xa;
+    arg_t *xa;
     
-    xa = xtask_ops_add_arg(xops, XT_FILE);
+    xa = add_arg(XT_FILE);
     strassign(xa->data.arg, s);
     
     return xa;
 }
 
-xtask_arg_t *
-xtask_ops_add_fileset(xtask_ops_t *xops, fileset_t *fs)
+xtask_class_t::arg_t *
+xtask_class_t::add_fileset(fileset_t *fs)
 {
-    xtask_arg_t *xa;
+    arg_t *xa;
     
-    xa = xtask_ops_add_arg(xops, XT_FILESET);
+    xa = add_arg(XT_FILESET);
     xa->data.fileset = fs;
     
     return xa;
 }
 
-xtask_arg_t *
-xtask_ops_add_files(xtask_ops_t *xops)
+xtask_class_t::arg_t *
+xtask_class_t::add_files()
 {
-    xtask_arg_t *xa;
-    
-    xa = xtask_ops_add_arg(xops, XT_FILES);
-    
-    return xa;
+    return add_arg(XT_FILES);
 }
 
-xtask_arg_t *
-xtask_ops_add_tagexpand(xtask_ops_t *xops, tagexp_t *te)
+xtask_class_t::arg_t *
+xtask_class_t::add_tagexpand(tagexp_t *te)
 {
-    xtask_arg_t *xa;
+    xtask_class_t::arg_t *xa;
     
-    xa = xtask_ops_add_arg(xops, XT_TAGEXPAND);
+    xa = add_arg(XT_TAGEXPAND);
     xa->data.tagexp = te;
     
     return xa;
@@ -471,8 +426,7 @@ xtask_ops_add_tagexpand(xtask_ops_t *xops, tagexp_t *te)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 void
-xtask_ops_add_attribute(
-    xtask_ops_t *xops,
+xtask_class_t::add_attribute(
     const char *attr,
     const char *prop,
     gboolean required)
@@ -480,28 +434,29 @@ xtask_ops_add_attribute(
     task_attr_t proto;
     
     proto.name = (char *)attr;
-    proto.setter = xtask_generic_setter;
+    proto.setter = (gboolean (task_t::*)(const char *, const char *))
+    	    	    	&xtask_t::generic_setter;
     proto.flags = (required ? TT_REQUIRED : 0);
 
-    task_ops_add_attribute((task_ops_t *)xops, &proto);
+    task_class_t::add_attribute(&proto);
     
-    props_set(xops->property_map, attr, prop);
+    props_set(property_map_, attr, prop);
 }
 
 /* TODO: add `gboolean required' */
 
 void
-xtask_ops_add_child(
-    xtask_ops_t *xops,
+xtask_class_t::add_child(
     const char *name)
 {
     task_child_t proto;
     
     proto.name = (char *)name;
-    proto.adder = xtask_generic_adder;
+    proto.adder = (gboolean (task_t::*)(xmlNode *))
+    	    	    &xtask_t::generic_adder;
     proto.flags = 0;
 
-    task_ops_add_child((task_ops_t *)xops, &proto);
+    task_class_t::add_child(&proto);
     /* TODO: will xtasks ever have children other than taglists?? */
 }
 

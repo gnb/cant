@@ -27,7 +27,7 @@
 #include "queue.H"
 #endif
 
-CVSID("$Id: job.C,v 1.5 2002-03-29 17:57:11 gnb Exp $");
+CVSID("$Id: job.C,v 1.6 2002-04-02 11:52:28 gnb Exp $");
 
 
 extern int process_run(strarray_t *command, strarray_t *env, const char *dir);
@@ -150,9 +150,9 @@ job_t::state_name(job_t::state_t state)
 char *
 job_t::describe() const
 {
-    if (job->op_ == 0)
+    if (op_ == 0)
     	return g_strdup("-undefined-");
-    return job->op_->describe();
+    return op_->describe();
 }
 
 #endif
@@ -313,18 +313,18 @@ job_t::initialise_one(const char *key, job_t *job, void *userdata)
 
 #if DEBUG
 
-static void
+void
 job_t::dump() const
 {
     char *desc;
     GList *iter;
     
-    desc = describe(job);
+    desc = describe();
     fprintf(stderr, "    job 0x%08lx {\n\tserial = %u\n\tname = \"%s\"\n\tstate = %s\n\tdescription = \"%s\"\n\tdepends_down =",
     	       (unsigned long)this,
 	       serial_,
 	       name_,
-	       job_state_name(job),
+	       state_name(state_),
 	       desc);
     for (iter = depends_down_ ; iter != 0 ; iter = iter->next)
     {
@@ -336,8 +336,8 @@ job_t::dump() const
     g_free(desc);
 }
 
-static void
-job_dump_one(const char *key, job_t *job, void *userdata)
+void
+job_t::dump_one(const char *key, job_t *job, void *userdata)
 {
     job->dump();
 }
@@ -346,7 +346,7 @@ void
 job_t::dump_all()
 {
     fprintf(stderr, "all_jobs = \n");
-    all_jobs->foreach(job_dump_one, 0);
+    all_jobs->foreach(dump_one, 0);
     fflush(stderr);
 }
 
@@ -391,8 +391,8 @@ job_t::finish_job(job_t *job)
 {
 #if DEBUG
     fprintf(stderr, "Main: received finished job \"%s\", %s\n",
-    	    	job->name,
-		(job->result ? "success" : "failure"));
+    	    	job->name_,
+		(job->result_ ? "success" : "failure"));
 #endif
     job->set_state((job->result_ ? UPTODATE : FAILED));
 }

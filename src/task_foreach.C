@@ -21,58 +21,60 @@
 #include "tok.H"
 #include <time.h>
 
-CVSID("$Id: task_foreach.C,v 1.2 2002-03-29 13:02:36 gnb Exp $");
+CVSID("$Id: task_foreach.C,v 1.3 2002-04-02 11:52:28 gnb Exp $");
 
-typedef struct
+class foreach_task_t : public task_t
 {
-    char *variable;
+private:
+    char *variable_;
     /* TODO: whitespace-safe technique */
-    char *values;
-    GList *filesets;
+    char *values_;
+    GList *filesets_;
     /* TODO: support nested <property> tags */
 
-    char *variable_e;
-    gboolean failed:1;
-} foreach_private_t;
+    char *variable_e_;
+    gboolean failed_:1;
+
+public:
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void
-foreach_new(task_t *task)
+foreach_task_t(task_class_t *tclass, project_t *proj)
+ :  task_t(tclass, proj)
 {
-    task->private_data = new(foreach_private_t);
+}
+
+~foreach_task_t()
+{
+    strdelete(variable_);
+    strdelete(values_);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static gboolean
-foreach_set_variable(task_t *task, const char *name, const char *value)
+gboolean
+set_variable(const char *name, const char *value)
 {
-    foreach_private_t *fp = (foreach_private_t *)task->private_data;
-    
-    strassign(fp->variable, value);
+    strassign(variable_, value);
     return TRUE;
 }
 
-static gboolean
-foreach_set_values(task_t *task, const char *name, const char *value)
+gboolean
+set_values(const char *name, const char *value)
 {
-    foreach_private_t *fp = (foreach_private_t *)task->private_data;
-
-    strassign(fp->values, value);
+    strassign(values_, value);
     return TRUE;
 }
 
-static gboolean
-foreach_add_fileset(task_t *task, xmlNode *node)
+gboolean
+add_fileset(xmlNode *node)
 {
-    foreach_private_t *fp = (foreach_private_t *)task->private_data;
     fileset_t *fs;
     
-    if ((fs = parse_fileset(task->project, node, "dir")) == 0)
+    if ((fs = parse_fileset(project_, node, "dir")) == 0)
     	return FALSE;
 
-    fp->filesets = g_list_append(fp->filesets, fs);
+    filesets_ = g_list_append(filesets_, fs);
     
     return TRUE;
 }
@@ -80,67 +82,54 @@ foreach_add_fileset(task_t *task, xmlNode *node)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static gboolean
-foreach_do_iteration(const char *val, void *userdata)
+do_iteration(const char *val, void *userdata)
 {
-    task_t *task = (task_t *)userdata;
-    foreach_private_t *fp = (foreach_private_t *)task->private_data;
+    foreach_task_t *ft = (foreach_task_t *)userdata;
 
     /*
      * TODO: need a props stack... (per-task?) to get scope right.
      * For now, this variable goes into the project scope.
      */
-    props_set(task->project->properties, fp->variable_e, val);
+    props_set(ft->project_->properties, ft->variable_e_, val);
     if (verbose)
-	logf("%s = %s\n", fp->variable_e, val);
+	logf("%s = %s\n", ft->variable_e_, val);
 
-    if (!task_execute_subtasks(task))
+    if (!ft->execute_subtasks())
     {
-	fp->failed = TRUE;
+	ft->failed_ = TRUE;
 	return FALSE;
     }
     return TRUE;
 }
 
-static gboolean
-foreach_execute(task_t *task)
+gboolean
+exec()
 {
-    foreach_private_t *fp = (foreach_private_t *)task->private_data;
     const char *val;
     GList *iter;
 
-    fp->failed = FALSE;    
-    fp->variable_e = task_expand(task, fp->variable);
+    failed_ = FALSE;    
+    variable_e_ = expand(variable_);
 
-    tok_t tok(task_expand(task, fp->values), ",");
-    while (!fp->failed && (val = tok.next()) != 0)
-    	foreach_do_iteration(val, task);
+    tok_t tok(expand(values_), ",");
+    while (!failed_ && (val = tok.next()) != 0)
+    	do_iteration(val, this);
     
-    for (iter = fp->filesets ; !fp->failed && iter != 0 ; iter = iter->next)
+    for (iter = filesets_ ; !failed_ && iter != 0 ; iter = iter->next)
     {
     	fileset_t *fs = (fileset_t *)iter->data;
 	
-	fileset_apply(fs, project_get_props(task->project),
-			foreach_do_iteration, task);
+	fileset_apply(fs, project_get_props(project_), do_iteration, this);
     }
 
-    g_free(fp->variable_e);
+    g_free(variable_e_);
 
-    return !fp->failed;
+    return !failed_;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void
-foreach_delete(task_t *task)
-{
-    foreach_private_t *fp = (foreach_private_t *)task->private_data;
-    
-    strdelete(fp->variable);
-    strdelete(fp->values);
-    g_free(fp);
-}
-
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+}; // end of class
 
 static task_attr_t foreach_attrs[] = 
 {
@@ -155,22 +144,13 @@ static task_child_t foreach_children[] =
     {0}
 };
 
-task_ops_t foreach_ops = 
-{
-    "foreach",
-    /*init*/0,
-    foreach_new,
-    /*set_content*/0,
-    /*post_parse*/0,
-    foreach_execute,
-    foreach_delete,
-    foreach_attrs,
-    foreach_children,
-    /*is_fileset*/FALSE,
-    /*fileset_dir_name*/0,
-    /*cleanup*/0,
-    /*is_composite*/TRUE
-};
+TASK_DEFINE_CLASS_BEGIN(foreach,
+			foreach_attrs,
+			foreach_children,
+			/*is_fileset*/FALSE,
+			/*fileset_dir_name*/0,
+			/*is_composite*/TRUE)
+TASK_DEFINE_CLASS_END(foreach)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 /*END*/

@@ -20,85 +20,85 @@
 #include "cant.H"
 #include <fcntl.h>
 
-CVSID("$Id: task_redirect.C,v 1.1 2002-03-29 12:36:27 gnb Exp $");
+CVSID("$Id: task_redirect.C,v 1.2 2002-04-02 11:52:28 gnb Exp $");
 
-typedef struct
+static const char tmpfile_proto[] = "/tmp/cant-redirect-propXXXXXX";
+
+class redirect_task_t : public task_t
 {
-    char *output_file;
-    char *output_property;
-    char *input_file;
-    char *input_property;
-    gboolean collapse_whitespace:1;
-} redirect_private_t;
+private:
+    char *output_file_;
+    char *output_property_;
+    char *input_file_;
+    char *input_property_;
+    gboolean collapse_whitespace_:1;
+
+public:
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void
-redirect_new(task_t *task)
+redirect_task_t(task_class_t *tclass, project_t *proj)
+ :  task_t(tclass, proj)
 {
-    task->private_data = new(redirect_private_t);
+}
+
+~redirect_task_t()
+{
+    strdelete(output_file_);
+    strdelete(output_property_);
+    strdelete(input_file_);
+    strdelete(input_property_);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static gboolean
-redirect_set_output_file(task_t *task, const char *name, const char *value)
+gboolean
+set_output_file(const char *name, const char *value)
 {
-    redirect_private_t *rp = (redirect_private_t *)task->private_data;
-    
-    strassign(rp->output_file, value);
+    strassign(output_file_, value);
     return TRUE;
 }
 
-static gboolean
-redirect_set_output_property(task_t *task, const char *name, const char *value)
+gboolean
+set_output_property(const char *name, const char *value)
 {
-    redirect_private_t *rp = (redirect_private_t *)task->private_data;
-
-    strassign(rp->output_property, value);
+    strassign(output_property_, value);
     return TRUE;
 }
 
-static gboolean
-redirect_set_input_file(task_t *task, const char *name, const char *value)
+gboolean
+set_input_file(const char *name, const char *value)
 {
-    redirect_private_t *rp = (redirect_private_t *)task->private_data;
-    
-    strassign(rp->input_file, value);
+    strassign(input_file_, value);
     return TRUE;
 }
 
-static gboolean
-redirect_set_input_property(task_t *task, const char *name, const char *value)
+gboolean
+set_input_property(const char *name, const char *value)
 {
-    redirect_private_t *rp = (redirect_private_t *)task->private_data;
-
-    strassign(rp->input_property, value);
+    strassign(input_property_, value);
     return TRUE;
 }
 
-static gboolean
-redirect_set_collapse_whitespace(task_t *task, const char *name, const char *value)
+gboolean
+set_collapse_whitespace(const char *name, const char *value)
 {
-    redirect_private_t *rp = (redirect_private_t *)task->private_data;
-
-    boolassign(rp->collapse_whitespace, value);
+    boolassign(collapse_whitespace_, value);
     return TRUE;
 }
 
-static gboolean
-redirect_post_parse(task_t *task)
+gboolean
+post_parse()
 {
-    redirect_private_t *rp = (redirect_private_t *)task->private_data;
     gboolean ret = TRUE;
 
-    if (rp->output_file != 0 && rp->output_property != 0)
+    if (output_file_ != 0 && output_property_ != 0)
     {
 	parse_error("Cannot specify both \"output_file\" and \"output_property\"\n");
 	ret = FALSE;
     }
     
-    if (rp->input_file != 0 && rp->input_property != 0)
+    if (input_file_ != 0 && input_property_ != 0)
     {
 	parse_error("Cannot specify both \"input_file\" and \"input_property\"\n");
 	ret = FALSE;
@@ -116,7 +116,6 @@ redirect_post_parse(task_t *task)
 #define FILENO_STDOUT 1
 #endif
 
-static const char tmpfile_proto[] = "/tmp/cant-redirect-propXXXXXX";
 
 /*
  * I would use pipes for redirecting to or from properties,
@@ -124,10 +123,9 @@ static const char tmpfile_proto[] = "/tmp/cant-redirect-propXXXXXX";
  * pass more data than the pipe's kernel buffer can hold.
  */
  
-static gboolean
-redirect_execute(task_t *task)
+gboolean
+exec()
 {
-    redirect_private_t *rp = (redirect_private_t *)task->private_data;
     GList *iter;
     gboolean ret = TRUE;
     int old_stdin = -1, old_stdout = -1;
@@ -141,7 +139,7 @@ redirect_execute(task_t *task)
      *
      * TODO: append to the file.
      */
-    exp = task_expand(task, rp->output_file);
+    exp = expand(output_file_);
     strnullnorm(exp);
     if (exp != 0)
     {
@@ -160,7 +158,7 @@ redirect_execute(task_t *task)
     /*
      * Redirect output to a property.
      */
-    exp = task_expand(task, rp->output_property);
+    exp = expand(output_property_);
     strnullnorm(exp);
     if (exp != 0)
     {
@@ -178,7 +176,7 @@ redirect_execute(task_t *task)
     /*
      * Redirect input from a file.
      */
-    exp = task_expand(task, rp->input_file);
+    exp = expand(input_file_);
     strnullnorm(exp);
     if (exp != 0)
     {
@@ -196,7 +194,7 @@ redirect_execute(task_t *task)
     /*
      * Redirect input from a property.
      */
-    exp = task_expand(task, rp->input_property);
+    exp = expand(input_property_);
     strnullnorm(exp);
     if (exp != 0)
     {
@@ -211,7 +209,7 @@ redirect_execute(task_t *task)
 	    goto cleanups;
 	}
 
-    	val = props_get(project_get_props(task->project), exp);
+    	val = props_get(project_get_props(project_), exp);
 	write(new_stdin, val, strlen(val));
 	lseek(new_stdin, 0, SEEK_SET);
 	
@@ -240,7 +238,7 @@ redirect_execute(task_t *task)
      * isn't and shouldn't be clever enough to stash away
      * file descriptors.
      */
-    if (!task_execute_subtasks(task))
+    if (!execute_subtasks())
 	ret = FALSE;
 
     /*
@@ -273,7 +271,7 @@ redirect_execute(task_t *task)
 	fp = fdopen(new_stdout, "r");
 	while ((c = fgetc(fp)) != EOF)
 	{
-	    if (rp->collapse_whitespace)
+	    if (collapse_whitespace_)
 	    {
 		if (inws)
 		{
@@ -300,7 +298,7 @@ redirect_execute(task_t *task)
 	}
 	fclose(fp);
 	new_stdout = -1;
-	props_setm(task->project->properties, output_property, buf.data);
+	props_setm(project_->properties, output_property, buf.data);
     }
 
     /*
@@ -336,20 +334,7 @@ cleanups:
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void
-redirect_delete(task_t *task)
-{
-    redirect_private_t *rp = (redirect_private_t *)task->private_data;
-    
-    strdelete(rp->output_file);
-    strdelete(rp->output_property);
-    strdelete(rp->input_file);
-    strdelete(rp->input_property);
-
-    g_free(rp);
-}
-
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+}; // end of class
 
 static task_attr_t redirect_attrs[] = 
 {
@@ -361,22 +346,13 @@ static task_attr_t redirect_attrs[] =
     {0}
 };
 
-task_ops_t redirect_ops = 
-{
-    "redirect",
-    /*init*/0,
-    redirect_new,
-    /*set_content*/0,
-    redirect_post_parse,
-    redirect_execute,
-    redirect_delete,
-    redirect_attrs,
-    /*children*/0,
-    /*is_fileset*/FALSE,
-    /*fileset_dir_name*/0,
-    /*cleanup*/0,
-    /*is_composite*/TRUE
-};
+TASK_DEFINE_CLASS_BEGIN(redirect,
+			redirect_attrs,
+			/*children*/0,
+			/*is_fileset*/FALSE,
+			/*fileset_dir_name*/0,
+			/*is_composite*/TRUE)
+TASK_DEFINE_CLASS_END(redirect)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 /*END*/

@@ -19,46 +19,57 @@
 
 #include "cant.H"
 
-CVSID("$Id: task_enumerate.C,v 1.2 2002-03-29 13:57:32 gnb Exp $");
+CVSID("$Id: task_enumerate.C,v 1.3 2002-04-02 11:52:28 gnb Exp $");
+
+
+class enumerate_task_t : public task_t
+{
+private:
+    GList *filesets_;	    /* GList of fileset_t */
+    
+public:
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void
-enumerate_new(task_t *task)
+enumerate_task_t(task_class_t *tclass, project_t *proj)
+ :  task_t(tclass, proj)
 {
-    task->private_data = 0;	/* GList* of fileset_t */
+}
+
+~enumerate_task_t()
+{
+    listdelete(filesets_, fileset_t, fileset_unref);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static gboolean
-enumerate_add_fileset(task_t *task, xmlNode *node)
+gboolean
+add_fileset(xmlNode *node)
 {
-    GList **listp = (GList **)&task->private_data;
     fileset_t *fs;
     
-    if ((fs = parse_fileset(task->project, node, "dir")) == 0)
+    if ((fs = parse_fileset(project_, node, "dir")) == 0)
     	return FALSE;
 
-    *listp = g_list_append(*listp, fs);
+    filesets_ = g_list_append(filesets_, fs);
 
     return TRUE;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static gboolean
-enumerate_execute(task_t *task)
+gboolean
+exec()
 {
-    GList *list = (GList *)task->private_data;
+    GList *iter;
     
-    for ( ; list != 0 ; list = list->next)
+    for (iter = filesets_ ; iter != 0 ; iter = iter->next)
     {
-    	fileset_t *fs = (fileset_t *)list->data;
+    	fileset_t *fs = (fileset_t *)iter->data;
 	strarray_t *sa = new strarray_t;
 	int i;
 	
-	fileset_gather_mapped(fs, project_get_props(task->project), sa, 0);
+	fileset_gather_mapped(fs, project_get_props(project_), sa, 0);
     	sa->sort(0);
 	
 	logf("{\n");
@@ -74,17 +85,7 @@ enumerate_execute(task_t *task)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void
-enumerate_delete(task_t *task)
-{
-    GList *list = (GList *)task->private_data;
-    
-    listdelete(list, fileset_t, fileset_unref);
-
-    task->private_data = 0;
-}
-
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+};  // end of class
 
 static task_child_t enumerate_children[] = 
 {
@@ -92,20 +93,13 @@ static task_child_t enumerate_children[] =
     {0}
 };
 
-task_ops_t enumerate_ops = 
-{
-    "enumerate",
-    /*init*/0,
-    enumerate_new,
-    /*set_content*/0,
-    /*post_parse*/0,
-    enumerate_execute,
-    enumerate_delete,
-    /*attrs*/0,
-    enumerate_children,
-    /*is_fileset*/FALSE,
-    /*fileset_dir_name*/0
-};
+TASK_DEFINE_CLASS_BEGIN(enumerate,
+			/*attrs*/0,
+			enumerate_children,
+			/*is_fileset*/FALSE,
+			/*fileset_dir_name*/0,
+			/*is_composite*/FALSE)
+TASK_DEFINE_CLASS_END(enumerate)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 /*END*/

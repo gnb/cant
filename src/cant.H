@@ -32,20 +32,13 @@
 #include "xml.H"
 #include "log.H"
 #include "hashtable.H"
+#include "task.H"
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 /*
  * Data Structures
  */
  
-typedef struct project_s    	project_t;
-typedef struct target_s    	target_t;
-
-typedef struct task_s    	task_t;
-typedef struct task_attr_s    	task_attr_t;
-typedef struct task_child_s    	task_child_t;
-typedef struct task_ops_s    	task_ops_t;
-typedef struct task_scope_s 	task_scope_t;
 
 typedef struct taglist_s    	taglist_t;
 typedef struct tl_item_s    	tl_item_t;
@@ -54,7 +47,7 @@ typedef struct tl_def_s     	tl_def_t;
 typedef struct tl_def_tag_s 	tl_def_tag_t;
 
 
-struct project_s
+struct project_t
 {
     char *name;
     char *description;
@@ -77,7 +70,7 @@ struct project_s
 #define T_DEFINED   	    (1<<0)  	/* defined with <target> element */
 #define T_DEPENDED_ON	    (1<<1)  	/* referenced in at least one `depends' attribute */
 
-struct target_s
+struct target_t
 {
     char *name;
     char *description;
@@ -86,70 +79,6 @@ struct target_s
     GList *depends;
     condition_t condition;
     GList *tasks;
-};
-
-struct task_s
-{
-    char *id;
-    char *name;
-    char *description;
-    project_t *project;
-    target_t *target;
-    fileset_t *fileset;     /* for directory-based tasks */
-    task_ops_t *ops;
-    /* TODO: I *really* need to convert this to C++ */
-    GList *subtasks;
-    void *private_data;
-};
-
-#define TT_REQUIRED 	(1<<0)
-
-struct task_attr_s
-{
-    char *name;
-    gboolean (*setter)(task_t *task, const char *name, const char *value);
-    unsigned flags;
-};
-#define TASK_ATTR(scope, name, flags) \
-    { g_string(name), scope ## _set_ ## name, flags}
-
-struct task_child_s
-{
-    char *name;
-    gboolean (*adder)(task_t *task, xmlNode *);
-    unsigned flags;
-};
-#define TASK_CHILD(scope, name, flags) \
-    { g_string(name), scope ## _add_ ## name, flags}
-#define TASK_GENERIC_CHILD(scope, name, flags) \
-    { "*", scope ## _add_ ## name, flags}
-
-struct task_ops_s
-{
-    char *name;
-    
-    void (*init)(void); 	    	    /* static initialiser */
-    void (*ctor)(task_t *);  	    	    /* instance created */
-    gboolean (*set_content)(task_t *, const char *);	/* node content */
-    gboolean (*post_parse)(task_t *);	    /* post-parsing check */
-    gboolean (*execute)(task_t *);  	    /* execute instance */
-    void (*dtor)(task_t *);	    	    /* instance deleted */
-    task_attr_t *attrs;     	    	    /* attributes and setter methods */
-    task_child_t *children;     	    /* child elements and adder methods */
-    gboolean is_fileset;    	    	    /* parse as a fileset */
-    char *fileset_dir_name; 	    	    /* name of base dir property */
-    void (*cleanup)(task_ops_t*); 	    /* static dtor */
-    gboolean is_composite;  	    	    /* accepts subtasks */
-    
-    /* Don't initialised these fields to anything except 0 */
-    hashtable_t<const char*, task_attr_t> *attrs_hashed; /* task_attr_t's hashed on name */
-    hashtable_t<const char*, task_child_t> *children_hashed;    /* task_child_t's hashed on name */
-};
-
-struct task_scope_s
-{
-    task_scope_t *parent;
-    hashtable_t<const char *, task_ops_t> *taskdefs;
 };
 
 /*
@@ -298,37 +227,6 @@ void target_set_name(target_t *, const char *name);
 void target_set_description(target_t *, const char *description);
 void target_add_task(target_t *, task_t *task);
 gboolean target_execute(target_t *targ);
-
-/* task.c */
-task_t *task_new(void);
-void task_delete(task_t *);
-void task_set_id(task_t *, const char *id);
-void task_set_name(task_t *, const char *s);
-void task_set_description(task_t *, const char *s);
-void task_add_subtask(task_t *task, task_t *subtask);
-void task_attach(task_t *, target_t *);
-gboolean task_set_attribute(task_t *, const char *name, const char *value);
-void task_ops_attributes_apply(task_ops_t *ops,
-    void (*function)(const task_attr_t *ta, void *userdata), void *userdata);
-/* no task should ever need to call this */
-void task_ops_add_attribute(task_ops_t *, const task_attr_t *ta);
-const task_child_t *task_ops_find_child(const task_ops_t *ops, const char *name);
-void task_ops_add_child(task_ops_t *, const task_child_t *tc);
-gboolean task_execute(task_t *);
-gboolean task_execute_subtasks(task_t *task);
-void task_initialise_builtins(void);
-
-/* a task_scope_t is a stackable scope for task_ops_t definitions */
-extern task_scope_t *tscope_builtins;
-task_scope_t *tscope_new(task_scope_t *parent);
-void tscope_delete(task_scope_t *);
-gboolean tscope_register(task_scope_t *, task_ops_t *ops);
-void tscope_unregister(task_scope_t *, task_ops_t *ops);
-task_ops_t *tscope_find(task_scope_t *, const char *name);
-
-
-#define task_expand(task, str) \
-    project_expand((task)->project, (str))
 
 
 tl_def_t *tl_def_new(const char *name_space);

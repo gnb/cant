@@ -23,65 +23,112 @@
 #include "cant.H"
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
- 
-typedef struct xtask_arg_s    	xtask_arg_t;
-typedef struct xtask_ops_s    	xtask_ops_t;
 
-typedef enum
+class xtask_class_t : public task_class_t
 {
-    XT_VALUE,	    /* argument used directly, whitespace-safe */
-    XT_LINE,	    /* argument is split on whitespace */
-    XT_FILE,	    /* agument is filename, to be canonicalised & absoluted. */
-    XT_FILESET,     /* insert list of files from fileset child. */
-    /* TODO: XT_FILELIST */
-    /* TODO: XT_ENV */
-    XT_FILES,	    /* insert list of files from task's own fileset */
-    XT_TAGEXPAND    /* expand tags from xtask's child taglists */
-} xtask_arg_type_t;
-
-struct xtask_arg_s
-{
-    xtask_arg_type_t type;
+private:
+    char *name_;
+    char *executable_;
+    char *logmessage_;
+    GList *args_;    	    	/* list of xtask_arg_t */
+    props_t *property_map_;	/* maps attributes to local property *name*s */
+    GList *mappers_;     	/* list of mapper_t: args to files */
+    GList *dep_mappers_;     	/* list of mapper_t: depfiles to targfiles */
+    char *dep_target_;
     
-    union
+    gboolean foreach_:1;
+
+    friend class xtask_t;
+public:
+    xtask_class_t(const char *name);
+    ~xtask_class_t();
+
+    const char *name() const;    
+    task_t *create_task(project_t *);
+
+    enum arg_type_t
     {
-	char *arg;	    	/* for XT_VALUE, XT_LINE */
-	fileset_t *fileset;     /* for XT_FILESET */
-	tagexp_t *tagexp;   	/* for XT_TAGEXPAND */
-    } data;
+	XT_VALUE,	    /* argument used directly, whitespace-safe */
+	XT_LINE,	    /* argument is split on whitespace */
+	XT_FILE,	    /* agument is filename, to be canonicalised & absoluted. */
+	XT_FILESET,         /* insert list of files from fileset child. */
+	/* TODO: XT_FILELIST */
+	/* TODO: XT_ENV */
+	XT_FILES,	    /* insert list of files from task's own fileset */
+	XT_TAGEXPAND        /* expand tags from xtask's child taglists */
+    };
+
+    struct arg_t
+    {
+	arg_type_t type;
+
+	union
+	{
+	    char *arg;	    	/* for XT_VALUE, XT_LINE */
+	    fileset_t *fileset;     /* for XT_FILESET */
+	    tagexp_t *tagexp;   	/* for XT_TAGEXPAND */
+	} data;
+
+	condition_t condition;
+	
+	arg_t(arg_type_t);
+	~arg_t();
+    };
+
+    arg_t *add_line(const char *s);
+    arg_t *add_value(const char *s);
+    arg_t *add_file(const char *s);
+    arg_t *add_fileset(fileset_t *fs);
+    arg_t *add_files();
+    arg_t *add_tagexpand(tagexp_t *te);
     
-    condition_t condition;
+    void set_executable(const char *s) { strassign(executable_, s); }
+    void set_logmessage(const char *s) { strassign(logmessage_, s); }
+    void set_foreach(gboolean b) { foreach_ = b; }
+    void set_dep_target(const char *s) { strassign(dep_target_, s); }
+
+    void add_attribute(const char *attr, const char *prop, gboolean required);
+    void add_child(const char *name);
+    
+    void add_mapper(mapper_t *ma)
+    {
+    	mappers_ = g_list_append(mappers_, ma);
+    }
+    void add_dep_mapper(mapper_t *ma)
+    {
+    	dep_mappers_ = g_list_append(dep_mappers_, ma);
+    }
+
+
+
+    
+private:
+    arg_t *add_arg(arg_type_t);
 };
 
-struct xtask_ops_s
+
+class xtask_t : public task_t
 {
-    task_ops_t task_ops;
+private:
+    gboolean result_;
+    props_t *properties_;   /* local properties, overriding the project */
+    GList *taglists_;	    /* list of taglist_t */
+
+    xtask_t(task_class_t *, project_t *);
+    ~xtask_t();
     
-    char *executable;
-    char *logmessage;
-    GList *args;    	    	/* list of xtask_arg_t */
-    props_t *property_map;	/* maps attributes to local property *name*s */
-    GList *mappers;     	/* list of mapper_t: args to files */
-    GList *dep_mappers;     	/* list of mapper_t: depfiles to targfiles */
-    char *dep_target;
+    gboolean generic_setter(const char *name, const char *value);
+    gboolean generic_adder(xmlNode *node);
     
-    gboolean foreach:1;
+    gboolean build_command(strarray_t *command);
+    gboolean execute_command();
+    static gboolean execute_one(const char *filename, void *userdata);
+
+    gboolean exec();
+
+    friend class xtask_class_t;
+public:
 };
-
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
-
-/* xtask.c */
-xtask_ops_t *xtask_ops_new(const char *name);
-void xtask_ops_delete(xtask_ops_t *xops);
-xtask_arg_t *xtask_ops_add_line(xtask_ops_t *xops, const char *s);
-xtask_arg_t *xtask_ops_add_value(xtask_ops_t *xops, const char *s);
-xtask_arg_t *xtask_ops_add_file(xtask_ops_t *xops, const char *s);
-xtask_arg_t *xtask_ops_add_fileset(xtask_ops_t *xops, fileset_t *fs);
-xtask_arg_t *xtask_ops_add_files(xtask_ops_t *xops);
-xtask_arg_t *xtask_ops_add_tagexpand(xtask_ops_t *xops, tagexp_t *te);
-void xtask_ops_add_attribute(xtask_ops_t *xops, const char *attr,
-    const char *prop, gboolean required);
-void xtask_ops_add_child(xtask_ops_t *xops, const char *name);
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 #endif /* _cant_xtask_h_ */

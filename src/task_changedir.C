@@ -19,43 +19,46 @@
 
 #include "cant.H"
 
-CVSID("$Id: task_changedir.C,v 1.1 2002-03-29 12:36:27 gnb Exp $");
+CVSID("$Id: task_changedir.C,v 1.2 2002-04-02 11:52:28 gnb Exp $");
 
-typedef struct
+class changedir_task_t : public task_t
 {
-    char *dir;
-} changedir_private_t;
+private:
+    char *dir_;
+    
+public:
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void
-changedir_new(task_t *task)
+changedir_task_t(task_class_t *tclass, project_t *proj)
+ : task_t(tclass, proj)
 {
-    task->private_data = new(changedir_private_t);
 }
 
+~changedir_task_t()
+{
+    strdelete(dir_);
+}
+    
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static gboolean
-changedir_set_dir(task_t *task, const char *name, const char *value)
+gboolean
+set_dir(const char *name, const char *value)
 {
-    changedir_private_t *cp = (changedir_private_t *)task->private_data;
-
-    strassign(cp->dir, value);
+    strassign(dir_, value);
     return TRUE;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static gboolean
-changedir_execute(task_t *task)
+gboolean
+exec()
 {
-    changedir_private_t *cp = (changedir_private_t *)task->private_data;
     char *dir_e;
     GList *iter;
     gboolean ret = TRUE;
 
-    dir_e = task_expand(task, cp->dir);
+    dir_e = expand(dir_);
     strnullnorm(dir_e);
     if (dir_e == 0)
     {
@@ -75,7 +78,7 @@ changedir_execute(task_t *task)
     
     file_push_dir(dir_e);
 
-    if (!task_execute_subtasks(task))
+    if (!execute_subtasks())
     	ret = FALSE;
     
     file_pop_dir();
@@ -86,16 +89,7 @@ changedir_execute(task_t *task)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void
-changedir_delete(task_t *task)
-{
-    changedir_private_t *cp = (changedir_private_t *)task->private_data;
-    
-    strdelete(cp->dir);
-    g_free(cp);
-}
-
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+}; // end of class
 
 static task_attr_t changedir_attrs[] = 
 {
@@ -103,20 +97,13 @@ static task_attr_t changedir_attrs[] =
     {0}
 };
 
-task_ops_t changedir_ops = 
-{
-    "changedir",
-    /*init*/0,
-    changedir_new,
-    /*set_content*/0,
-    /*post_parse*/0,
-    changedir_execute,
-    changedir_delete,
-    changedir_attrs,
-    /*children*/0,
-    /*is_fileset*/FALSE,
-    /*fileset_dir_name*/0
-};
+TASK_DEFINE_CLASS_BEGIN(changedir,
+			changedir_attrs,
+			/*children*/0,
+			/*is_fileset*/FALSE,
+			/*fileset_dir_name*/0,
+			/*is_composite*/FALSE);
+TASK_DEFINE_CLASS_END(changedir)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 /*END*/

@@ -97,6 +97,7 @@ private:
     static gboolean scalar();
     
 #if DEBUG
+    static void dump_one(const char *key, job_t *job, void *userdata);
     void dump() const;
     static void dump_all();
     static const char *state_name(state_t state);

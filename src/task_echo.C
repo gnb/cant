@@ -19,87 +19,79 @@
 
 #include "cant.H"
 
-typedef struct
-{
-    char *message;
-    char *file;
-    gboolean append:1;
-    gboolean newline:1;
-} echo_private_t;
+CVSID("$Id: task_echo.C,v 1.2 2002-04-02 11:52:28 gnb Exp $");
 
-CVSID("$Id: task_echo.C,v 1.1 2002-03-29 12:36:27 gnb Exp $");
+class echo_task_t : public task_t
+{
+private:
+    char *message_;
+    char *file_;
+    gboolean append_:1;
+    gboolean newline_:1;
+    
+public:
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void
-echo_new(task_t *task)
+echo_task_t(task_class_t *tclass, project_t *proj)
+ :  task_t(tclass, proj)
 {
-    echo_private_t *ep;
-
-    task->private_data = ep = new(echo_private_t);
-    
     /* default values */
-    ep->append = FALSE;
-    ep->newline = TRUE;
+    append_ = FALSE;
+    newline_ = TRUE;
+}
+
+~echo_task_t()
+{
+    strdelete(message_);
+    strdelete(file_);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static gboolean
-echo_set_message(task_t *task, const char *name, const char *value)
+gboolean
+set_message(const char *name, const char *value)
 {
-    echo_private_t *ep = (echo_private_t *)task->private_data;
-
-    strassign(ep->message, value);
+    strassign(message_, value);
     return TRUE;
 }
 
-static gboolean
-echo_set_file(task_t *task, const char *name, const char *value)
+gboolean
+set_file(const char *name, const char *value)
 {
-    echo_private_t *ep = (echo_private_t *)task->private_data;
-
-    strassign(ep->file, value);
+    strassign(file_, value);
     return TRUE;
 }
     
-static gboolean
-echo_set_append(task_t *task, const char *name, const char *value)
+gboolean
+set_append(const char *name, const char *value)
 {
-    echo_private_t *ep = (echo_private_t *)task->private_data;
-
-    boolassign(ep->append, value);
+    boolassign(append_, value);
     return TRUE;
 }
 
-static gboolean
-echo_set_newline(task_t *task, const char *name, const char *value)
+gboolean
+set_newline(const char *name, const char *value)
 {
-    echo_private_t *ep = (echo_private_t *)task->private_data;
-
-    boolassign(ep->newline, value);
+    boolassign(newline_, value);
     return TRUE;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static gboolean
-echo_set_content(task_t *task, const char *content)
+gboolean
+set_content(const char *content)
 {
-    echo_private_t *ep = (echo_private_t *)task->private_data;
-
-    strassign(ep->message, content);
+    strassign(message_, content);
     return TRUE;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static gboolean
-echo_post_parse(task_t *task)
+gboolean
+post_parse()
 {
-    echo_private_t *ep = (echo_private_t *)task->private_data;
-
-    if (ep->message == 0)
+    if (message_ == 0)
     {
     	parse_error("Either \"message\" attribute or content must be set\n");
 	return FALSE;
@@ -110,20 +102,19 @@ echo_post_parse(task_t *task)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static gboolean
-echo_execute(task_t *task)
+gboolean
+exec()
 {
-    echo_private_t *ep = (echo_private_t *)task->private_data;
     char *expmsg;
     char *expfile;
     FILE *fp = stdout;
 
-    expfile = task_expand(task, ep->file);
+    expfile = expand(file_);
     strnullnorm(expfile);
     
     if (expfile != 0)
     {
-    	if ((fp = fopen(expfile, (ep->append ? "a" : "w"))) == 0)
+    	if ((fp = fopen(expfile, (append_ ? "a" : "w"))) == 0)
 	{
 	    log_perror(expfile);
 	    return FALSE;
@@ -131,11 +122,11 @@ echo_execute(task_t *task)
 	g_free(expfile);
     }
 
-    expmsg = task_expand(task, ep->message);
+    expmsg = expand(message_);
     if (expmsg != 0)
     {
 	fputs(expmsg, fp);
-	if (ep->newline)
+	if (newline_)
     	    fputc('\n', fp);
 	g_free(expmsg);
     }
@@ -148,18 +139,7 @@ echo_execute(task_t *task)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void
-echo_delete(task_t *task)
-{
-    echo_private_t *ep = (echo_private_t *)task->private_data;
-    
-    strdelete(ep->message);
-    strdelete(ep->file);
-
-    task->private_data = 0;
-}
-
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+}; // end of class
 
 static task_attr_t echo_attrs[] = 
 {
@@ -170,20 +150,13 @@ static task_attr_t echo_attrs[] =
     {0}
 };
 
-task_ops_t echo_ops = 
-{
-    "echo",
-    /*init*/0,
-    echo_new,
-    echo_set_content,
-    echo_post_parse,
-    echo_execute,
-    echo_delete,
-    echo_attrs,
-    /*children*/0,
-    /*is_fileset*/FALSE,
-    /*fileset_dir_name*/0
-};
+TASK_DEFINE_CLASS_BEGIN(echo,
+			echo_attrs,
+			/*children*/0,
+			/*is_fileset*/FALSE,
+			/*fileset_dir_name*/0,
+			/*is_composite*/FALSE)
+TASK_DEFINE_CLASS_END(echo)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 /*END*/

@@ -21,7 +21,7 @@
 #include "cant.H"
 #include "job.H"
 
-CVSID("$Id: cant.C,v 1.2 2002-03-29 17:57:11 gnb Exp $");
+CVSID("$Id: cant.C,v 1.3 2002-04-02 11:52:28 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -377,7 +377,7 @@ dump_one_taglist(gpointer key, gpointer value, gpointer userdata)
     GList *iter;
     
     fprintf(stderr, "    TAGLIST {\n");
-    fprintf(stderr, "        NAMESPACE=\"%s\"\n", tl->namespace);
+    fprintf(stderr, "        NAMESPACE=\"%s\"\n", tl->name_space);
     fprintf(stderr, "        ID=\"%s\"\n", tl->id);
 
     for (iter = tl->items ; iter != 0 ; iter = iter->next)
@@ -452,8 +452,8 @@ dump_one_target(gpointer key, gpointer value, gpointer userdata)
     {
     	task_t *task = (task_t *)iter->data;
 	fprintf(stderr, "        TASK {\n");
-	fprintf(stderr, "            NAME = \"%s\"\n", task->name);
-	fprintf(stderr, "            ID = \"%s\"\n", task->id);
+	fprintf(stderr, "            NAME = \"%s\"\n", task->name());
+	fprintf(stderr, "            ID = \"%s\"\n", task->id());
 	fprintf(stderr, "        }\n");
     }
     fprintf(stderr, "    }\n");
@@ -463,10 +463,10 @@ static void
 dump_project_properties(project_t *proj)
 {
     fprintf(stderr, "    FIXED_PROPERTIES {\n");
-    props_apply_local(proj->fixed_properties, dump_one_property, "        ");
+    props_apply_local(proj->fixed_properties, dump_one_property, (gpointer)"        ");
     fprintf(stderr, "    }\n");
     fprintf(stderr, "    PROPERTIES {\n");
-    props_apply_local(proj->properties, dump_one_property, "        ");
+    props_apply_local(proj->properties, dump_one_property, (gpointer)"        ");
     fprintf(stderr, "    }\n");
 }
 
@@ -496,7 +496,7 @@ main(int argc, char **argv)
     
     parse_args(argc, argv);
     
-    task_initialise_builtins();
+    task_scope_t::initialise_builtins();
     mapper_initialise_builtins();
     if (!job_t::init(parallelism))
     	return 1;

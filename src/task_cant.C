@@ -20,73 +20,69 @@
 #include "cant.H"
 #include <time.h>
 
-CVSID("$Id: task_cant.C,v 1.1 2002-03-29 12:36:27 gnb Exp $");
+CVSID("$Id: task_cant.C,v 1.2 2002-04-02 11:52:28 gnb Exp $");
 
-typedef struct
+class cant_task_t : public task_t
 {
-    char *buildfile;
-    char *dir;
-    char *target;
-    char *output;
-    gboolean inherit_all;
-} cant_private_t;
+private:
+    char *buildfile_;
+    char *dir_;
+    char *target_;
+    char *output_;
+    gboolean inherit_all_;
+
+public:
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void
-cant_new(task_t *task)
+cant_task_t(task_class_t *tclass, project_t *proj)
+ :  task_t(tclass, proj)
 {
-    cant_private_t *cp;
+    inherit_all_ = TRUE;
+}
 
-    cp = new(cant_private_t);
-    cp->inherit_all = TRUE;
-    task->private_data = cp;
+~cant_task_t()
+{
+    strdelete(buildfile_);
+    strdelete(dir_);
+    strdelete(target_);
+    strdelete(output_);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static gboolean
-cant_set_buildfile(task_t *task, const char *name, const char *value)
+gboolean
+set_buildfile(const char *name, const char *value)
 {
-    cant_private_t *cp = (cant_private_t *)task->private_data;
-    
-    strassign(cp->buildfile, value);
+    strassign(buildfile_, value);
     return TRUE;
 }
 
-static gboolean
-cant_set_dir(task_t *task, const char *name, const char *value)
+gboolean
+set_dir(const char *name, const char *value)
 {
-    cant_private_t *cp = (cant_private_t *)task->private_data;
-
-    strassign(cp->dir, value);
+    strassign(dir_, value);
     return TRUE;
 }
 
-static gboolean
-cant_set_target(task_t *task, const char *name, const char *value)
+gboolean
+set_target(const char *name, const char *value)
 {
-    cant_private_t *cp = (cant_private_t *)task->private_data;
-    
-    strassign(cp->target, value);
+    strassign(target_, value);
     return TRUE;
 }
 
-static gboolean
-cant_set_output(task_t *task, const char *name, const char *value)
+gboolean
+set_output(const char *name, const char *value)
 {
-    cant_private_t *cp = (cant_private_t *)task->private_data;
-
-    strassign(cp->output, value);
+    strassign(output_, value);
     return TRUE;
 }
 
-static gboolean
-cant_set_inheritAll(task_t *task, const char *name, const char *value)
+gboolean
+set_inheritAll(const char *name, const char *value)
 {
-    cant_private_t *cp = (cant_private_t *)task->private_data;
-
-    boolassign(cp->inherit_all, value);
+    boolassign(inherit_all_, value);
     return TRUE;
 }
 
@@ -95,29 +91,28 @@ cant_set_inheritAll(task_t *task, const char *name, const char *value)
 /* TODO: support nested <property> tags */
 /* TODO: cache projects to avoid re-reading them every execute */
 
-static gboolean
-cant_execute(task_t *task)
+gboolean
+exec()
 {
-    cant_private_t *cp = (cant_private_t *)task->private_data;
     project_t *proj;
     char *buildfile_e;
     char *dir_e;
     char *target_e;
     gboolean ret;
 
-    dir_e = task_expand(task, cp->dir);
+    dir_e = expand(dir_);
     strnullnorm(dir_e);
     if (dir_e == 0)
     	dir_e = g_strdup(".");
 
-    buildfile_e = task_expand(task, cp->buildfile);
+    buildfile_e = expand(buildfile_);
     strnullnorm(buildfile_e);
     if (buildfile_e == 0)
 	buildfile_e = g_strconcat(dir_e, "/build.xml", 0);
     buildfile_e = file_normalise_m(buildfile_e, 0);
 	
     proj = read_buildfile(buildfile_e,
-	    	    (cp->inherit_all ? task->target->project : project_globals));
+	    	    (inherit_all_ ? project_ : project_globals));
     if (proj == 0)
     {
     	g_free(dir_e);
@@ -137,11 +132,12 @@ cant_execute(task_t *task)
      * of the target which invoked us, which makes recursive
      * targets marginally easier.  Either that or define
      * a $@ like property on the task.
+     * TODO: is the default target taken from the right project?
      */
-    target_e = task_expand(task, cp->target);
+    target_e = expand(target_);
     strnullnorm(target_e);
     if (target_e == 0)
-    	target_e = g_strdup(task->project->default_target);
+    	target_e = g_strdup(project_->default_target);
 
     /*
      * Now actually execute the target in the sub-project.
@@ -162,19 +158,7 @@ cant_execute(task_t *task)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void
-cant_delete(task_t *task)
-{
-    cant_private_t *cp = (cant_private_t *)task->private_data;
-    
-    strdelete(cp->buildfile);
-    strdelete(cp->dir);
-    strdelete(cp->target);
-    strdelete(cp->output);
-    g_free(cp);
-}
-
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+}; // end of class
 
 static task_attr_t cant_attrs[] = 
 {
@@ -186,20 +170,13 @@ static task_attr_t cant_attrs[] =
     {0}
 };
 
-task_ops_t cant_ops = 
-{
-    "cant",
-    /*init*/0,
-    cant_new,
-    /*set_content*/0,
-    /*post_parse*/0,
-    cant_execute,
-    cant_delete,
-    cant_attrs,
-    /*children*/0,
-    /*is_fileset*/FALSE,
-    /*fileset_dir_name*/0
-};
+TASK_DEFINE_CLASS_BEGIN(cant,
+			cant_attrs,
+			/*children*/0,
+			/*is_fileset*/FALSE,
+			/*fileset_dir_name*/0,
+			/*is_composite*/FALSE)
+TASK_DEFINE_CLASS_END(cant)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 /*END*/

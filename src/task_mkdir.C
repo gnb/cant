@@ -19,54 +19,56 @@
 
 #include "cant.H"
 
-CVSID("$Id: task_mkdir.C,v 1.1 2002-03-29 12:36:27 gnb Exp $");
+CVSID("$Id: task_mkdir.C,v 1.2 2002-04-02 11:52:28 gnb Exp $");
 
-typedef struct
+class mkdir_task_t : public task_t
 {
-    char *directory;
-    char *mode;
-} mkdir_private_t;
+private:
+    char *directory_;
+    char *mode_;
+
+public:
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void
-mkdir_new(task_t *task)
+mkdir_task_t(task_class_t *tclass, project_t *proj)
+ :  task_t(tclass, proj)
 {
-    task->private_data = new(mkdir_private_t);
+}
+
+~mkdir_task_t()
+{
+    strdelete(directory_);
+    strdelete(mode_);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static gboolean
-mkdir_set_dir(task_t *task, const char *name, const char *value)
+gboolean
+set_dir(const char *name, const char *value)
 {
-    mkdir_private_t *mp = (mkdir_private_t *)task->private_data;
-    
-    strassign(mp->directory, value);
+    strassign(directory_, value);
     return TRUE;
 }
 
-static gboolean
-mkdir_set_mode(task_t *task, const char *name, const char *value)
+gboolean
+set_mode(const char *name, const char *value)
 {
-    mkdir_private_t *mp = (mkdir_private_t *)task->private_data;
-    
-    strassign(mp->mode, value);
+    strassign(mode_, value);
     return TRUE;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static gboolean
-mkdir_execute(task_t *task)
+gboolean
+exec()
 {
-    mkdir_private_t *mp = (mkdir_private_t *)task->private_data;
     char *dir;
     char *modestr;
     mode_t mode;
     gboolean ret = TRUE;
     
-    dir = task_expand(task, mp->directory);
+    dir = expand(directory_);
     if (dir != 0 && *dir == '\0')
     {
     	g_free(dir);
@@ -75,7 +77,7 @@ mkdir_execute(task_t *task)
     if (dir == 0)
     	return TRUE;	/* empty directory -> trivially succeed ??? */
     
-    modestr = task_expand(task, mp->mode);
+    modestr = expand(mode_);
     
     mode = file_mode_from_string(modestr, 0, 0755);
     
@@ -98,6 +100,8 @@ mkdir_execute(task_t *task)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
+}; // end of class
+
 static task_attr_t mkdir_attrs[] = 
 {
     TASK_ATTR(mkdir, dir, TT_REQUIRED),
@@ -105,20 +109,13 @@ static task_attr_t mkdir_attrs[] =
     {0}
 };
 
-task_ops_t mkdir_ops = 
-{
-    "mkdir",
-    /*init*/0,
-    mkdir_new,
-    /*set_content*/0,
-    /*post_parse*/0,
-    mkdir_execute,
-    /*delete*/0,
-    mkdir_attrs,
-    /*children*/0,
-    /*is_fileset*/FALSE,
-    /*fileset_dir_name*/0
-};
+TASK_DEFINE_CLASS_BEGIN(mkdir,
+			mkdir_attrs,
+			/*children*/0,
+			/*is_fileset*/FALSE,
+			/*fileset_dir_name*/0,
+			/*is_composite*/FALSE)
+TASK_DEFINE_CLASS_END(mkdir)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 /*END*/

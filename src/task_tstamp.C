@@ -20,49 +20,51 @@
 #include "cant.H"
 #include <time.h>
 
-CVSID("$Id: task_tstamp.C,v 1.1 2002-03-29 12:36:27 gnb Exp $");
+CVSID("$Id: task_tstamp.C,v 1.2 2002-04-02 11:52:28 gnb Exp $");
 
-typedef struct
+class tstamp_format_t
 {
-    char *property;
-    char *cpattern;   /* parsed into strptime() format */
-    unsigned long offset;
+private:
+    char *property_;
+    char *cpattern_;   /* parsed into strptime() format */
+    unsigned long offset_;
     enum
     {
     	OU_MILLI, OU_SECOND, OU_MINUTE, OU_HOUR, OU_DAY, OU_WEEK, OU_MONTH, OU_YEAR
-    } offset_units;
-    char *locale;
-} tstamp_format_t;
+    } offset_units_;
+    char *locale_;
+        
+public:
+    tstamp_format_t();
+    ~tstamp_format_t();
+    
+    void set_property(const char *property);
+    gboolean set_pattern(const char *pattern);
+    gboolean set_offset(const char *offset_str, const char *unit_str);
 
-static GList *tstamp_builtins;
+    void execute(project_t *proj, struct tm *tm);    
+};
+
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static tstamp_format_t *
-tstamp_format_new(void)
+tstamp_format_t::tstamp_format_t()
 {
-    tstamp_format_t *fmt;
-    
-    fmt = new(tstamp_format_t);
-    
-    return fmt;
 }
 
-static void
-tstamp_format_delete(tstamp_format_t *fmt)
+tstamp_format_t::~tstamp_format_t()
 {
-    strdelete(fmt->property);
-    strdelete(fmt->cpattern);
-    strdelete(fmt->locale);
-    g_free(fmt);
+    strdelete(property_);
+    strdelete(cpattern_);
+    strdelete(locale_);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void
-tstamp_format_set_property(tstamp_format_t *fmt, const char *property)
+void
+tstamp_format_t::set_property(const char *property)
 {
-    strassign(fmt->property, property);
+    strassign(property_, property);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -84,8 +86,8 @@ static const char *pattern_map[] =
     0
 };
 
-static gboolean
-tstamp_format_set_pattern(tstamp_format_t *fmt, const char *pattern)
+gboolean
+tstamp_format_t::set_pattern(const char *pattern)
 {
     const char *s = pattern;
     estring cpattern;
@@ -118,20 +120,17 @@ tstamp_format_set_pattern(tstamp_format_t *fmt, const char *pattern)
     	    	    	pattern, cpattern.data);
 #endif
 
-    if (fmt->cpattern != 0)
-    	g_free(fmt->cpattern);
-    fmt->cpattern = cpattern.data;
+    if (cpattern_ != 0)
+    	g_free(cpattern_);
+    cpattern_ = cpattern.data;
 
     return TRUE;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static gboolean
-tstamp_format_set_offset(
-    tstamp_format_t *fmt,
-    const char *offset_str,
-    const char *unit_str)
+gboolean
+tstamp_format_t::set_offset(const char *offset_str, const char *unit_str)
 {
     if (offset_str != 0 || unit_str != 0)
     {
@@ -143,45 +142,49 @@ tstamp_format_set_offset(
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void
-tstamp_init(void)
+void
+tstamp_format_t::execute(project_t *proj, struct tm *tm)
 {
-    tstamp_format_t *fmt;
+    char buf[256];
     
-    fmt = tstamp_format_new();
-    tstamp_format_set_property(fmt, "DSTAMP");
-    tstamp_format_set_pattern(fmt, "yyyyMMdd");
-    tstamp_builtins = g_list_append(tstamp_builtins, fmt);
-
-    fmt = tstamp_format_new();
-    tstamp_format_set_property(fmt, "TSTAMP");
-    tstamp_format_set_pattern(fmt, "hhmm");
-    tstamp_builtins = g_list_append(tstamp_builtins, fmt);
-
-    fmt = tstamp_format_new();
-    tstamp_format_set_property(fmt, "TODAY");
-    tstamp_format_set_pattern(fmt, "MMMM dd yyyy");
-    tstamp_builtins = g_list_append(tstamp_builtins, fmt);
+    strftime(buf, sizeof(buf), cpattern_, tm);
+    logf("%s=\"%s\"\n", property_, buf);
+    project_set_property(proj, property_, buf);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void
-tstamp_new(task_t *task)
+class tstamp_task_t : public task_t
 {
-    task->private_data = 0;	/* GList of tstamp_format_t */
+private:
+    GList *formats_;	    	/* GList of tstamp_format_t */
+    static GList *builtins_;	/* list of tstamp_format_t */
+
+public:
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+tstamp_task_t(task_class_t *tclass, project_t *proj)
+ :  task_t(tclass, proj)
+{
+}
+
+~tstamp_task_t()
+{
+    listdelete(formats_, tstamp_format_t, delete);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static tstamp_format_t *
-tstamp_format_parse(task_t *task, xmlNode *node)
+gboolean
+tstamp_task_t::add_format(xmlNode *node)
 {
     tstamp_format_t *fmt;
     char *property;
     char *offset_str;
     char *unit_str;
     char *pattern;
+    char *locale;
     gboolean ok;
 
     /*
@@ -191,10 +194,10 @@ tstamp_format_parse(task_t *task, xmlNode *node)
     if (property == 0)
     {
 	parse_error_required_attribute(node, "property");
-	return 0;
+	return FALSE;
     }
-    fmt = tstamp_format_new();
-    tstamp_format_set_property(fmt, property);
+    fmt = new tstamp_format_t;
+    fmt->set_property(property);
     xmlFree(property);
 
     /*
@@ -204,15 +207,15 @@ tstamp_format_parse(task_t *task, xmlNode *node)
     if (pattern == 0)
     {
 	parse_error_required_attribute(node, "pattern");
-	tstamp_format_delete(fmt);
-	return 0;
+	delete fmt;
+	return FALSE;
     }
-    if (!tstamp_format_set_pattern(fmt, pattern))
+    if (!fmt->set_pattern(pattern))
     {
     	parse_error("Bad format in \"pattern\"\n");
 	xmlFree(pattern);
-	tstamp_format_delete(fmt);
-	return 0;
+	delete fmt;
+	return FALSE;
     }
     xmlFree(pattern);
     
@@ -222,7 +225,7 @@ tstamp_format_parse(task_t *task, xmlNode *node)
     offset_str = cantXmlGetProp(node, "offset");
     unit_str = cantXmlGetProp(node, "unit");
     ok = TRUE;
-    ok = tstamp_format_set_offset(fmt, offset_str, unit_str);
+    ok = fmt->set_offset(offset_str, unit_str);
     if (offset_str != 0)
     	xmlFree(offset_str);
     if (unit_str != 0)
@@ -230,69 +233,51 @@ tstamp_format_parse(task_t *task, xmlNode *node)
     if (!ok)
     {
     	parse_error("Bad format in \"offset\" or \"unit\"\n");
-	tstamp_format_delete(fmt);
-	return 0;
+	delete fmt;
+	return FALSE;
     }
     
     /*
      * locale
      */
-    fmt->locale = xml2g(cantXmlGetProp(node, "locale"));
-    if (fmt->locale != 0)
+    locale = cantXmlGetProp(node, "locale");
+    if (locale != 0)
     {
     	fprintf(stderr, "%s: sorry, <tstamp> does not support \"locale\"\n", argv0);
-	tstamp_format_delete(fmt);
-    	return 0;
+	delete fmt;
+    	return FALSE;
     }
     
-    return fmt;
-}
+    formats_ = g_list_append(formats_, fmt);
 
-static gboolean
-tstamp_add_format(task_t *task, xmlNode *node)
-{
-    GList *fmt_list = (GList *)task->private_data;
-    tstamp_format_t *fmt;
-    
-    if ((fmt = tstamp_format_parse(task, node)) == 0)
-    	return FALSE;
-    
-    fmt_list = g_list_append(fmt_list, fmt);
-
-    task->private_data = fmt_list;
-    
-    return FALSE;
+    return TRUE;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void
-tstamp_execute_format_list(project_t *proj, struct tm *tm, GList *list)
-{
-    char buf[256];
-    
-    for ( ; list != 0 ; list = list->next)
-    {
-    	tstamp_format_t *fmt = (tstamp_format_t*)list->data;
-	
-	strftime(buf, sizeof(buf), fmt->cpattern, tm);
-    	logf("%s=\"%s\"\n", fmt->property, buf);
-	project_set_property(proj, fmt->property, buf);
-    }
-}
-
-static gboolean
-tstamp_execute(task_t *task)
+gboolean
+exec()
 {
     time_t clock;
     struct tm tm;
-    project_t *proj = task->target->project;
+    GList *iter;
 
     time(&clock);
     tm = *localtime(&clock);	/* TODO: localtime_r */
-    
-    tstamp_execute_format_list(proj, &tm, tstamp_builtins);
-    tstamp_execute_format_list(proj, &tm, (GList *)task->private_data);
+
+    for (iter = builtins_ ; iter != 0 ; iter = iter->next)
+    {
+    	tstamp_format_t *fmt = (tstamp_format_t*)iter->data;
+
+	fmt->execute(project_, &tm);
+    }
+
+    for (iter = formats_ ; iter != 0 ; iter = iter->next)
+    {
+    	tstamp_format_t *fmt = (tstamp_format_t*)iter->data;
+
+	fmt->execute(project_, &tm);
+    }
 
     return TRUE;
 }
@@ -300,18 +285,37 @@ tstamp_execute(task_t *task)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static void
-tstamp_delete(task_t *task)
+initialise_builtins()
 {
-    GList *fmt_list = (GList *)task->private_data;
+    tstamp_format_t *fmt;
     
-    while (fmt_list != 0)
-    {
-    	tstamp_format_delete((tstamp_format_t *)fmt_list->data);
-	fmt_list = g_list_remove_link(fmt_list, fmt_list);
-    }
+    fmt = new tstamp_format_t();
+    fmt->set_property("DSTAMP");
+    fmt->set_pattern("yyyyMMdd");
+    tstamp_task_t::builtins_ = g_list_append(tstamp_task_t::builtins_, fmt);
+
+    fmt = new tstamp_format_t();
+    fmt->set_property("TSTAMP");
+    fmt->set_pattern("hhmm");
+    tstamp_task_t::builtins_ = g_list_append(tstamp_task_t::builtins_, fmt);
+
+    fmt = new tstamp_format_t();
+    fmt->set_property("TODAY");
+    fmt->set_pattern("MMMM dd yyyy");
+    tstamp_task_t::builtins_ = g_list_append(tstamp_task_t::builtins_, fmt);
+}
+
+static void
+cleanup_builtins()
+{
+    listdelete(builtins_, tstamp_format_t, delete);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+}; // end of class
+
+GList *tstamp_task_t::builtins_;	/* list of tstamp_format_t */
 
 static task_child_t tstamp_children[] = 
 {
@@ -319,20 +323,28 @@ static task_child_t tstamp_children[] =
     {0}
 };
 
-task_ops_t tstamp_ops = 
+TASK_DEFINE_CLASS_BEGIN(tstamp,
+			/*attrs*/0,
+			tstamp_children,
+			/*is_fileset*/FALSE,
+			/*fileset_dir_name*/0,
+			/*is_composite*/FALSE)
+
+public:
+
+void
+init()
 {
-    "tstamp",
-    tstamp_init,
-    tstamp_new,
-    /*set_content*/0,
-    /*post_parse*/0,
-    tstamp_execute,
-    tstamp_delete,
-    /*attrs*/0,
-    tstamp_children,
-    /*is_fileset*/FALSE,
-    /*fileset_dir_name*/0
-};
+    tstamp_task_t::initialise_builtins();
+}
+
+void
+cleanup()
+{
+    tstamp_task_t::cleanup_builtins();
+}
+
+TASK_DEFINE_CLASS_END(tstamp)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 /*END*/

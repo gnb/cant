@@ -19,161 +19,136 @@
 
 #include "cant.H"
 
-typedef struct
+CVSID("$Id: task_copy.C,v 1.2 2002-04-02 11:52:28 gnb Exp $");
+
+class copy_task_t : public task_t
 {
-    char *file;
-    char *tofile;
-    char *todir;
-    GList *filesets;	    	/* list of fileset_t */
-    GList *filtersets;	    	/* list of filterset_t */
-    mapper_t *mapper;
-    gboolean preserve_last_modified:1;
-    gboolean overwrite:1;
-    gboolean filtering:1;   	/* whether to apply *global* filters */
-    gboolean flatten:1;
-    gboolean include_empty_dirs:1;
+private:
+    char *file_;
+    char *tofile_;
+    char *todir_;
+    GList *filesets_;	    	/* list of fileset_t */
+//    GList *filtersets_;	    	/* list of filterset_t */
+    mapper_t *mapper_;
+    gboolean preserve_last_modified_:1;
+    gboolean overwrite_:1;
+    gboolean filtering_:1;   	/* whether to apply *global* filters */
+    gboolean flatten_:1;
+    gboolean include_empty_dirs_:1;
 
-    gboolean result:1;
-    char *exp_todir;
-    unsigned ncopied;
-} copy_private_t;
+    gboolean result_:1;
+    char *exp_todir_;
+    unsigned ncopied_;
 
-CVSID("$Id: task_copy.C,v 1.1 2002-03-29 12:36:27 gnb Exp $");
+public:
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void
-copy_new(task_t *task)
+copy_task_t(task_class_t *tclass, project_t *proj)
+ :  task_t(tclass, proj)
 {
-    copy_private_t *cp;
-    
-    cp = new(copy_private_t);
-    
-    cp->preserve_last_modified = FALSE;
-    cp->overwrite = FALSE;
-    cp->filtering = FALSE;
-    cp->flatten = FALSE;
-    cp->include_empty_dirs = TRUE;
+    preserve_last_modified_ = FALSE;
+    overwrite_ = FALSE;
+    filtering_ = FALSE;
+    flatten_ = FALSE;
+    include_empty_dirs_ = TRUE;
+}
 
-    task->private_data = cp;
+~copy_task_t()
+{
+    strdelete(file_);
+    strdelete(tofile_);
+    strdelete(todir_);
+
+    if (mapper_ != 0)
+	mapper_delete(mapper_);
+    
+    /* delete filesets */
+    listdelete(filesets_, fileset_t, fileset_unref);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static gboolean
-copy_set_file(task_t *task, const char *name, const char *value)
+gboolean
+set_file(const char *name, const char *value)
 {
-    copy_private_t *cp = (copy_private_t *)task->private_data;
-    
-    strassign(cp->file, value);
+    strassign(file_, value);
     return TRUE;
 }
 
-static gboolean
-copy_set_preservelastmodified(task_t *task, const char *name, const char *value)
+gboolean
+set_preservelastmodified(const char *name, const char *value)
 {
-    copy_private_t *cp = (copy_private_t *)task->private_data;
-    
-    boolassign(cp->preserve_last_modified, value);
+    boolassign(preserve_last_modified_, value);
     return TRUE;
 }
 
-static gboolean
-copy_set_tofile(task_t *task, const char *name, const char *value)
+gboolean
+set_tofile(const char *name, const char *value)
 {
-    copy_private_t *cp = (copy_private_t *)task->private_data;
-    
-    strassign(cp->tofile, value);
+    strassign(tofile_, value);
     return TRUE;
 }
 
-static gboolean
-copy_set_todir(task_t *task, const char *name, const char *value)
+gboolean
+set_todir(const char *name, const char *value)
 {
-    copy_private_t *cp = (copy_private_t *)task->private_data;
-    
-    strassign(cp->todir, value);
+    strassign(todir_, value);
     return TRUE;
 }
 
-static gboolean
-copy_set_overwrite(task_t *task, const char *name, const char *value)
+gboolean
+set_overwrite(const char *name, const char *value)
 {
-    copy_private_t *cp = (copy_private_t *)task->private_data;
-    
-    boolassign(cp->overwrite, value);
+    boolassign(overwrite_, value);
     return TRUE;
 }
 
-static gboolean
-copy_set_filtering(task_t *task, const char *name, const char *value)
+gboolean
+set_filtering(const char *name, const char *value)
 {
-    copy_private_t *cp = (copy_private_t *)task->private_data;
-    
-    boolassign(cp->filtering, value);
+    boolassign(filtering_, value);
     return TRUE;
 }
 
-static gboolean
-copy_set_flatten(task_t *task, const char *name, const char *value)
+gboolean
+set_flatten(const char *name, const char *value)
 {
-    copy_private_t *cp = (copy_private_t *)task->private_data;
-    
-    boolassign(cp->flatten, value);
+    boolassign(flatten_, value);
     return TRUE;
 }
 
-static gboolean
-copy_set_includeEmptyDirs(task_t *task, const char *name, const char *value)
+gboolean
+set_includeEmptyDirs(const char *name, const char *value)
 {
-    copy_private_t *cp = (copy_private_t *)task->private_data;
-    
-    boolassign(cp->include_empty_dirs, value);
+    boolassign(include_empty_dirs_, value);
     return TRUE;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static gboolean
-copy_add_fileset(task_t *task, xmlNode *node)
+gboolean
+add_fileset(xmlNode *node)
 {
-    copy_private_t *cp = (copy_private_t *)task->private_data;
     fileset_t *fs;
 
-    if ((fs = parse_fileset(task->project, node, "dir")) == 0)
+    if ((fs = parse_fileset(project_, node, "dir")) == 0)
     	return FALSE;
 	
-    cp->filesets = g_list_append(cp->filesets, fs);
+    filesets_ = g_list_append(filesets_, fs);
     return TRUE;
 }
 
-#if 0
-static gboolean
-copy_add_filterset(task_t *task, xmlNode *node)
+gboolean
+add_mapper(xmlNode *node)
 {
-    copy_private_t *cp = (copy_private_t *)task->private_data;
-    fileset_t *fs;
-
-    if ((fs = parse_fileset(task->project, node, "dir")) == 0)
-    	return FALSE;
-
-    cp->filesets = g_list_append(cp->filesets, fs);
-    return TRUE;
-}
-#endif
-
-static gboolean
-copy_add_mapper(task_t *task, xmlNode *node)
-{
-    copy_private_t *cp = (copy_private_t *)task->private_data;
-
-    if (cp->mapper != 0)
+    if (mapper_ != 0)
     {
     	parse_error("Only a single \"mapper\" child may be used\n");
 	return FALSE;
     }
     
-    if ((cp->mapper = parse_mapper(task->project, node)) == 0)
+    if ((mapper_ = parse_mapper(project_, node)) == 0)
     	return FALSE;
 	
     return TRUE;
@@ -181,40 +156,38 @@ copy_add_mapper(task_t *task, xmlNode *node)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static gboolean
-copy_post_parse(task_t *task)
+gboolean
+post_parse()
 {
-    copy_private_t *cp = (copy_private_t *)task->private_data;
-    
-    if (cp->file != 0)
+    if (file_ != 0)
     {
-    	if (cp->tofile == 0 && cp->todir == 0)
+    	if (tofile_ == 0 && todir_ == 0)
 	{
 	    parse_error("One of \"tofile\" or \"todir\" must be specified with \"file\"\n");
 	    return FALSE;
 	}
     }
-    else if (cp->filesets != 0)
+    else if (filesets_ != 0)
     {
-    	if (cp->tofile != 0)
+    	if (tofile_ != 0)
 	{
 	    parse_error("Only \"todir\" is allowed with \"filesets\"\n");
 	    return FALSE;
 	}
-    	if (cp->todir == 0)
+    	if (todir_ == 0)
 	{
 	    parse_error("Must use \"todir\" is \"filesets\"\n");
 	    return FALSE;
 	}
     }
-    else if (cp->file == 0 && cp->filesets == 0)
+    else if (file_ == 0 && filesets_ == 0)
     {
     	parse_error("At least one of \"file\" or \"<fileset>\" must be present\n");
 	return FALSE;
     }
 
-    if (cp->mapper == 0)
-    	cp->mapper = mapper_new("identity", 0, 0);
+    if (mapper_ == 0)
+    	mapper_ = mapper_new("identity", 0, 0);
 
     return TRUE;
 }
@@ -224,7 +197,7 @@ copy_post_parse(task_t *task)
 /* TODO: filtersets */
 /* TODO: preserve mod times */
 static gboolean
-do_copy_file(copy_private_t *cp, const char *fromfile, const char *tofile)
+do_copy_file(const char *fromfile, const char *tofile)
 {
     FILE *fromfp, *tofp;
     mode_t mode;
@@ -271,31 +244,31 @@ do_copy_file(copy_private_t *cp, const char *fromfile, const char *tofile)
 
 
 static gboolean
-copy_copy_one(const char *filename, void *userdata)
+copy_one(const char *filename, void *userdata)
 {
-    task_t *task = (task_t *)userdata;
-    copy_private_t *cp = (copy_private_t *)task->private_data;
+    copy_task_t *ct = (copy_task_t *)userdata;
     const char *fromfile;
     char *tofile, *mappedfile;
     
-    
+    // TODO: WTF
+        
     /* construct the target filename */
-    if (cp->flatten)
+    if (ct->flatten_)
     	fromfile = file_basename_c(filename);
     else
     	fromfile = filename;
 	
-    if (cp->tofile != 0)
-    	tofile = task_expand(task, cp->tofile);
-    else if (cp->exp_todir != 0)
-	tofile = g_strconcat(cp->exp_todir, "/", filename, 0);
+    if (ct->tofile_ != 0)
+    	tofile = ct->expand(ct->tofile_);
+    else if (ct->exp_todir_ != 0)
+	tofile = g_strconcat(ct->exp_todir_, "/", filename, 0);
     else
     {
-	cp->result = FALSE; 	/* failed */
+	ct->result_ = FALSE; 	/* failed */
 	g_free(tofile);
 	return FALSE;	    	/* stop iteration */
     }
-    if ((mappedfile = mapper_map(cp->mapper, tofile)) == 0)
+    if ((mappedfile = mapper_map(ct->mapper_, tofile)) == 0)
     {
 	g_free(tofile);
 	return TRUE;	    	/* keep going */
@@ -308,15 +281,15 @@ copy_copy_one(const char *filename, void *userdata)
     if (file_is_directory(filename) == 0)
     {
     	int r;
-	unsigned ncopied = cp->ncopied;
+	unsigned ncopied = ct->ncopied_;
 	
-	r = file_apply_children(filename, copy_copy_one, userdata);
+	r = file_apply_children(filename, copy_one, userdata);
 	
 	if (r < 0)
 	{
 	    log_perror(filename);
 	}
-	else if (ncopied == cp->ncopied && cp->include_empty_dirs)
+	else if (ncopied == ct->ncopied_ && ct->include_empty_dirs_)
 	{
 	    /* no files copied underneath this directory -- it must be empty */
 	    /* TODO: sensible mode from original directory */
@@ -324,82 +297,53 @@ copy_copy_one(const char *filename, void *userdata)
 	    if (file_build_tree(mappedfile, 0755))
 	    {
 		log_perror(filename);
-		cp->result = FALSE;
+		ct->result_ = FALSE;
     	    }
 	}
     }
     else
     {
-	if (!do_copy_file(cp, filename, mappedfile))
-	    cp->result = FALSE;
+	if (!do_copy_file(filename, mappedfile))
+	    ct->result_ = FALSE;
     }
         
-    return cp->result;    /* keep going if we didn't fail */
+    return ct->result_;    /* keep going if we didn't fail */
 }
 
-static gboolean
-copy_execute(task_t *task)
+gboolean
+exec()
 {
-    copy_private_t *cp = (copy_private_t *)task->private_data;
     GList *iter;
     
-    cp->result = TRUE;
-    cp->ncopied = 0;
+    result_ = TRUE;
+    ncopied_ = 0;
     
-    cp->exp_todir = task_expand(task, cp->todir);
+    exp_todir_ = expand(todir_);
 
-    if (cp->file != 0)
+    if (file_ != 0)
     {
-    	char *expfile = task_expand(task, cp->file);
-    	copy_copy_one(expfile, task);
+    	char *expfile = expand(file_);
+    	copy_one(expfile, this);
 	g_free(expfile);
     }
 
     /* execute for <fileset> children */
     
-    for (iter = cp->filesets ; iter != 0 ; iter = iter->next)
+    for (iter = filesets_ ; iter != 0 ; iter = iter->next)
     {
     	fileset_t *fs = (fileset_t *)iter->data;
 	
-	fileset_apply(fs, project_get_props(task->project),
-	    	      copy_copy_one, task);
+	fileset_apply(fs, project_get_props(project_), copy_one, this);
     }
     
-    strdelete(cp->exp_todir);
+    strdelete(exp_todir_);
 
-    return cp->result;
+    return result_;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void
-copy_delete(task_t *task)
-{
-    copy_private_t *cp = (copy_private_t *)task->private_data;
-    
-    strdelete(cp->file);
-    strdelete(cp->tofile);
-    strdelete(cp->todir);
-
-    if (cp->mapper != 0)    
-	mapper_delete(cp->mapper);
-    
-    /* delete filesets */
-    listdelete(cp->filesets, fileset_t, fileset_unref);
-
-#if 0
-    /* delete filtersets */
-    while (dp->filtersets != 0)
-    {
-    	filterset_delete((filterset_t *)dp->filtersets->data);
-    	dp->filtersets = g_list_remove_link(dp->filtersets, dp->filtersets);
-    }
-#endif
-    
-    task->private_data = 0;
-}
-
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+};  // end of class
 
 static task_attr_t copy_attrs[] =
 {
@@ -418,24 +362,16 @@ static task_child_t copy_children[] =
 {
     TASK_CHILD(copy, fileset, 0),
     TASK_CHILD(copy, mapper, 0),
-/*    TASK_CHILD(copy, filterset, 0), */
     {0}
 };
 
-task_ops_t copy_ops = 
-{
-    "copy",
-    /*init*/0,
-    copy_new,
-    /*set_content*/0,
-    copy_post_parse,
-    copy_execute,
-    copy_delete,
-    copy_attrs,
-    copy_children,
-    /*is_fileset*/FALSE,
-    /*fileset_dir_name*/0
-};
+TASK_DEFINE_CLASS_BEGIN(copy,
+			copy_attrs,
+			copy_children,
+			/*is_fileset*/FALSE,
+			/*fileset_dir_name*/0,
+			/*is_composite*/FALSE)
+TASK_DEFINE_CLASS_END(copy)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 /*END*/

@@ -20,7 +20,7 @@
 #include "cant.H"
 #include "tok.H"
 
-CVSID("$Id: project.C,v 1.3 2002-03-29 16:12:31 gnb Exp $");
+CVSID("$Id: project.C,v 1.4 2002-04-02 11:52:28 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -37,7 +37,7 @@ project_new(project_t *parent)
     proj->filesets = new hashtable_t<const char*, fileset_t>;
     proj->taglists = new hashtable_t<char*, taglist_t>;
     proj->tl_defs = new hashtable_t<const char*, tl_def_t>;
-    proj->tscope = tscope_new((parent == 0 ? tscope_builtins : parent->tscope));
+    proj->tscope = new task_scope_t(parent == 0 ? task_scope_t::builtins : parent->tscope);
     
     proj->properties = props_new((parent == 0 ? 0 : parent->properties));
     proj->fixed_properties = props_new(proj->properties);
@@ -86,7 +86,7 @@ project_delete(project_t *proj)
     
     proj->targets->foreach_remove(project_delete_one_target, 0);
     delete proj->targets;
-    tscope_delete(proj->tscope);
+    delete proj->tscope;
     
     proj->filesets->foreach_remove(project_unref_one_fileset, 0);
     delete proj->filesets;
