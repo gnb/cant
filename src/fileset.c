@@ -24,7 +24,7 @@
 #include "log.h"
 #include <dirent.h>
 
-CVSID("$Id: fileset.c,v 1.13 2002-02-08 07:54:36 gnb Exp $");
+CVSID("$Id: fileset.c,v 1.14 2002-02-08 17:15:23 gnb Exp $");
 
 static void fs_spec_delete(fs_spec_t *fss);
 
@@ -360,7 +360,7 @@ fs_include(
     
     glob_path(state, glob, state->pending);
 
-    if (((char *)state->pending->data)[0] == '\0')
+    if (state->pending == 0 || ((char *)state->pending->data)[0] == '\0')
     {
 #if DEBUG
     	fprintf(stderr, "fs_include(\"%s\") matched no files\n", glob);
