@@ -20,7 +20,7 @@
 #include "xtask.H"
 #include "job.H"
 
-CVSID("$Id: xtask.C,v 1.5 2002-04-06 04:16:38 gnb Exp $");
+CVSID("$Id: xtask.C,v 1.6 2002-04-06 11:32:34 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -28,7 +28,7 @@ xtask_t::xtask_t(task_class_t *tclass, project_t *proj)
  :  task_t(tclass, proj)
 {
     /* TODO: delay attachment to project? */
-    properties_ = props_new(project_get_props(project_));
+    properties_ = new props_t(project_get_props(project_));
 }
 
 xtask_t::~xtask_t()
@@ -40,7 +40,7 @@ xtask_t::~xtask_t()
     /* TODO: delete unrefed filesets */
     taglists_.apply_remove(taglist_unref);
     
-    props_delete(properties_);
+    delete properties_;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -51,9 +51,9 @@ xtask_t::generic_setter(const char *name, const char *value)
     xtask_class_t *xtclass = (xtask_class_t *)tclass_;	/* downcast */
     const char *propname;
     
-    if ((propname = props_get(xtclass->property_map_, name)) == 0)
+    if ((propname = xtclass->property_map_->get(name)) == 0)
     	return FALSE;
-    props_set(properties_, propname, value);
+    properties_->set(propname, value);
     return TRUE;
 }
 
@@ -82,7 +82,7 @@ xtask_t::build_command(strarray_t *command)
     char *exp;
 
     if (xtclass->executable_ != 0)
-    	command->appendm(props_expand(properties_, xtclass->executable_));
+    	command->appendm(properties_->expand(xtclass->executable_));
     
     for (iter = xtclass->args_.first() ; iter != 0 ; ++iter)
     {
@@ -95,14 +95,14 @@ xtask_t::build_command(strarray_t *command)
 	{
 	case xtask_class_t::XT_VALUE:	    /* <arg value=""> child */
 	    /* TODO: <arg arglistref=""> child */
-	    exp = props_expand(properties_, xa->data.arg);
+	    exp = properties_->expand(xa->data.arg);
 	    strnullnorm(exp);
 	    if (exp != 0)
 		command->appendm(exp);
 	    break;
 
 	case xtask_class_t::XT_LINE:	    /* <arg line=""> child */
-	    exp = props_expand(properties_, xa->data.arg);
+	    exp = properties_->expand(xa->data.arg);
 	    strnullnorm(exp);
 	    if (exp != 0)
 	    	command->split_tom(exp, /*sep*/0);
@@ -110,7 +110,7 @@ xtask_t::build_command(strarray_t *command)
 	    /* TODO: <env> child */
 	
 	case xtask_class_t::XT_FILE:	    /* <arg file=""> child */
-	    exp = props_expand(properties_, xa->data.arg);
+	    exp = properties_->expand(xa->data.arg);
 	    strnullnorm(exp);
 	    if (exp != 0)
 	    	command->appendm(file_normalise_m(exp, project_->basedir));
@@ -168,12 +168,12 @@ xtask_t::execute_command()
 	    list_iterator_t<mapper_t> iter;
 	    char *depfile;
 
-	    depfile = props_expand(properties_, "${file}");
+	    depfile = properties_->expand("${file}");
 	    depfiles->appendm(depfile);
 	    
 	    for (iter = xtclass->dep_mappers_.first() ; iter != 0 ; ++iter)
 	    {
-		if ((targfile = mapper_map((*iter), depfile)) != 0)
+		if ((targfile = (*iter)->map(depfile)) != 0)
 	    	    break;
 	    }
 	    /* TODO: expand targfile */
@@ -183,13 +183,13 @@ xtask_t::execute_command()
     	    fileset_gather_mapped(fileset_, properties_,
 	    	    	    	  depfiles, &xtclass->mappers_);
 
-    	    targfile = props_expand(properties_, xtclass->dep_target_);
+    	    targfile = properties_->expand(xtclass->dep_target_);
     	}
     }
 
     strnullnorm(targfile);
     if (targfile != 0)
-	props_set(properties_, "targfile", targfile);
+	properties_->set("targfile", targfile);
 
 
     /* build the command from args and properties */
@@ -207,7 +207,7 @@ xtask_t::execute_command()
     if (verbose)
     	logmsg = logmsg_newnm(command->join(" "));
     else if (xtclass->logmessage_ != 0)
-    	logmsg = logmsg_newnm(props_expand(properties_, xtclass->logmessage_));
+    	logmsg = logmsg_newnm(properties_->expand(xtclass->logmessage_));
 
     if (targfile == 0)
     {
@@ -238,7 +238,7 @@ xtask_t::execute_one(const char *filename, void *userdata)
 {
     xtask_t *xtask = (xtask_t *)userdata;
     
-    props_set(xtask->properties_, "file", filename);
+    xtask->properties_->set("file", filename);
     return xtask->execute_command();
 }
 
@@ -274,7 +274,7 @@ xtask_t::exec()
     }
     
     /* wipe out any temporary properties */
-    props_setm(properties_, "file", 0);
+    properties_->setm("file", 0);
     
     return result_;
 }
@@ -315,7 +315,7 @@ xtask_class_t::arg_t::~arg_t()
 xtask_class_t::xtask_class_t(const char *name)
 {
     strassign(name_, name);
-    property_map_ = props_new(0);
+    property_map_ = new props_t(0);
 }
 
 xtask_class_t::~xtask_class_t()
@@ -329,7 +329,7 @@ xtask_class_t::~xtask_class_t()
     strdelete(logmessage_);
     strdelete(dep_target_);
     
-    props_delete(property_map_);
+    delete property_map_;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -438,7 +438,7 @@ xtask_class_t::add_attribute(
 
     task_class_t::add_attribute(&proto);
     
-    props_set(property_map_, attr, prop);
+    property_map_->set(attr, prop);
 }
 
 /* TODO: add `gboolean required' */

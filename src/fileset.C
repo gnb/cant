@@ -24,7 +24,7 @@
 #include "log.H"
 #include <dirent.h>
 
-CVSID("$Id: fileset.C,v 1.4 2002-04-06 04:16:38 gnb Exp $");
+CVSID("$Id: fileset.C,v 1.5 2002-04-06 11:28:43 gnb Exp $");
 
 static void fs_spec_delete(fs_spec_t *fss);
 
@@ -464,7 +464,7 @@ fileset_apply(
     list_iterator_t<char> fniter;
     fs_glob_state_t state;
 
-    state.basedir = props_expand(props, fs->directory);
+    state.basedir = props->expand(fs->directory);
     state.case_sens = fs->case_sensitive;
     
     for (iter = fs->specs.first() ; iter != 0 ; ++iter )
@@ -517,7 +517,7 @@ fileset_gather_one(const char *filename, void *userdata)
 
 	for (iter = rec->mappers->first() ; iter != 0 ; ++iter)
 	{
-	    if ((mapped = mapper_map((*iter), filename)) != 0)
+	    if ((mapped = (*iter)->map(filename)) != 0)
 		break;
 	}
 

@@ -21,7 +21,7 @@
 #include "cant.H"
 #include "job.H"
 
-CVSID("$Id: cant.C,v 1.3 2002-04-02 11:52:28 gnb Exp $");
+CVSID("$Id: cant.C,v 1.4 2002-04-06 11:28:18 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -237,8 +237,8 @@ add_commandline_define(const char *pair)
     *x++ = '\0';
     
     if (command_defines == 0)
-    	command_defines = props_new(0);
-    props_set(command_defines, buf, x);
+    	command_defines = new props_t(0);
+    command_defines->set(buf, x);
     
     g_free(buf);
 }
@@ -463,10 +463,10 @@ static void
 dump_project_properties(project_t *proj)
 {
     fprintf(stderr, "    FIXED_PROPERTIES {\n");
-    props_apply_local(proj->fixed_properties, dump_one_property, (gpointer)"        ");
+    proj->fixed_properties->apply_local(dump_one_property, (gpointer)"        ");
     fprintf(stderr, "    }\n");
     fprintf(stderr, "    PROPERTIES {\n");
-    props_apply_local(proj->properties, dump_one_property, (gpointer)"        ");
+    proj->properties->apply_local(dump_one_property, (gpointer)"        ");
     fprintf(stderr, "    }\n");
 }
 
@@ -497,7 +497,7 @@ main(int argc, char **argv)
     parse_args(argc, argv);
     
     task_scope_t::initialise_builtins();
-    mapper_initialise_builtins();
+    mapper_t::initialise_builtins();
     if (!job_t::init(parallelism))
     	return 1;
 
