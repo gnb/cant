@@ -17,9 +17,27 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "xml.h"
+#include "cant.h"
 
-CVSID("$Id: xml.c,v 1.3 2001-11-06 14:08:57 gnb Exp $");
+CVSID("$Id: xml.c,v 1.4 2001-11-08 04:13:35 gnb Exp $");
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+gboolean
+cantXmlStringToBoolean(const char *value, gboolean deflt)
+{
+    gboolean res = deflt;
+    
+    if (!strcasecmp(value, "true") ||
+    	!strcasecmp(value, "yes") ||
+    	!strcasecmp(value, "off"))
+    	res = TRUE;
+    else if (!strcasecmp(value, "false") ||
+    	     !strcasecmp(value, "no") ||
+    	     !strcasecmp(value, "off"))
+    	res = FALSE;
+    return res;
+}
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 

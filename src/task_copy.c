@@ -19,6 +19,7 @@
 
 #include "cant.h"
 
+#if 0
 typedef struct
 {
     char *file;
@@ -32,7 +33,7 @@ typedef struct
     gboolean result:1;
 } copy_private_t;
 
-CVSID("$Id: task_copy.c,v 1.3 2001-11-06 09:29:06 gnb Exp $");
+CVSID("$Id: task_copy.c,v 1.4 2001-11-08 04:13:35 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -178,7 +179,7 @@ copy_delete(task_t *task)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-task_ops_t copy_ops = 
+/*NOT*/task_ops_t copy_ops = 
 {
     "copy",
     /*init*/0,
@@ -186,6 +187,6 @@ task_ops_t copy_ops =
     copy_execute,
     copy_delete
 };
-
+#endif
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 /*END*/

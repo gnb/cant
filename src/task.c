@@ -19,7 +19,7 @@
 
 #include "cant.h"
 
-CVSID("$Id: task.c,v 1.4 2001-11-06 14:08:17 gnb Exp $");
+CVSID("$Id: task.c,v 1.5 2001-11-08 04:13:35 gnb Exp $");
 
 static GHashTable *task_ops_all;
 
@@ -32,8 +32,6 @@ task_new(void)
     
     task = new(task_t);
     
-    task->attributes = props_new(0);
-    
     return task;
 }
 
@@ -45,8 +43,6 @@ task_delete(task_t *task)
     if (task->ops != 0 && task->ops->delete != 0)
     	(*task->ops->delete)(task);
     strdelete(task->id);
-	
-    props_delete(task->attributes);
 	
     g_free(task);
 }
@@ -73,16 +69,19 @@ task_set_description(task_t *task, const char *s)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-const char *
-task_get_attribute(task_t *task, const char *name)
+gboolean
+task_set_attribute(task_t *task, const char *name, const char *value)
 {
-    return props_get(task->attributes, name);
-}
+    task_attr_t *ta = 0;
+    
+    if (task->ops->attrs_hashed != 0)
+	ta = (task_attr_t *)g_hash_table_lookup(task->ops->attrs_hashed, name);
 
-void
-task_add_attribute(task_t *task, const char *name, const char *value)
-{
-    props_set(task->attributes, name, value);
+    if (ta == 0)
+    	return FALSE;	
+
+    (*ta->setter)(task, name, value);
+    return TRUE;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -109,6 +108,57 @@ task_execute(task_t *task)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 void
+task_ops_add_attribute(task_ops_t *ops, const task_attr_t *proto)
+{
+    task_attr_t *ta;
+    
+    /* TODO: somehow we have to delete these again!! */
+    ta = new(task_attr_t);
+    *ta = *proto;
+    ta->name = g_strdup(ta->name);
+    
+    if (ops->attrs_hashed == 0)
+	ops->attrs_hashed = g_hash_table_new(g_str_hash, g_str_equal);
+    g_hash_table_insert(ops->attrs_hashed, ta->name, ta);
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+typedef struct
+{
+    void (*function)(const task_attr_t *ta, void *userdata);
+    void *userdata;
+} task_ops_foreach_attr_rec_t;
+
+static void
+task_ops_attributes_apply_one(gpointer key, gpointer value, gpointer userdata)
+{
+    task_ops_foreach_attr_rec_t *recp = (task_ops_foreach_attr_rec_t *)userdata;
+    task_attr_t *ta = (task_attr_t *)value;
+    
+    (*recp->function)(ta, recp->userdata);
+}
+
+void
+task_ops_attributes_apply(
+    task_ops_t *ops,
+    void (*function)(const task_attr_t *ta, void *userdata),
+    void *userdata)
+{
+    if (ops->attrs_hashed != 0)
+    {
+    	task_ops_foreach_attr_rec_t rec;
+	
+	rec.function = function;
+	rec.userdata = userdata;
+	
+    	g_hash_table_foreach(ops->attrs_hashed, task_ops_attributes_apply_one, &rec);
+    }
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+void
 task_ops_register(task_ops_t *ops)
 {
     if (task_ops_all == 0)
@@ -125,6 +175,25 @@ task_ops_register(task_ops_t *ops)
 #if DEBUG
     fprintf(stderr, "task_ops_register: registering \"%s\"\n", ops->name);
 #endif
+
+    if (ops->attrs != 0)
+    {
+	task_attr_t *ta;
+
+	for (ta = ops->attrs ; ta->name != 0 ; ta++)
+	    task_ops_add_attribute(ops, ta);
+    }
+    
+    if (ops->children != 0)
+    {
+	task_child_t *tc;
+
+    	ops->children_hashed = g_hash_table_new(g_str_hash, g_str_equal);
+	for (tc = ops->children ; tc->name != 0 ; tc++)
+    	    g_hash_table_insert(ops->children_hashed, tc->name, tc);
+    }
+    
+
     if (ops->init != 0)
     	(*ops->init)();
 }

@@ -19,32 +19,28 @@
 
 #include "cant.h"
 
-CVSID("$Id: task_enumerate.c,v 1.2 2001-11-06 09:10:30 gnb Exp $");
+CVSID("$Id: task_enumerate.c,v 1.3 2001-11-08 04:13:35 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static gboolean
-enumerate_parse(task_t *task, xmlNode *node)
+static void
+enumerate_new(task_t *task)
 {
-    xmlNode *child;
-    fileset_t *fs;
-    GList *list = 0;
-    
-    for (child = node->childs ; child != 0 ; child = child->next)
-    {
-    	if (child->type != XML_ELEMENT_NODE)
-	    continue;
-	    
-	if (!strcmp(child->name, "fileset"))
-	{
-	    if ((fs = parse_fileset(task->project, child, "dir")) != 0)
-	    	list = g_list_append(list, fs);
-	}
-    }
-    
-    task->private = list;
+    task->private = 0;	/* GList* of fileset_t */
+}
 
-    return TRUE;
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+static void
+enumerate_add_fileset(task_t *task, xmlNode *node)
+{
+    GList **listp = (GList **)&task->private;
+    fileset_t *fs;
+    
+    if ((fs = parse_fileset(task->project, node, "dir")) != 0)
+	*listp = g_list_append(*listp, fs);
+
+    /* TODO: proper failure semantics */
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -59,7 +55,7 @@ enumerate_one_file(const char *filename, void *userdata)
 static gboolean
 enumerate_execute(task_t *task)
 {
-    GList *list = task->private;
+    GList *list = (GList *)task->private;
     
     for ( ; list != 0 ; list = list->next)
     {
@@ -69,6 +65,8 @@ enumerate_execute(task_t *task)
 	fileset_apply(fs, enumerate_one_file, 0);
 	logf("<--\n");
     }
+    
+    return TRUE;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -76,7 +74,7 @@ enumerate_execute(task_t *task)
 static void
 enumerate_delete(task_t *task)
 {
-    GList *list = task->private;
+    GList *list = (GList *)task->private;
     
     while (list != 0)
     {
@@ -89,13 +87,24 @@ enumerate_delete(task_t *task)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
+static task_child_t enumerate_children[] = 
+{
+    TASK_CHILD(enumerate, fileset, 0),
+    {0}
+};
+
 task_ops_t enumerate_ops = 
 {
     "enumerate",
     /*init*/0,
-    enumerate_parse,
+    enumerate_new,
+    /*post_parse*/0,
     enumerate_execute,
-    enumerate_delete
+    enumerate_delete,
+    /*attrs*/0,
+    enumerate_children,
+    /*is_fileset*/FALSE,
+    /*fileset_dir_name*/0
 };
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

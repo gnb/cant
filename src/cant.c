@@ -20,7 +20,7 @@
 #define _DEFINE_GLOBALS 1
 #include "cant.h"
 
-CVSID("$Id: cant.c,v 1.4 2001-11-07 08:59:20 gnb Exp $");
+CVSID("$Id: cant.c,v 1.5 2001-11-08 04:13:35 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -303,11 +303,8 @@ dump_one_target(gpointer key, gpointer value, gpointer userdata)
     {
     	task_t *task = (task_t *)iter->data;
 	fprintf(stderr, "        TASK {\n");
-	fprintf(stderr, "            NAME = \"%s\"\n", task->ops->name);
+	fprintf(stderr, "            NAME = \"%s\"\n", task->name);
 	fprintf(stderr, "            ID = \"%s\"\n", task->id);
-	fprintf(stderr, "            ATTRIBUTES {\n");
-	props_apply(task->attributes, dump_one_property, "                ");
-	fprintf(stderr, "            }\n");
 	fprintf(stderr, "        }\n");
     }
     fprintf(stderr, "    }\n");
@@ -316,9 +313,9 @@ dump_one_target(gpointer key, gpointer value, gpointer userdata)
 static void
 dump_project_properties(project_t *proj)
 {
-    fprintf(stderr, "    PROPERTIES {\n", proj->basedir);
+    fprintf(stderr, "    PROPERTIES {\n");
     props_apply(proj->fixed_properties, dump_one_property, "        ");
-    fprintf(stderr, "    }\n", proj->basedir);
+    fprintf(stderr, "    }\n");
 }
 
 static void
@@ -362,7 +359,7 @@ main(int argc, char **argv)
     
     ret = !build_commandline_targets(proj);
     
-#if DEBUG
+#if 0 /*DEBUG*/
     dump_project_properties(proj);
 #endif
 

@@ -31,6 +31,10 @@
     	    xmlNodeListGetString((at)->node->doc, (at)->val, /*inLine*/TRUE)
 
 gboolean cantXmlGetBooleanProp(xmlNode *node, const char *name, gboolean deflt);
+gboolean cantXmlStringToBoolean(const char *val, gboolean deflt);
+
+#define boolassign(bv, s) \
+    (bv) = cantXmlStringToBoolean((s), (bv))
 
 
 #endif /* _cant_xml_h_ */

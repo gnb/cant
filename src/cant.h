@@ -35,6 +35,8 @@
 typedef struct project_s    	project_t;
 typedef struct target_s    	target_t;
 typedef struct task_s    	task_t;
+typedef struct task_attr_s    	task_attr_t;
+typedef struct task_child_s    	task_child_t;
 typedef struct task_ops_s    	task_ops_t;
 typedef struct xtask_arg_s    	xtask_arg_t;
 typedef struct xtask_ops_s    	xtask_ops_t;
@@ -76,20 +78,52 @@ struct task_s
     char *id;
     char *name;
     char *description;
-    props_t *attributes;    /* xml attrs from parse TODO: remove this */
     project_t *project;
     target_t *target;
+    fileset_t *fileset;     /* for directory-based tasks */
     task_ops_t *ops;
     void *private;
 };
 
+#define TT_REQUIRED 	(1<<0)
+
+typedef void (*task_setter_proc_t)(task_t *task, const char *name, const char *value);
+
+struct task_attr_s
+{
+    char *name;
+    task_setter_proc_t setter;
+    unsigned flags;
+};
+#define TASK_ATTR(scope, name, flags) \
+    { g_string(name), scope ## _set_ ## name, flags}
+
+struct task_child_s
+{
+    char *name;
+    void (*adder)(task_t *task, xmlNode *);
+    unsigned flags;
+};
+#define TASK_CHILD(scope, name, flags) \
+    { g_string(name), scope ## _add_ ## name, flags}
+
 struct task_ops_s
 {
     char *name;
-    gboolean (*init)(void);
-    gboolean (*parse)(task_t *, xmlNode *);
-    gboolean (*execute)(task_t *);
-    void (*delete)(task_t *);
+    
+    void (*init)(void); 	    	    /* static initialiser */
+    void (*new)(task_t *);  	    	    /* instance created */
+    gboolean (*post_parse)(task_t *);	    /* post-parsing check */
+    gboolean (*execute)(task_t *);  	    /* execute instance */
+    void (*delete)(task_t *);	    	    /* instance deleted */
+    task_attr_t *attrs;     	    	    /* attributes and setter methods */
+    task_child_t *children;     	    /* child elements and adder methods */
+    gboolean is_fileset;    	    	    /* parse as a fileset */
+    char *fileset_dir_name; 	    	    /* name of base dir property */
+    
+    /* Don't initialised these fields to anything except 0 */
+    GHashTable *attrs_hashed;	    /* task_attr_t's hashed on name */
+    GHashTable *children_hashed;    /* task_child_t's hashed on name */
 };
 
 #define XT_WHITESPACE	    (1<<0)  	/* escape whitespace in `arg' */
@@ -113,8 +147,8 @@ struct xtask_ops_s
     char *executable;
     char *logmessage;
     GList *args;    	    	/* list of xtask_arg_t */
+    props_t *property_map;	/* maps attributes to local property *name*s */
     
-    gboolean fileset_flag:1;
     gboolean foreach:1;
 };
 
@@ -225,17 +259,19 @@ void task_delete(task_t *);
 void task_set_id(task_t *, const char *id);
 void task_set_name(task_t *, const char *s);
 void task_set_description(task_t *, const char *s);
-const char *task_get_attribute(task_t *, const char *name);
-void task_add_attribute(task_t *, const char *name, const char *value);
+gboolean task_set_attribute(task_t *, const char *name, const char *value);
+void task_ops_attributes_apply(task_ops_t *ops,
+    void (*function)(const task_attr_t *ta, void *userdata), void *userdata);
+/* no task should ever need to call this */
+void task_ops_add_attribute(task_ops_t *, const task_attr_t *ta);
 void task_ops_register(task_ops_t *);
 void task_ops_unregister(task_ops_t *);
 task_ops_t *task_ops_find(const char *name);
 gboolean task_execute(task_t *);
+void task_initialise_builtins(void);
 
 #define task_expand(task, str) \
     project_expand((task)->project, (str))
-#define task_get_attribute_expanded(task, name) \
-    task_expand((task), task_get_attribute((task), (name)))
 
 /* xtask.c */
 xtask_ops_t *xtask_ops_new(const char *name);
@@ -245,6 +281,8 @@ void xtask_arg_set_unless_condition(xtask_arg_t *xa, const char *prop);
 xtask_arg_t *xtask_ops_add_line(xtask_ops_t *xops, const char *s);
 xtask_arg_t *xtask_ops_add_value(xtask_ops_t *xops, const char *s);
 xtask_arg_t *xtask_ops_add_fileset(xtask_ops_t *xops, fileset_t *fs);
+void xtask_ops_add_attribute(xtask_ops_t *xops, const char *attr,
+    const char *prop, gboolean required);
 
 
 /* fileset.c */
@@ -261,7 +299,7 @@ fs_spec_t *fileset_add_exclude(fileset_t *, const char *s);
 fs_spec_t *fileset_add_exclude_file(fileset_t *, const char *s);
 void fileset_set_default_excludes(fileset_t *, gboolean b);
 void fileset_set_case_sensitive(fileset_t *, gboolean b);
-int fileset_apply_children(fileset_t *, file_apply_proc_t, void *userdata);
+int fileset_apply(fileset_t *, file_apply_proc_t, void *userdata);
 GList *fileset_gather(fileset_t *);
 
 /* pattern.c */
@@ -283,6 +321,7 @@ char *file_make_absolute(const char *filename);
 int file_build_tree(const char *dirname, mode_t mode);	/* make sequence of directories */
 mode_t file_mode_from_string(const char *str, mode_t base, mode_t deflt);
 int file_apply_children(const char *filename, file_apply_proc_t, void *userdata);
+int file_is_directory(const char *filename);
 
 /* process.c */
 int process_run(strarray_t *command, strarray_t *env);

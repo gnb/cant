@@ -28,7 +28,7 @@ typedef struct props_s	props_t;
  * Create and destroy property collections.
  */
 props_t *props_new(props_t *parent);
-props_t *props_delete(props_t *);
+void props_delete(props_t *);
 
 /*
  * Copy all the name/value pairs from `orig' to `props'.

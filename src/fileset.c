@@ -20,7 +20,7 @@
 #include "cant.h"
 #include <dirent.h>
 
-CVSID("$Id: fileset.c,v 1.4 2001-11-06 14:05:56 gnb Exp $");
+CVSID("$Id: fileset.c,v 1.5 2001-11-08 04:13:35 gnb Exp $");
 
 typedef enum { FS_IN, FS_EX, FS_UNKNOWN } fs_result_t;
 
@@ -370,6 +370,8 @@ fileset_apply(
     ret = fileset_apply_1(fs, expdir, func, userdata);
     
     g_free(expdir);
+    
+    return ret;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

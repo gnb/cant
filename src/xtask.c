@@ -19,41 +19,37 @@
 
 #include "cant.h"
 
-CVSID("$Id: xtask.c,v 1.3 2001-11-07 08:59:20 gnb Exp $");
+CVSID("$Id: xtask.c,v 1.4 2001-11-08 04:13:35 gnb Exp $");
 
 typedef struct
 {
-    fileset_t *fileset;
+    gboolean result;
     props_t *properties;    /* local properties, overriding the project */
 } xtask_private_t;
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void xtask_delete(task_t *);
-
-static gboolean
-xtask_parse(task_t *task, xmlNode *node)
+static void
+xtask_new(task_t *task)
 {
-    xtask_ops_t *xops = (xtask_ops_t *)task->ops;
     xtask_private_t *xp;
+    
+    task->private = xp = new(xtask_private_t);
 
-#if DEBUG
-    fprintf(stderr, "xtask_parse: parsing \"%s\"\n", task->name);
-#endif
+    xp->properties = props_new(task->project->fixed_properties);    
+}
 
-    xp = new(xtask_private_t);
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-    /* TODO: support fileset children */
-    if (xops->fileset_flag)
-    {
-    	/* TODO: allow xtaskdef to override the "dir" attribute name */
-    	if ((xp->fileset = parse_fileset(task->project, node, "dir")) == 0)
-	    return FALSE;
-    }
-        
-    task->private = xp;
-
-    return TRUE;
+void
+xtask_generic_setter(task_t *task, const char *name, const char *value)
+{
+    xtask_private_t *xp = (xtask_private_t *)task->private;
+    xtask_ops_t *xops = (xtask_ops_t *)task->ops;
+    const char *propname;
+    
+    if ((propname = props_get(xops->property_map, name)) != 0)
+    	props_set(xp->properties, propname, value);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -161,7 +157,10 @@ xtask_execute_command(task_t *task)
 #endif
 
     if ((status = process_run(command, 0)) != 0)
+    {
     	process_log_status(strarray_nth(command, 0), status);
+	xp->result = FALSE;
+    }
     
     strarray_delete(command);
     
@@ -172,9 +171,9 @@ static gboolean
 xtask_execute_one(const char *filename, void *userdata)
 {
     task_t *task = (task_t *)userdata;
-    xtask_ops_t *xops = (xtask_ops_t *)task->ops;
+    xtask_private_t *xp = (xtask_private_t *)task->private;
     
-    project_set_property(task->project, "file", filename);
+    props_set(xp->properties, "file", filename);
     return xtask_execute_command(task);
 }
 
@@ -188,15 +187,15 @@ xtask_execute(task_t *task)
     fprintf(stderr, "xtask_execute: executing \"%s\"\n", task->name);
 #endif
 
-    /* create a temporary props to hold locally scoped properties */
-    xp->properties = props_new(task->project->fixed_properties);
-
-    if (xops->fileset_flag)
+    /* default result */
+    xp->result = TRUE;
+    
+    if (xops->task_ops.is_fileset)
     {
     	if (xops->foreach)
 	{
 	    /* run the command once for each file in the fileset */
-	    fileset_apply(xp->fileset, xtask_execute_one, task);
+	    fileset_apply(task->fileset, xtask_execute_one, task);
 	}
 	else
 	{
@@ -205,7 +204,7 @@ xtask_execute(task_t *task)
 
     	    /* This is of course *NOT* whitespace-safe */
 	    estring_init(&files);
-	    fileset_apply(xp->fileset, xtask_append_file_estring, &files);
+	    fileset_apply(task->fileset, xtask_append_file_estring, &files);
 	    props_setm(xp->properties, "files", files.data);
 
     	    /* run the command just once */
@@ -219,10 +218,10 @@ xtask_execute(task_t *task)
     }
     
     /* wipe out any temporary properties */
-    props_delete(xp->properties);
-    xp->properties = 0;
+    props_setm(xp->properties, "file", 0);
+    props_setm(xp->properties, "files", 0);
     
-    return TRUE;
+    return xp->result;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -236,10 +235,7 @@ xtask_delete(task_t *task)
     fprintf(stderr, "xtask_delete: deleting \"%s\"\n", task->name);
 #endif
 
-    if (xp->fileset != 0)
-    	fileset_delete(xp->fileset);
-    if (xp->properties != 0)
-	props_delete(xp->properties);
+    props_delete(xp->properties);
 	
     g_free(xp);
 
@@ -316,9 +312,12 @@ xtask_ops_new(const char *name)
     strassign(xops->task_ops.name, name);
 
     xops->task_ops.init = 0;
-    xops->task_ops.parse = xtask_parse;
+    xops->task_ops.new = xtask_new;
+    xops->task_ops.post_parse = 0;
     xops->task_ops.execute = xtask_execute;
     xops->task_ops.delete = xtask_delete;
+    
+    xops->property_map = props_new(0);
 
     return xops;
 }
@@ -336,6 +335,8 @@ xtask_ops_delete(xtask_ops_t *xops)
     strdelete(xops->task_ops.name);
     strdelete(xops->executable);
     strdelete(xops->logmessage);
+
+    props_delete(xops->property_map);
 
     g_free(xops);
 }
@@ -376,6 +377,26 @@ xtask_ops_add_fileset(xtask_ops_t *xops, fileset_t *fs)
     xops->args = g_list_append(xops->args, xa);
     
     return xa;
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+void
+xtask_ops_add_attribute(
+    xtask_ops_t *xops,
+    const char *attr,
+    const char *prop,
+    gboolean required)
+{
+    task_attr_t proto;
+    
+    proto.name = (char *)attr;
+    proto.setter = xtask_generic_setter;
+    proto.flags = (required ? TT_REQUIRED : 0);
+
+    task_ops_add_attribute((task_ops_t *)xops, &proto);
+    
+    props_set(xops->property_map, attr, prop);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

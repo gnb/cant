@@ -26,7 +26,7 @@ struct props_s
     GHashTable *values;
 };
 
-CVSID("$Id: props.c,v 1.5 2001-11-07 08:59:20 gnb Exp $");
+CVSID("$Id: props.c,v 1.6 2001-11-08 04:13:35 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -67,7 +67,7 @@ _props_delete_one_value(gpointer key, gpointer value, gpointer userdata)
     return TRUE;    /* so remove me already */
 }
 
-props_t *
+void
 props_delete(props_t *props)
 {
     g_hash_table_foreach_remove(props->values, _props_delete_one_value, 0);

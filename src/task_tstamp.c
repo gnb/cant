@@ -20,7 +20,7 @@
 #include "cant.h"
 #include <time.h>
 
-CVSID("$Id: task_tstamp.c,v 1.3 2001-11-06 09:29:06 gnb Exp $");
+CVSID("$Id: task_tstamp.c,v 1.4 2001-11-08 04:13:35 gnb Exp $");
 
 typedef struct
 {
@@ -51,12 +51,9 @@ tstamp_format_new(void)
 static void
 tstamp_format_delete(tstamp_format_t *fmt)
 {
-    if (fmt->property != 0)
-    	g_free(fmt->property);
-    if (fmt->cpattern != 0)
-    	g_free(fmt->cpattern);
-    if (fmt->locale != 0)
-    	g_free(fmt->locale);
+    strdelete(fmt->property);
+    strdelete(fmt->cpattern);
+    strdelete(fmt->locale);
     g_free(fmt);
 }
 
@@ -65,9 +62,7 @@ tstamp_format_delete(tstamp_format_t *fmt)
 static void
 tstamp_format_set_property(tstamp_format_t *fmt, const char *property)
 {
-    if (fmt->property != 0)
-    	g_free(fmt->property);
-    fmt->property = g_strdup(property);
+    strassign(fmt->property, property);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -148,7 +143,7 @@ tstamp_format_set_offset(
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static gboolean
+static void
 tstamp_init(void)
 {
     tstamp_format_t *fmt;
@@ -167,6 +162,14 @@ tstamp_init(void)
     tstamp_format_set_property(fmt, "TODAY");
     tstamp_format_set_pattern(fmt, "MMMM dd yyyy");
     tstamp_builtins = g_list_append(tstamp_builtins, fmt);
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+static void
+tstamp_new(task_t *task)
+{
+    task->private = 0;	/* GList of tstamp_format_t */
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -245,28 +248,16 @@ tstamp_format_parse(task_t *task, xmlNode *node)
     return fmt;
 }
 
-static gboolean
-tstamp_parse(task_t *task, xmlNode *node)
+static void
+tstamp_add_format(task_t *task, xmlNode *node)
 {
-    xmlNode *child;
-    GList *fmt_list = 0;
+    GList *fmt_list = (GList *)task->private;
     tstamp_format_t *fmt;
     
-    for (child = node->childs ; child != 0 ; child = child->next)
-    {
-    	if (child->type != XML_ELEMENT_NODE)
-	    continue;
-	
-	if (strcmp(child->name, "format"))
-	    continue;
-	    
-    	if ((fmt = tstamp_format_parse(task, child)) != 0)
-	    fmt_list = g_list_append(fmt_list, fmt);
-    }
+    if ((fmt = tstamp_format_parse(task, node)) != 0)
+	fmt_list = g_list_append(fmt_list, fmt);
 
     task->private = fmt_list;
-
-    return TRUE;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -318,13 +309,24 @@ tstamp_delete(task_t *task)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
+static task_child_t tstamp_children[] = 
+{
+    TASK_CHILD(tstamp, format, 0),
+    {0}
+};
+
 task_ops_t tstamp_ops = 
 {
     "tstamp",
     tstamp_init,
-    tstamp_parse,
+    tstamp_new,
+    /*post_parse*/0,
     tstamp_execute,
-    tstamp_delete
+    tstamp_delete,
+    /*attrs*/0,
+    /*children*/tstamp_children,
+    /*is_fileset*/FALSE,
+    /*fileset_dir_name*/0
 };
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

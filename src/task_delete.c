@@ -31,47 +31,94 @@ typedef struct
     gboolean result:1;
 } delete_private_t;
 
-CVSID("$Id: task_delete.c,v 1.3 2001-11-06 09:29:06 gnb Exp $");
+CVSID("$Id: task_delete.c,v 1.4 2001-11-08 04:13:35 gnb Exp $");
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+static void
+delete_new(task_t *task)
+{
+    delete_private_t *dp;
+
+    task->private = dp = new(delete_private_t);
+    
+    /* default values */
+    dp->verbose = FALSE;
+    dp->quiet = FALSE;
+    dp->fail_on_error = TRUE;
+    dp->include_empty_dirs = FALSE;
+}
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static void delete_delete(task_t *);
+    
+static void
+delete_set_file(task_t *task, const char *name, const char *value)
+{
+    delete_private_t *dp = (delete_private_t *)task->private;
+
+    strassign(dp->file, value);
+}
+
+static void
+delete_set_dir(task_t *task, const char *name, const char *value)
+{
+    delete_private_t *dp = (delete_private_t *)task->private;
+
+    strassign(dp->directory, value);
+}
+    
+static void
+delete_set_verbose(task_t *task, const char *name, const char *value)
+{
+    delete_private_t *dp = (delete_private_t *)task->private;
+
+    boolassign(dp->verbose, value);
+}
+
+static void
+delete_set_quiet(task_t *task, const char *name, const char *value)
+{
+    delete_private_t *dp = (delete_private_t *)task->private;
+
+    boolassign(dp->quiet, value);
+}
+
+static void
+delete_set_failonerror(task_t *task, const char *name, const char *value)
+{
+    delete_private_t *dp = (delete_private_t *)task->private;
+
+    boolassign(dp->fail_on_error, value);
+}
+
+static void
+delete_set_includeEmptyDirs(task_t *task, const char *name, const char *value)
+{
+    delete_private_t *dp = (delete_private_t *)task->private;
+
+    boolassign(dp->include_empty_dirs, value);
+}
+
+static void
+delete_add_fileset(task_t *task, xmlNode *node)
+{
+    delete_private_t *dp = (delete_private_t *)task->private;
+    fileset_t *fs;
+
+    if ((fs = parse_fileset(task->project, node, "dir")) != 0)
+	dp->filesets = g_list_append(dp->filesets, fs);
+}
 
 static gboolean
-delete_parse(task_t *task, xmlNode *node)
+delete_post_parse(task_t *task)
 {
-    xmlNode *child;
-    delete_private_t *dp;
-    fileset_t *fs;
-    
-    dp = new(delete_private_t);
-    task->private = dp;
-    
-    dp->file = xml2g(xmlGetProp(node, "file"));
-    dp->directory = xml2g(xmlGetProp(node, "dir"));
-    
-    dp->verbose = cantXmlGetBooleanProp(node, "verbose", FALSE);
-    dp->quiet = cantXmlGetBooleanProp(node, "quiet", FALSE);
-    dp->fail_on_error = cantXmlGetBooleanProp(node, "failonerror", TRUE);
-    dp->include_empty_dirs = cantXmlGetBooleanProp(node, "includeEmptyDirs", FALSE);
-    
-    /* parse <fileset> children */    
-    for (child = node->childs ; child != 0 ; child = child->next)
-    {
-    	if (child->type != XML_ELEMENT_NODE)
-	    continue;
-	
-	if (!strcmp(child->name, "fileset"))
-	{
-    	    if ((fs = parse_fileset(task->project, child, "dir")) != 0)
-		dp->filesets = g_list_append(dp->filesets, fs);
-	}
-    }
+    delete_private_t *dp = (delete_private_t *)task->private;
 
     if (dp->file == 0 && dp->directory == 0 && dp->filesets == 0)
     {
     	parse_error("At least one of \"file\", \"dir\" or \"<fileset>\" must be present\n");
-	delete_delete(task);
 	return FALSE;
     }
 
@@ -177,13 +224,35 @@ delete_delete(task_t *task)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
+static task_attr_t delete_attrs[] = 
+{
+    TASK_ATTR(delete, file, 0),
+    TASK_ATTR(delete, dir, 0),
+    TASK_ATTR(delete, verbose, 0),
+    TASK_ATTR(delete, quiet, 0),
+    TASK_ATTR(delete, failonerror, 0),
+    TASK_ATTR(delete, includeEmptyDirs, 0),
+    {0}
+};
+
+static task_child_t delete_children[] = 
+{
+    TASK_CHILD(delete, fileset, 0),
+    {0}
+};
+
 task_ops_t delete_ops = 
 {
     "delete",
     /*init*/0,
-    delete_parse,
+    delete_new,
+    delete_post_parse,
     delete_execute,
-    delete_delete
+    delete_delete,
+    delete_attrs,
+    delete_children,
+    /*is_fileset*/FALSE,
+    /*fileset_dir_name*/0
 };
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

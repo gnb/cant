@@ -20,7 +20,7 @@
 #include "cant.h"
 #include <parser.h>
 
-CVSID("$Id: buildfile.c,v 1.3 2001-11-06 14:10:02 gnb Exp $");
+CVSID("$Id: buildfile.c,v 1.4 2001-11-08 04:13:35 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -194,7 +194,8 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
     /* TODO: xtask_ops_set_*() functions */
     xops->executable = xml2g(xmlGetProp(node, "executable"));
     xops->logmessage = xml2g(xmlGetProp(node, "logmessage"));
-    xops->fileset_flag = cantXmlGetBooleanProp(node, "fileset", FALSE);
+    xops->task_ops.is_fileset = cantXmlGetBooleanProp(node, "fileset", FALSE);
+    xops->task_ops.fileset_dir_name = "dir";	/* TODO */
     xops->foreach = cantXmlGetBooleanProp(node, "foreach", FALSE);
 
     /* TODO: syntax check other attributes */
@@ -219,6 +220,24 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
 	    }
 	    else
 	    	parse_error("One of \"line\" or \"value\" must be set\n");
+	}
+	else if (!strcmp(child->name, "attr"))
+	{
+	    char *from = 0, *to = 0;
+	    
+	    if ((from = xmlGetProp(child, "attribute")) == 0)
+	    	parse_error("Required attribute \"attribute\" missing\n");
+	    else if ((to = xmlGetProp(child, "property")) == 0)
+	    	to = xmlMemStrdup(from);
+
+    	    if (from != 0)
+    	    	xtask_ops_add_attribute(xops, from, to,
+		    	cantXmlGetBooleanProp(child, "required", FALSE));
+		
+	    if (from != 0)
+		xmlFree(from);
+	    if (to != 0)
+		xmlFree(to);
 	}
 	else if (!strcmp(child->name, "fileset"))
 	{
@@ -397,6 +416,24 @@ parse_path(project_t *proj, xmlNode *node)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
+static void
+check_one_attribute(const task_attr_t *ta, void *userdata)
+{
+    xmlNode *node = (xmlNode *)userdata;
+    char *value;
+
+    if (!(ta->flags & TT_REQUIRED))
+    	return;
+	
+    if ((value = xmlGetProp(node, ta->name)) == 0)
+    {
+	parse_error("Required attribute \"%s\" missing\n", ta->name);
+	/* TODO: task_delete(task); */
+	return;
+    }
+    xmlFree(value);
+}
+
 static gboolean
 dummy_task_execute(task_t *task)
 {
@@ -410,7 +447,8 @@ static task_ops_t dummy_ops =
     /*init*/0,
     /*parse*/0,
     dummy_task_execute,
-    /*delete*/0
+    /*delete*/0,
+    /*attrs*/0
 };
 
 task_t *
@@ -418,7 +456,9 @@ parse_task(project_t *proj, xmlNode *node)
 {
     task_t *task;
     xmlAttr *attr;
+    xmlNode *child;
     task_ops_t *ops;
+    task_child_t *tc;
     
 #if DEBUG
     fprintf(stderr, "parse_task: parsing task \"%s\"\n", node->name);
@@ -438,6 +478,9 @@ parse_task(project_t *proj, xmlNode *node)
     task->ops = ops;
     task_set_name(task, ops->name);
     
+    if (ops->new != 0)
+    	(*ops->new)(task);
+    
     for (attr = node->properties ; attr != 0 ; attr = attr->next)
     {
     	char *value = cantXmlAttrValue(attr);
@@ -448,18 +491,48 @@ parse_task(project_t *proj, xmlNode *node)
 	    task_set_name(task, value);
     	else if (!strcmp(attr->name, "description"))
 	    task_set_description(task, value);
+	else if (ops->is_fileset && !strcmp(attr->name, ops->fileset_dir_name))
+	    ;	/* parse_fileset will get it later */
 	else
-	    task_add_attribute(task, attr->name, value);
-
+	{
+	    task_set_attribute(task, attr->name, value);
+	    /* TODO: whinge about superfluous attributes */
+	}
     	xmlFree(value);
     }
     
-    if (task->ops->parse != 0 && !(*task->ops->parse)(task, node))
+    /* scan for required attributes and whinge about their absence */
+    task_ops_attributes_apply(ops, check_one_attribute, node);
+    /* TODO: whinge about absence of "dir" */
+
+    if (ops->is_fileset &&
+    	(task->fileset = parse_fileset(proj, node, ops->fileset_dir_name)) == 0)
     {
     	task_delete(task);
-    	return 0;
+	return 0;
     }
+
+    /* parse the child nodes */
+    for (child = node->childs ; child != 0 ; child = child->next)
+    {
+    	if (child->type != XML_ELEMENT_NODE)
+	    continue;
+	/* TODO: handle character data */
 	
+	tc = (task_child_t *)g_hash_table_lookup(ops->children_hashed, child->name);
+	if (tc != 0)
+	    (*tc->adder)(task, child);
+	/* TODO: whinge about superfluous children */
+    }
+    
+    /* TODO: scan for required children */
+    
+    if (ops->post_parse != 0 && !(*ops->post_parse)(task))
+    {
+    	task_delete(task);
+	return 0;
+    }
+
     return task;
 }
 
@@ -489,7 +562,7 @@ add_depends(project_t *proj, target_t *targ, const char *str)
 	    project_add_target(proj, dep);
 	}
 	
-	dep->flags != T_DEPENDED_ON;
+	dep->flags |= T_DEPENDED_ON;
 	targ->depends = g_list_append(targ->depends, dep);
     }
     
@@ -501,7 +574,6 @@ static void
 parse_target(project_t *proj, xmlNode *node)
 {
     target_t *targ;
-    const xmlChar **p;
     char *name = 0;
     xmlAttr *attr;
     xmlNode *child;
@@ -568,7 +640,7 @@ parse_target(project_t *proj, xmlNode *node)
 static void
 check_one_target(gpointer key, gpointer value, gpointer userdata)
 {
-    project_t *proj = (project_t *)userdata;
+/*    project_t *proj = (project_t *)userdata; */
     target_t *targ = (target_t *)value;
     
     if ((targ->flags & (T_DEFINED|T_DEPENDED_ON)) == T_DEPENDED_ON)

@@ -19,20 +19,38 @@
 
 #include "cant.h"
 
-CVSID("$Id: task_mkdir.c,v 1.2 2001-11-06 09:10:30 gnb Exp $");
+CVSID("$Id: task_mkdir.c,v 1.3 2001-11-08 04:13:35 gnb Exp $");
+
+typedef struct
+{
+    char *directory;
+    char *mode;
+} mkdir_private_t;
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static gboolean
-mkdir_parse(task_t *task, xmlNode *node)
+static void
+mkdir_new(task_t *task)
 {
-    if (task_get_attribute(task, "dir") == 0)
-    {
-    	parse_error("Required attribute \"dir\" missing\n");
-    	return FALSE;
-    }
+    task->private = new(mkdir_private_t);
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+static void
+mkdir_set_dir(task_t *task, const char *name, const char *value)
+{
+    mkdir_private_t *mp = (mkdir_private_t *)task->private;
     
-    return TRUE;
+    strassign(mp->directory, value);
+}
+
+static void
+mkdir_set_mode(task_t *task, const char *name, const char *value)
+{
+    mkdir_private_t *mp = (mkdir_private_t *)task->private;
+    
+    strassign(mp->mode, value);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -40,13 +58,22 @@ mkdir_parse(task_t *task, xmlNode *node)
 static gboolean
 mkdir_execute(task_t *task)
 {
+    mkdir_private_t *mp = (mkdir_private_t *)task->private;
     char *dir;
     char *modestr;
     mode_t mode;
     gboolean ret = TRUE;
     
-    dir = task_get_attribute_expanded(task, "dir");
-    modestr = task_get_attribute_expanded(task, "mode");
+    dir = task_expand(task, mp->directory);
+    if (dir != 0 && *dir == '\0')
+    {
+    	g_free(dir);
+	dir = 0;
+    }
+    if (dir == 0)
+    	return TRUE;	/* empty directory -> trivially succeed ??? */
+    
+    modestr = task_expand(task, mp->mode);
     
     mode = file_mode_from_string(modestr, 0, 0755);
     
@@ -69,13 +96,25 @@ mkdir_execute(task_t *task)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
+static task_attr_t mkdir_attrs[] = 
+{
+    TASK_ATTR(mkdir, dir, TT_REQUIRED),
+    TASK_ATTR(mkdir, mode, 0),
+    {0}
+};
+
 task_ops_t mkdir_ops = 
 {
     "mkdir",
     /*init*/0,
-    mkdir_parse,
+    mkdir_new,
+    /*post_parse*/0,
     mkdir_execute,
-    /*delete*/0
+    /*delete*/0,
+    mkdir_attrs,
+    /*children*/0,
+    /*is_fileset*/FALSE,
+    /*fileset_dir_name*/0
 };
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
