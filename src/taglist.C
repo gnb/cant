@@ -20,7 +20,7 @@
 #include "cant.H"
 #include "tok.H"
 
-CVSID("$Id: taglist.C,v 1.4 2002-03-29 16:12:31 gnb Exp $");
+CVSID("$Id: taglist.C,v 1.5 2002-04-06 04:16:38 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -207,7 +207,7 @@ taglist_new(const char *name_space)
 static void
 taglist_delete(taglist_t *tl)
 {
-    listdelete(tl->items, tl_item_t, tl_item_delete);
+    tl->items.apply_remove(tl_item_delete);
     strdelete(tl->name_space);
     strdelete(tl->id);
     g_free(tl);
@@ -245,7 +245,7 @@ taglist_add_item(
     tl_item_t *tlitem;
     
     tlitem = tl_item_new(tag, name, type, value);
-    tl->items = g_list_append(tl->items, tlitem);
+    tl->items.append(tlitem);
     
     return tlitem;
 }
@@ -282,7 +282,7 @@ taglist_gather(
     props_t *props, 	/* for evaluating conditions & expansions */
     strarray_t *sa) 	/* results appended to this */
 {
-    GList *iter;
+    list_iterator_t<tl_item_t> iter;
     strarray_t *exps;
     char *expvalue;
     props_t *localprops;
@@ -308,9 +308,9 @@ taglist_gather(
     
     localprops = props_new(/*parent*/props);
     
-    for (iter = tl->items ; iter != 0 ; iter = iter->next)
+    for (iter = tl->items.first() ; iter != 0 ; ++iter)
     {
-    	tl_item_t *tlitem = (tl_item_t *)iter->data;
+    	tl_item_t *tlitem = *iter;
 	
 	if (!condition_evaluate(&tlitem->condition, props))
 	    continue;
@@ -376,14 +376,16 @@ taglist_gather(
 
 void
 taglist_list_gather(
-    GList *list,    	/* of taglist_t */
+    const list_t<taglist_t> *list,
     tagexp_t *te,
     props_t *props,
     strarray_t *sa)
 {
-    for ( ; list != 0 ; list = list->next)
+    list_iterator_t<taglist_t> iter;
+    
+    for (iter = list->first() ; iter != 0 ; ++iter)
     {
-    	taglist_t *tl = (taglist_t *)list->data;
+    	taglist_t *tl = *iter;
 	
 	if (!strcmp(tl->name_space, te->name_space))
 	    taglist_gather(tl, te, props, sa);

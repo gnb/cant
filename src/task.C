@@ -19,7 +19,7 @@
 
 #include "cant.H"
 
-CVSID("$Id: task.C,v 1.3 2002-04-02 11:52:28 gnb Exp $");
+CVSID("$Id: task.C,v 1.4 2002-04-06 04:16:38 gnb Exp $");
 
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -41,7 +41,7 @@ task_t::~task_t()
     
     // TODO: delete fileset_
 
-    listdelete(subtasks_, task_t, delete);
+    subtasks_.delete_all();
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -50,7 +50,7 @@ void
 task_t::add_subtask(task_t *subtask)
 {
     assert(tclass_->is_composite());
-    subtasks_ = g_list_append(subtasks_, subtask);
+    subtasks_.append(subtask);
 }
 
 void
@@ -77,15 +77,11 @@ task_t::post_parse()
 void
 task_t::attach(target_t *targ)
 {
-    GList *iter;
+    list_iterator_t<task_t> iter;
     
     target_ = targ;
-    for (iter = subtasks_ ; iter != 0 ; iter = iter->next)
-    {
-    	task_t *subtask = (task_t *)iter->data;
-	
-	subtask->attach(targ);
-    }
+    for (iter = subtasks_.first() ; iter != 0 ; ++iter)
+	(*iter)->attach(targ);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -125,11 +121,11 @@ task_t::execute()
 gboolean
 task_t::execute_subtasks()
 {
-    GList *iter;
+    list_iterator_t<task_t> iter;
 
-    for (iter = subtasks_ ; iter != 0 ; iter = iter->next)
+    for (iter = subtasks_.first() ; iter != 0 ; ++iter)
     {
-	task_t *subtask = (task_t *)iter->data;
+	task_t *subtask = *iter;
 
 	if (!subtask->execute())
 	    return FALSE;

@@ -20,7 +20,7 @@
 #include "xtask.H"
 #include "job.H"
 
-CVSID("$Id: xtask.C,v 1.4 2002-04-02 11:52:28 gnb Exp $");
+CVSID("$Id: xtask.C,v 1.5 2002-04-06 04:16:38 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -38,7 +38,7 @@ xtask_t::~xtask_t()
 #endif
 
     /* TODO: delete unrefed filesets */
-    listdelete(taglists_, taglist_t, taglist_unref);
+    taglists_.apply_remove(taglist_unref);
     
     props_delete(properties_);
 }
@@ -67,7 +67,7 @@ xtask_t::generic_adder(xmlNode *node)
     if ((tl = parse_taglist(project_, node)) == 0)
     	return FALSE;
     
-    taglists_ = g_list_append(taglists_, tl);
+    taglists_.append(tl);
     return TRUE;
 }
 
@@ -78,15 +78,15 @@ gboolean
 xtask_t::build_command(strarray_t *command)
 {
     xtask_class_t *xtclass = (xtask_class_t *)tclass_;     /* downcast */
-    GList *iter;
+    list_iterator_t<xtask_class_t::arg_t> iter;
     char *exp;
 
     if (xtclass->executable_ != 0)
     	command->appendm(props_expand(properties_, xtclass->executable_));
     
-    for (iter = xtclass->args_ ; iter != 0 ; iter = iter->next)
+    for (iter = xtclass->args_.first() ; iter != 0 ; ++iter)
     {
-    	xtask_class_t::arg_t *xa = (xtask_class_t::arg_t *)iter->data;
+    	xtask_class_t::arg_t *xa = *iter;
 
     	if (!condition_evaluate(&xa->condition, properties_))
 	    continue;
@@ -124,11 +124,11 @@ xtask_t::build_command(strarray_t *command)
 	case xtask_class_t::XT_FILES:	    /* <files> child */
 	    if (fileset_ != 0)
     	    	fileset_gather_mapped(fileset_, properties_,
-		    	    	      command, xtclass->mappers_);
+		    	    	      command, &xtclass->mappers_);
 	    break;
 	    
 	case xtask_class_t::XT_TAGEXPAND:  /* <tagexpand> child */
-	    taglist_list_gather(taglists_, xa->data.tagexp,
+	    taglist_list_gather(&taglists_, xa->data.tagexp,
 	    	    	    	properties_, command);
 	    break;
 	}
@@ -165,17 +165,15 @@ xtask_t::execute_command()
     {
 	if (xtclass->foreach_)
 	{
-	    GList *iter;
+	    list_iterator_t<mapper_t> iter;
 	    char *depfile;
 
 	    depfile = props_expand(properties_, "${file}");
 	    depfiles->appendm(depfile);
 	    
-	    for (iter = xtclass->dep_mappers_ ; iter != 0 ; iter = iter->next)
+	    for (iter = xtclass->dep_mappers_.first() ; iter != 0 ; ++iter)
 	    {
-		mapper_t *ma = (mapper_t *)iter->data;
-
-		if ((targfile = mapper_map(ma, depfile)) != 0)
+		if ((targfile = mapper_map((*iter), depfile)) != 0)
 	    	    break;
 	    }
 	    /* TODO: expand targfile */
@@ -183,7 +181,7 @@ xtask_t::execute_command()
 	else
 	{
     	    fileset_gather_mapped(fileset_, properties_,
-	    	    	    	  depfiles, xtclass->mappers_);
+	    	    	    	  depfiles, &xtclass->mappers_);
 
     	    targfile = props_expand(properties_, xtclass->dep_target_);
     	}
@@ -322,9 +320,9 @@ xtask_class_t::xtask_class_t(const char *name)
 
 xtask_class_t::~xtask_class_t()
 {
-    listdelete(args_, xtask_class_t::arg_t, delete);
-    listdelete(mappers_, mapper_t, mapper_delete);
-    listdelete(dep_mappers_, mapper_t, mapper_delete);
+    args_.delete_all();
+    mappers_.delete_all();
+    dep_mappers_.delete_all();
     
     strdelete(name_);
     strdelete(executable_);
@@ -357,7 +355,7 @@ xtask_class_t::add_arg(xtask_class_t::arg_type_t type)
     
     xa = new arg_t(type);
     
-    args_ = g_list_append(args_, xa);
+    args_.append(xa);
     
     return xa;
 }

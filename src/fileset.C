@@ -24,7 +24,7 @@
 #include "log.H"
 #include <dirent.h>
 
-CVSID("$Id: fileset.C,v 1.3 2002-03-29 13:57:32 gnb Exp $");
+CVSID("$Id: fileset.C,v 1.4 2002-04-06 04:16:38 gnb Exp $");
 
 static void fs_spec_delete(fs_spec_t *fss);
 
@@ -47,7 +47,7 @@ fileset_new(void)
 static void
 fileset_delete(fileset_t *fs)
 {
-    listdelete(fs->specs, fs_spec_t, fs_spec_delete);
+    fs->specs.apply_remove(fs_spec_delete);
     strdelete(fs->id);
     strdelete(fs->directory);
 	
@@ -105,7 +105,7 @@ fs_spec_add(
     strassign(fss->filename, filename);
     condition_init(&fss->condition);
 
-    fs->specs = g_list_append(fs->specs, fss);
+    fs->specs.append(fss);
         
     return fss;
 }
@@ -159,7 +159,7 @@ fileset_set_case_sensitive(fileset_t *fs, gboolean b)
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
-
+#if 0
 static void
 list_splice(GList *after, GList *list2)
 {
@@ -177,12 +177,13 @@ list_splice(GList *after, GList *list2)
     after->next = list2;
     list2->prev = after;
 }
+#endif
 
 typedef struct
 {
     char *basedir;
-    GList *filenames;
-    GList *pending;
+    list_t<char> filenames;
+    list_t<char> pending;
     gboolean case_sens;
     gboolean check_exists;
 } fs_glob_state_t;
@@ -195,13 +196,13 @@ static void
 glob_part(
     fs_glob_state_t *state,
     const char *globpart,
-    GList *baselink)
+    list_iterator_t<char> baselink)
 {
     pattern_t pat;
     DIR *dir;
     struct dirent *de;
-    GList *results = 0;
-    char *base = (char *)baselink->data;
+    list_t<char> results;
+    char *base = *baselink;
     char *newpath;
 
     if ((dir = file_opendir(*base == '\0' ? "." : base)) != 0)
@@ -223,7 +224,7 @@ glob_part(
     		fprintf(stderr, "glob_part(\"%s\", \"%s\") -> \"%s\"\n",
 		    	base, globpart, newpath);
 #endif
-		results = g_list_append(results, newpath);
+		results.append(newpath);
 	    }
 	}
 
@@ -232,9 +233,9 @@ glob_part(
     }
 
 
-    list_splice(baselink, results);
+    baselink.splice_after(&results);
     g_free(base);
-    state->pending = g_list_remove_link(state->pending, baselink);
+    state->pending.remove(baselink);
 }
 
 
@@ -271,7 +272,7 @@ glob_recurse(
     		fprintf(stderr, "glob_recurse(\"%s\") -> \"%s\"\n",
 		    	    	pat->pattern, newpath);
 #endif
-    	    	state->pending = g_list_append(state->pending, newpath);
+    	    	state->pending.append(newpath);
 	    }
 	    else
 	    	g_free(newpath);
@@ -282,17 +283,16 @@ glob_recurse(
 }
 
 /*
- * Replace the single list item `baselink' with a list of
- * files matching the glob-directory-sequence `globseq'.
+ * Update all of the pending list with  files matching
+ * the glob-directory-sequence `globpath'.
  */
 static void
 glob_path(
     fs_glob_state_t *state,
-    char *globpath,
-    GList *baselink)
+    char *globpath)
 {
     const char *part;
-    GList *iter, *next;
+    list_iterator_t<char> iter, next;
     tok_t tok((const char *)globpath, "/");
 
     while ((part = tok.next()) != 0)
@@ -300,47 +300,46 @@ glob_path(
 	if (!strcmp(part, "**"))
 	{
 	    pattern_t pat;
-	    GList *oldpending;
+	    list_t<char> oldpending;
 	    
     	    pattern_init(&pat, globpath, (state->case_sens ? PAT_CASE : 0));
 
-    	    oldpending = state->pending;
-	    state->pending = 0;
-	    while (oldpending != 0)
+    	    oldpending.take(&state->pending);
+	    char *base;
+	    while ((base = oldpending.remove_head()) != 0)
 	    {
-	    	char *base = (char *)oldpending->data;
 		glob_recurse(state, &pat, base);
 		g_free(base);
-	    	oldpending = g_list_remove_link(oldpending, oldpending);
 	    }
+	    // TODO: is `pat' leaked here?
 	    break;
 	}
 	else if (strpbrk(part, "*?[]"))
 	{
 	    state->check_exists = TRUE;
-	    for (iter = state->pending ; iter != 0 ; iter = next)
+	    for (iter = state->pending.first() ; iter != 0 ; iter = next)
 	    {
-	    	next = iter->next;
+	    	next = iter.peek_next();
 		glob_part(state, part, iter);
 	    }
 	}
 	else
 	{
-	    for (iter = state->pending ; iter != 0 ; iter = next)
+	    for (iter = state->pending.first() ; iter != 0 ; iter = next)
 	    {
-	    	char *fn = (char *)iter->data;
-	    	next = iter->next;
+	    	char *fn = *iter;
+	    	next = iter.peek_next();
 		
 	    	fn = (char *)g_realloc(fn, strlen(fn)+1+strlen(part)+1);
 		if (*fn != '\0')
 		    strcat(fn, "/");
 		strcat(fn, part);
-		iter->data = fn;
+		iter.replace(fn);
 		
 		if (state->check_exists && file_exists(fn) < 0)
 		{
 		    g_free(fn);
-		    state->pending = g_list_remove_link(state->pending, iter);
+		    state->pending.remove(iter);
 		}
 	    }
 	}
@@ -358,29 +357,32 @@ fs_include(
     char *glob_saved = g_strdup(glob);
 #endif
 
-    state->pending = g_list_append(0, g_strdup(*glob == '/' ? "/" : ""));
+    assert(state->pending.head() == 0);
+    state->pending.append(g_strdup(*glob == '/' ? "/" : ""));
     state->check_exists = FALSE;
     
-    glob_path(state, glob, state->pending);
+    glob_path(state, glob);
 
-    if (state->pending == 0 || ((char *)state->pending->data)[0] == '\0')
+    char *h = state->pending.head();
+    if (h == 0 || h[0] == '\0')
     {
 #if DEBUG
     	fprintf(stderr, "fs_include(\"%s\") matched no files\n", glob_saved);
 #endif
-    	listdelete(state->pending, char, g_free);
+    	state->pending.apply_remove(strfree);
     }
     else
     {
 #if DEBUG
-    	GList *iter;
+    	list_iterator_t<char> iter;
     	fprintf(stderr, "fs_include(\"%s\") adding", glob_saved);
-	for (iter = state->pending ; iter != 0 ; iter = iter->next)
-	    fprintf(stderr, " \"%s\"", (char *)iter->data);
+	for (iter = state->pending.first() ; iter != 0 ; ++iter)
+	    fprintf(stderr, " \"%s\"", *iter);
 	fprintf(stderr, "\n");
 #endif
-	state->filenames = g_list_concat(state->filenames, state->pending);
+	state->filenames.concat(&state->pending);
     }
+    assert(state->pending.head() == 0);
 
 #if DEBUG
     g_free(glob_saved);
@@ -393,12 +395,12 @@ fs_exclude(
     fs_glob_state_t *state,
     pattern_t *pat)
 {
-    GList *iter, *next;
+    list_iterator_t<char> iter, next;
     
-    for (iter = state->filenames ; iter != 0 ; iter = next)
+    for (iter = state->filenames.first() ; iter != 0 ; iter = next)
     {
-    	char *fn = (char *)iter->data;
-    	next = iter->next;
+    	char *fn = *iter;
+    	next = iter.peek_next();
 	
 	if (pattern_match_c(pat, fn))
 	{
@@ -407,7 +409,7 @@ fs_exclude(
 	    	    	pat->pattern, fn);
 #endif
 	    g_free(fn);
-	    state->filenames = g_list_remove_link(state->filenames, iter);
+	    state->filenames.remove(iter);
 	}
     }
 }
@@ -458,17 +460,16 @@ fileset_apply(
     file_apply_proc_t func,
     void *userdata)
 {
-    GList *iter;
+    list_iterator_t<fs_spec_t> iter;
+    list_iterator_t<char> fniter;
     fs_glob_state_t state;
 
     state.basedir = props_expand(props, fs->directory);
-    state.filenames = 0;
-    state.pending = 0;    
     state.case_sens = fs->case_sensitive;
     
-    for (iter = fs->specs ; iter != 0 ; iter = iter->next)
+    for (iter = fs->specs.first() ; iter != 0 ; ++iter )
     {
-    	fs_spec_t *fss = (fs_spec_t *)iter->data;
+    	fs_spec_t *fss = *iter;
 	
 	if (!condition_evaluate(&fss->condition, props))
 	    continue;
@@ -483,20 +484,20 @@ fileset_apply(
     
     g_free(state.basedir);
     
-    for (iter = state.filenames ; iter != 0 ; iter = iter->next)
+    for (fniter = state.filenames.first() ; fniter != 0 ; ++fniter)
     {
-	if (!(*func)((char*)iter->data, userdata))
+	if (!(*func)(*fniter, userdata))
 	    break;
     }
 
-    listdelete(state.filenames, char, g_free);
+    state.filenames.apply_remove(strfree);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 typedef struct
 {
-    GList *mappers;
+    const list_t<mapper_t> *mappers;
     strarray_t *strarray;
 } fs_gather_rec_t;
 
@@ -511,14 +512,12 @@ fileset_gather_one(const char *filename, void *userdata)
     }
     else
     {
-    	GList *iter;
+    	list_iterator_t<mapper_t> iter;
 	char *mapped = 0;
 
-	for (iter = rec->mappers ; iter != 0 ; iter = iter->next)
+	for (iter = rec->mappers->first() ; iter != 0 ; ++iter)
 	{
-    	    mapper_t *ma = (mapper_t *)iter->data;
-
-	    if ((mapped = mapper_map(ma, filename)) != 0)
+	    if ((mapped = mapper_map((*iter), filename)) != 0)
 		break;
 	}
 
@@ -534,7 +533,7 @@ fileset_gather_mapped(
     const fileset_t *fs,
     const props_t *props,
     strarray_t *sa,
-    GList *mappers)
+    const list_t<mapper_t> *mappers)
 {
     fs_gather_rec_t rec;
     

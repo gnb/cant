@@ -26,6 +26,8 @@
 #include "pattern.H"
 #include "condition.H"
 #include "strarray.H"
+#include "list.H"
+#include "mapper.H"
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
  
@@ -40,7 +42,7 @@ struct fileset_s
     
     char *directory;
     
-    GList *specs;   	    /* list of fs_spec_t */
+    list_t<fs_spec_t> specs;
 
     unsigned int default_excludes:1;
     unsigned int case_sensitive:1;
@@ -75,7 +77,8 @@ void fileset_set_case_sensitive(fileset_t *, gboolean b);
 void fileset_apply(const fileset_t *, const props_t *props,
     	    	  file_apply_proc_t, void *userdata);
 void fileset_gather_mapped(const fileset_t *, const props_t *props,
-    	    	    	  strarray_t *sa, GList *mappers/*may be 0*/);
+    	    	    	  strarray_t *sa,
+			  const list_t<mapper_t> *mappers/*may be 0*/);
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 #endif /* _fileset_h_ */

@@ -95,6 +95,8 @@ extern void *operator new(size_t sz);
 
 extern int strbool(const char *s, int deflt/*may be -1*/);
 
+extern void strfree(char*);
+
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 

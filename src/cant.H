@@ -32,6 +32,7 @@
 #include "xml.H"
 #include "log.H"
 #include "hashtable.H"
+#include "list.H"
 #include "task.H"
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -76,9 +77,9 @@ struct target_t
     char *description;
     project_t *project;
     unsigned flags;
-    GList *depends;
+    list_t<target_t> depends;
     condition_t condition;
-    GList *tasks;
+    list_t<task_t> tasks;
 };
 
 /*
@@ -91,7 +92,7 @@ struct taglist_s
     char *name_space;	    /* e.g. "library" -- fixed at creation */
     char *id;     	    /* must be fixed before attachment to project */
     int refcount;
-    GList *items;   	    /* list of tl_item_t */
+    list_t<tl_item_t> items;
 };
 
 typedef enum
@@ -227,7 +228,12 @@ void target_set_name(target_t *, const char *name);
 void target_set_description(target_t *, const char *description);
 void target_add_task(target_t *, task_t *task);
 gboolean target_execute(target_t *targ);
-
+void target_add_depend(target_t *targ, target_t *dep);
+#define target_is_defined(targ) \
+    ((targ)->flags & T_DEFINED)
+void target_set_is_defined(target_t *targ, gboolean b);
+#define target_is_depended_on(targ) \
+    ((targ)->flags & T_DEPENDED_ON)
 
 tl_def_t *tl_def_new(const char *name_space);
 void tl_def_delete(tl_def_t *);
@@ -246,7 +252,7 @@ tl_item_t *taglist_add_item(taglist_t *tl, const char *tag,
 		const char *name, tl_item_type_t type, const char *value);
 void taglist_gather(taglist_t *tl, tagexp_t *te,
 		    props_t *props, strarray_t *sa);
-void taglist_list_gather(GList *list_of_taglists, tagexp_t *te,
+void taglist_list_gather(const list_t<taglist_t> *, tagexp_t *te,
 		    props_t *props, strarray_t *sa);
 
 

@@ -20,7 +20,7 @@
 #include "cant.H"
 #include "xtask.H"
 
-CVSID("$Id: buildfile.C,v 1.3 2002-04-02 11:52:28 gnb Exp $");
+CVSID("$Id: buildfile.C,v 1.4 2002-04-06 04:16:38 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -1328,8 +1328,7 @@ add_depends(project_t *proj, target_t *targ, const char *str)
 	    project_add_target(proj, dep);
 	}
 	
-	dep->flags |= T_DEPENDED_ON;
-	targ->depends = g_list_append(targ->depends, dep);
+	target_add_depend(targ, dep);
     }
     
     g_free(buf);
@@ -1367,7 +1366,7 @@ parse_target(project_t *proj, xmlNode *node)
     }
     else
     {
-    	if (targ->flags & T_DEFINED)
+    	if (target_is_defined(targ))
 	{
 	    parse_node_error(node, "Target \"%s\" already defined\n", name);
 	    xmlFree(name);
@@ -1375,7 +1374,7 @@ parse_target(project_t *proj, xmlNode *node)
 	}
     }
     xmlFree(name);
-    targ->flags |= T_DEFINED;
+    target_set_is_defined(targ, TRUE);
     
     if (!parse_condition(&targ->condition, node))
     {
@@ -1426,7 +1425,7 @@ check_one_target(const char *key, target_t *targ, void *userdata)
 {
     gboolean *failedp = (gboolean *)userdata;
     
-    if ((targ->flags & (T_DEFINED|T_DEPENDED_ON)) == T_DEPENDED_ON)
+    if (target_is_depended_on(targ) && !target_is_defined(targ))
     {
     	parse_node_error(0, "Target \"%s\" is depended on but never defined\n", targ->name);
 	*failedp = TRUE;

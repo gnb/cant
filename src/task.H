@@ -32,6 +32,7 @@
 #include "xml.H"
 #include "log.H"
 #include "hashtable.H"
+#include "list.H"
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 class project_t;
@@ -83,7 +84,7 @@ protected:
     char *description_;
 
     // TODO: move to derived composite_task_t
-    GList *subtasks_;
+    list_t<task_t> subtasks_;
 
     task_class_t *tclass_;
     fileset_t *fileset_;     /* for directory-based tasks */

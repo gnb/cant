@@ -27,13 +27,13 @@
 #include "queue.H"
 #endif
 
-CVSID("$Id: job.C,v 1.6 2002-04-02 11:52:28 gnb Exp $");
+CVSID("$Id: job.C,v 1.7 2002-04-06 04:16:38 gnb Exp $");
 
 
 extern int process_run(strarray_t *command, strarray_t *env, const char *dir);
 
 static hashtable_t<const char*, job_t> *all_jobs;
-static GList *runnable_jobs;
+static list_t<job_t> runnable_jobs;
 int job_t::state_count_[job_t::NUM_STATES];
 
 #if !THREADS_NONE
@@ -126,8 +126,8 @@ job_t::~job_t()
     strdelete(name_);
     state_count_[state_]--;
     
-    listclear(depends_up_);
-    listclear(depends_down_);
+    depends_up_.remove_all();
+    depends_down_.remove_all();
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -205,8 +205,8 @@ job_t::add_depend(const char *depname)
     }
     
     /* setup depends links */
-    depends_down_ = g_list_append(depends_down_, dep);
-    dep->depends_up_ = g_list_append(dep->depends_up_, this);
+    depends_down_.append(dep);
+    dep->depends_up_.append(this);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -214,11 +214,11 @@ job_t::add_depend(const char *depname)
 job_t::state_t
 job_t::calc_new_state() const
 {
-    GList *iter;
+    list_iterator_t<job_t> iter;
     
-    for (iter = depends_down_ ; iter != 0 ; iter = iter->next)
+    for (iter = depends_down_.first() ; iter != 0 ; ++iter)
     {
-    	job_t *down = (job_t *)iter->data;
+    	job_t *down = *iter;
 	
 	if (down->state_ == FAILED)
 	    return FAILED;
@@ -235,11 +235,8 @@ job_t::calc_new_state() const
 }
 
 int
-job_t::compare_by_serial(gconstpointer c1, gconstpointer c2)
+job_t::compare_by_serial(const job_t *j1, const job_t *j2)
 {
-    const job_t *j1 = (const job_t*)c1;
-    const job_t *j2 = (const job_t*)c2;
-    
     if (j1->serial_ > j2->serial_)
     	return 1;
     if (j1->serial_ < j2->serial_)
@@ -250,17 +247,16 @@ job_t::compare_by_serial(gconstpointer c1, gconstpointer c2)
 void
 job_t::set_state(job_t::state_t newstate)
 {
-    GList *iter;
+    list_iterator_t<job_t> iter;
 
     if (state_ == newstate)
     	return;     /* nothing to see here, move along */
 	
     /* runnable_jobs keeps track of all RUNNABLE jobs in serial order */
     if (newstate == RUNNABLE)
-	runnable_jobs = g_list_insert_sorted(runnable_jobs, this,
-	    	    	    	    	     compare_by_serial);
+	runnable_jobs.insert_sorted(this, compare_by_serial);
     if (state_ == RUNNABLE)
-	runnable_jobs = g_list_remove(runnable_jobs, this);
+	runnable_jobs.remove(this);
 
     /* keep track of how many jobs are in each state */
     state_count_[newstate]++;
@@ -280,9 +276,9 @@ job_t::set_state(job_t::state_t newstate)
     case FAILED:
     case UPTODATE:
     case UNKNOWN:
-	for (iter = depends_up_ ; iter != 0 ; iter = iter->next)
+	for (iter = depends_up_.first() ; iter != 0 ; ++iter)
 	{
-    	    job_t *up = (job_t *)iter->data;
+    	    job_t *up = *iter;
 
 	    up->set_state(up->calc_new_state());
 	}
@@ -297,7 +293,7 @@ job_t::set_state(job_t::state_t newstate)
 void
 job_t::initialise_one(const char *key, job_t *job, void *userdata)
 {
-    if (job->depends_down_ == 0)
+    if (job->depends_down_.head() == 0)
     {
     	if (job->op_ == 0 && file_exists(job->name_) < 0)
 	{
@@ -317,7 +313,7 @@ void
 job_t::dump() const
 {
     char *desc;
-    GList *iter;
+    list_iterator_t<job_t> iter;
     
     desc = describe();
     fprintf(stderr, "    job 0x%08lx {\n\tserial = %u\n\tname = \"%s\"\n\tstate = %s\n\tdescription = \"%s\"\n\tdepends_down =",
@@ -326,9 +322,9 @@ job_t::dump() const
 	       name_,
 	       state_name(state_),
 	       desc);
-    for (iter = depends_down_ ; iter != 0 ; iter = iter->next)
+    for (iter = depends_down_.first() ; iter != 0 ; ++iter)
     {
-    	job_t *down = (job_t *)iter->data;
+    	job_t *down = *iter;
 	
 	fprintf(stderr, " \"%s\"", down->name_);
     }
@@ -421,10 +417,10 @@ job_t::main_thread()
 	while ((job = finish_queue->tryget()) != 0)
 	    finish_job(job);	    /* may make some runnable */
 
-    	if (runnable_jobs != 0)
+    	if (runnable_jobs.head() != 0)
 	{
 	    /* Start the first runnable job */
-	    start_job((job_t *)runnable_jobs->data);
+	    start_job(runnable_jobs.head());
 	}
 	else
 	{
@@ -467,10 +463,10 @@ job_t::scalar()
 	   state_count_[FAILED] == 0)
     {
     	assert(state_count_[RUNNABLE] > 0);
-	assert(runnable_jobs != 0);
+	assert(runnable_jobs.head() != 0);
 	
 	/* Perform the first runnable job */
-	job = (job_t *)runnable_jobs->data;
+	job = runnable_jobs.head();
 #if DEBUG
     	fprintf(stderr, "scalar: starting job \"%s\"\n", job->name_);
 #endif    
@@ -519,7 +515,7 @@ job_t::clear()
 {
     all_jobs->foreach_remove(clear_one, 0);
     
-    listclear(runnable_jobs);
+    runnable_jobs.remove_all();
 
     assert(state_count_[UNKNOWN] == 0);
     assert(state_count_[RUNNABLE] == 0);

@@ -26,19 +26,6 @@
 
 class xtask_class_t : public task_class_t
 {
-private:
-    char *name_;
-    char *executable_;
-    char *logmessage_;
-    GList *args_;    	    	/* list of xtask_arg_t */
-    props_t *property_map_;	/* maps attributes to local property *name*s */
-    GList *mappers_;     	/* list of mapper_t: args to files */
-    GList *dep_mappers_;     	/* list of mapper_t: depfiles to targfiles */
-    char *dep_target_;
-    
-    gboolean foreach_:1;
-
-    friend class xtask_t;
 public:
     xtask_class_t(const char *name);
     ~xtask_class_t();
@@ -82,6 +69,22 @@ public:
     arg_t *add_files();
     arg_t *add_tagexpand(tagexp_t *te);
     
+private:
+    char *name_;
+    char *executable_;
+    char *logmessage_;
+    list_t<arg_t> args_;
+    props_t *property_map_;	/* maps attributes to local property *name*s */
+    list_t<mapper_t> mappers_;	/* list of mapper_t: args to files */
+    list_t<mapper_t> dep_mappers_; /* list of mapper_t: depfiles to targfiles */
+    char *dep_target_;
+    
+    gboolean foreach_:1;
+
+    friend class xtask_t;
+
+public:
+
     void set_executable(const char *s) { strassign(executable_, s); }
     void set_logmessage(const char *s) { strassign(logmessage_, s); }
     void set_foreach(gboolean b) { foreach_ = b; }
@@ -92,11 +95,11 @@ public:
     
     void add_mapper(mapper_t *ma)
     {
-    	mappers_ = g_list_append(mappers_, ma);
+    	mappers_.append(ma);
     }
     void add_dep_mapper(mapper_t *ma)
     {
-    	dep_mappers_ = g_list_append(dep_mappers_, ma);
+    	dep_mappers_.append(ma);
     }
 
 
@@ -112,7 +115,7 @@ class xtask_t : public task_t
 private:
     gboolean result_;
     props_t *properties_;   /* local properties, overriding the project */
-    GList *taglists_;	    /* list of taglist_t */
+    list_t<taglist_t> taglists_;
 
     xtask_t(task_class_t *, project_t *);
     ~xtask_t();

@@ -20,7 +20,7 @@
 #include "cant.H"
 #include "job.H"
 
-CVSID("$Id: target.C,v 1.3 2002-04-02 11:52:28 gnb Exp $");
+CVSID("$Id: target.C,v 1.4 2002-04-06 04:16:38 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -39,13 +39,12 @@ target_new(void)
 void
 target_delete(target_t *targ)
 {
-    listdelete(targ->tasks, task_t, delete);
+    targ->tasks.delete_all();
     strdelete(targ->name);
     strdelete(targ->description);
     condition_free(&targ->condition);
 	
-    while (targ->depends != 0)
-    	targ->depends = g_list_remove_link(targ->depends, targ->depends);
+    targ->depends.remove_all();
 	
     g_free(targ);
 }
@@ -64,12 +63,30 @@ target_set_description(target_t *targ, const char *s)
     strassign(targ->description, s);
 }
 
+void
+target_set_is_defined(target_t *targ, gboolean b)
+{
+    if (b)
+    	targ->flags |= T_DEFINED;
+    else
+    	targ->flags &= ~T_DEFINED;
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+void
+target_add_depend(target_t *targ, target_t *dep)
+{
+    dep->flags |= T_DEPENDED_ON;
+    targ->depends.append(dep);
+}
+
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 void
 target_add_task(target_t *targ, task_t *task)
 {
-    targ->tasks = g_list_append(targ->tasks, task);
+    targ->tasks.append(task);
     task->attach(targ);
 }
 
@@ -78,7 +95,8 @@ target_add_task(target_t *targ, task_t *task)
 gboolean
 target_execute(target_t *targ)
 {
-    GList *iter;
+    list_iterator_t<target_t> diter;
+    list_iterator_t<task_t> titer;
 
     if (!condition_evaluate(&targ->condition,
     	    	    	    project_get_props(targ->project)))
@@ -90,9 +108,9 @@ target_execute(target_t *targ)
     /* TODO: check if finished first */
 
     /* go to depends first */
-    for (iter = targ->depends ; iter != 0 ; iter = iter->next)
+    for (diter = targ->depends.first() ; diter != 0 ; ++diter)
     {
-    	target_t *dep = (target_t *)iter->data;
+    	target_t *dep = *diter;
 	
 	if (!target_execute(dep))
 	{
@@ -102,9 +120,9 @@ target_execute(target_t *targ)
     }
     
     /* now handle this target's tasks */
-    for (iter = targ->tasks ; iter != 0 ; iter = iter->next)
+    for (titer = targ->tasks.first() ; titer != 0 ; ++titer)
     {
-    	task_t *task = (task_t *)iter->data;
+    	task_t *task = *titer;
 	
 	if (!task->execute())
 	{

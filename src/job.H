@@ -22,6 +22,7 @@
 
 #include "common.H"
 #include "strarray.H"
+#include "list.H"
 #include "log.H"
 
 class job_op_t
@@ -75,8 +76,8 @@ private:
     char *name_;
     unsigned int serial_;    	/* for preserving order */
     state_t state_;
-    GList *depends_up_;	    	/* job_t's that depend on me */
-    GList *depends_down_;     	/* job_t's I depend on */
+    list_t<job_t> depends_up_;	    	/* job_t's that depend on me */
+    list_t<job_t> depends_down_;     	/* job_t's I depend on */
     job_op_t *op_;
     gboolean result_;
     
@@ -85,7 +86,7 @@ private:
     void set_state(state_t);
     state_t calc_new_state() const;
 
-    static int compare_by_serial(gconstpointer c1, gconstpointer c2);
+    static int compare_by_serial(const job_t*, const job_t*);
     static void initialise_one(const char *key, job_t *job, void *userdata);
     static gboolean clear_one(const char *key, job_t *value, void *userdata);
 #if !THREADS_NONE
