@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 # 
-# $Id: Makefile.am,v 1.16 2001-11-21 10:44:54 gnb Exp $
+# $Id: Makefile.am,v 1.17 2001-11-21 13:05:14 gnb Exp $
 #
 
 bin_PROGRAMS=	cant
@@ -99,3 +99,6 @@ post-gcov:
 	    *.c) $(GCOV) $(GCOVFLAGS) $$file ;; \
 	    esac ;\
 	done
+
+pre-gcov:
+	$(RM) *.da *.gcov
