@@ -1,10 +1,17 @@
+Tue Nov 13 15:56:13 2001  Greg Banks <gnb@alphalink.com.au>
+	* everything: 0.0.5.  Implemented parallelising job
+	scheduling backed, and connected that to xtasks.
+
+Tue Nov  6 07:40:31 2001  Greg Banks <gnb@alphalink.com.au>
+
+	* everything: 0.0.2.  Implemented fileset, and some more
+	tasks.  Checked into CVS.
+
 Sat Nov  3 19:26:13 2001  Greg Banks <gnb@alphalink.com.au>
 
 	* everything: initial version, 0.0.1.  Parses build.xml files
 	into C structures, and does basic property manipulation.
 	Automake infrastructure.
 
-	* everything: 0.0.2.  Implemented fileset, and some more
-	tasks.  Checked into CVS.
 	
 
