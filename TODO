@@ -30,9 +30,6 @@ x  Implement a generic way of running a config program with
 	
    The question is, how to integrate this with <taglistdef> in
    a generic manner.
-x  When a log context is pushed without any messages being emitted in
-   it, and a new log context is pushed, emit an empty message just to
-   show what the intervening log context was.
 
 
 
@@ -188,3 +185,6 @@ x  Improve the taglist implementation so that tagexp_t can
       <expand tag="incdir" to="${value}"/>
     </tagexpand>
     
+x  When a log context is pushed without any messages being emitted in
+   it, and a new log context is pushed, emit an empty message just to
+   show what the intervening log context was.

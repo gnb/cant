@@ -19,7 +19,7 @@
 
 #include "log.h"
 
-CVSID("$Id: log.c,v 1.7 2001-11-18 11:16:05 gnb Exp $");
+CVSID("$Id: log.c,v 1.8 2002-02-04 05:20:53 gnb Exp $");
 
 struct logmsg_s
 {
@@ -32,6 +32,7 @@ struct logmsg_s
 };
 
 static GList *log_context_stack;
+static int log_topn;	/* number of messages since last push */
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -41,6 +42,7 @@ log_show_context(int depth, const char *context)
     while (depth--)
 	fputs("  ", stderr);
     fprintf(stderr, "[%s] ", context);
+    log_topn++;
 }
 
 void
@@ -133,7 +135,10 @@ logmsg_emit(logmsg_t *lm)
 void
 log_push_context(const char *name)
 {
+    if (log_context_stack != 0 && log_topn == 0)
+    	logf("\n");
     log_context_stack = g_list_prepend(log_context_stack, (gpointer)name);
+    log_topn = 0;
 }
 
 void
