@@ -19,7 +19,7 @@
 
 #include "cant.H"
 
-CVSID("$Id: task_copy.C,v 1.2 2002-04-02 11:52:28 gnb Exp $");
+CVSID("$Id: task_copy.C,v 1.3 2002-04-06 11:31:36 gnb Exp $");
 
 class copy_task_t : public task_t
 {
@@ -61,7 +61,7 @@ copy_task_t(task_class_t *tclass, project_t *proj)
     strdelete(todir_);
 
     if (mapper_ != 0)
-	mapper_delete(mapper_);
+	delete mapper_;
     
     /* delete filesets */
     listdelete(filesets_, fileset_t, fileset_unref);
@@ -187,7 +187,7 @@ post_parse()
     }
 
     if (mapper_ == 0)
-    	mapper_ = mapper_new("identity", 0, 0);
+    	mapper_ = mapper_t::create("identity", 0, 0);
 
     return TRUE;
 }
@@ -268,7 +268,7 @@ copy_one(const char *filename, void *userdata)
 	g_free(tofile);
 	return FALSE;	    	/* stop iteration */
     }
-    if ((mappedfile = mapper_map(ct->mapper_, tofile)) == 0)
+    if ((mappedfile = ct->mapper_->map(tofile)) == 0)
     {
 	g_free(tofile);
 	return TRUE;	    	/* keep going */
