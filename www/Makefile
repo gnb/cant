@@ -13,11 +13,11 @@ ENABLE_COUNT=	1
 
 all:: $(PAGES)
 
-changelog.html: _changelist.html changes2html
+changelog.html: _changelist.html
 $(PAGES): _styles.html _common.m4 _copyright.html toc.html.in
 tutorial.html download.html: ../version.m4
 
-_changelist.html: ../ChangeLog
+_changelist.html: ../ChangeLog changes2html
 	./changes2html < $< > $@
 
 %.html: %.html.in
