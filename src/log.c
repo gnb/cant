@@ -19,7 +19,7 @@
 
 #include "log.h"
 
-CVSID("$Id: log.c,v 1.6 2001-11-16 03:34:19 gnb Exp $");
+CVSID("$Id: log.c,v 1.7 2001-11-18 11:16:05 gnb Exp $");
 
 struct logmsg_s
 {
@@ -49,8 +49,9 @@ logv(const char *fmt, va_list args)
     /* TODO: handle embedded newlines */
     /* TODO: lock between threads */
     
-    log_show_context(g_list_length(log_context_stack),
-    	    	     (const char *)log_context_stack->data);
+    if (log_context_stack != 0)
+	log_show_context(g_list_length(log_context_stack),
+    	    		 (const char *)log_context_stack->data);
     vfprintf(stderr, fmt, args);
     fflush(stderr);
 }
