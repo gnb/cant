@@ -1,0 +1,45 @@
+<?xml version="1.0"?>
+
+<!--
+    Error handling: XML format error which wipes out the whole project
+    $Id: build-xml-format.xml,v 1.1 2001-11-18 11:17:42 gnb Exp $
+-->
+
+<! this is an error
+<project name="test006" default="all" basedir=".">
+
+  <!-- The C source files for the foo program -->
+  <fileset id="foo-sources" dir=".">
+    <include name="a.c"/>
+    <include name="bar.c" if="matchprop" matches="b*r"/>
+    <include name="baz.c" unless="matchprop" matchesregex="b.*r"/>
+  </fileset>
+  
+  <target name="all">
+    <compile refid="foo-sources"/>
+    <link program="foo" refid="foo-sources"/>
+  </target>
+
+  <target name="install" depends="bar-install,baz-install"/>
+
+  <target name="bar-install" if="boolprop">
+    <copy file="foo" tofile="my-bindir/bar"/>
+  </target>
+
+  <target name="baz-install" unless="boolprop">
+    <copy file="foo" tofile="my-bindir/baz"/>
+  </target>
+
+  <target name="clean">
+    <delete>
+      <fileset dir=".">
+	<include name="foo"/>
+	<include name="*.o"/>
+	<include name="my-bindir"/>
+      </fileset>
+    </delete>
+  </target>
+  
+  <target name="null"/>
+
+</project>
