@@ -19,7 +19,7 @@
 
 #include "cant.h"
 
-CVSID("$Id: project.c,v 1.9 2001-11-21 09:36:26 gnb Exp $");
+CVSID("$Id: project.c,v 1.10 2001-11-21 16:31:34 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -65,7 +65,7 @@ project_delete_one_fileset(gpointer key, gpointer value, gpointer userdata)
 static gboolean
 project_delete_one_taglist(gpointer key, gpointer value, gpointer userdata)
 {
-    taglist_delete((taglist_t *)value);
+    taglist_unref((taglist_t *)value);
     return TRUE;    /* so remove it already */
 }
 

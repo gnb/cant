@@ -20,7 +20,7 @@
 #include "cant.h"
 #include "job.h"
 
-CVSID("$Id: target.c,v 1.5 2001-11-14 10:59:03 gnb Exp $");
+CVSID("$Id: target.c,v 1.6 2001-11-21 16:31:34 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -39,8 +39,10 @@ target_new(void)
 void
 target_delete(target_t *targ)
 {
+    listdelete(targ->tasks, task_t, task_delete);
     strdelete(targ->name);
     strdelete(targ->description);
+    condition_free(&targ->condition);
 	
     while (targ->depends != 0)
     	targ->depends = g_list_remove_link(targ->depends, targ->depends);

@@ -19,7 +19,7 @@
 
 #include "cant.h"
 
-CVSID("$Id: taglist.c,v 1.3 2001-11-21 10:18:31 gnb Exp $");
+CVSID("$Id: taglist.c,v 1.4 2001-11-21 16:31:34 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -197,18 +197,32 @@ taglist_new(const char *namespace)
     
     tl = new(taglist_t);
     
+    tl->refcount = 1;
     strassign(tl->namespace, namespace);
     
     return tl;
 }
 
-void
+static void
 taglist_delete(taglist_t *tl)
 {
     listdelete(tl->items, tl_item_t, tl_item_delete);
     strdelete(tl->namespace);
     strdelete(tl->id);
     g_free(tl);
+}
+
+void
+taglist_ref(taglist_t *tl)
+{
+    tl->refcount++;
+}
+
+void
+taglist_unref(taglist_t *tl)
+{
+    if (--tl->refcount == 0)
+    	taglist_delete(tl);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

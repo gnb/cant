@@ -19,7 +19,7 @@
 
 #include "cant.h"
 
-CVSID("$Id: task.c,v 1.10 2001-11-20 18:02:41 gnb Exp $");
+CVSID("$Id: task.c,v 1.11 2001-11-21 16:31:34 gnb Exp $");
 
 task_scope_t *tscope_builtins;
 
@@ -179,6 +179,49 @@ task_ops_add_child(task_ops_t *ops, const task_child_t *proto)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
+static gboolean
+remove_one_attr(gpointer key, gpointer value, gpointer userdata)
+{
+    task_attr_t *ta = (task_attr_t *)value;
+    
+    g_free(ta->name);
+    g_free(ta);
+
+    return TRUE;    /* remove me */
+}
+
+static gboolean
+remove_one_child(gpointer key, gpointer value, gpointer userdata)
+{
+    task_child_t *tc = (task_child_t *)value;
+    
+    g_free(tc->name);
+    g_free(tc);
+    
+    return TRUE;    /* remove me */
+}
+
+static void
+task_ops_cleanup(task_ops_t *ops)
+{
+    if (ops->cleanup != 0)
+    	(*ops->cleanup)(ops);
+   
+    if (ops->attrs_hashed != 0)
+    {
+	g_hash_table_foreach_remove(ops->attrs_hashed, remove_one_attr, 0);
+	g_hash_table_destroy(ops->attrs_hashed);
+    }
+
+    if (ops->children_hashed != 0)
+    {
+	g_hash_table_foreach_remove(ops->children_hashed, remove_one_child, 0);
+	g_hash_table_destroy(ops->children_hashed);
+    }
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
 task_scope_t *
 tscope_new(task_scope_t *parent)
 {
@@ -192,14 +235,17 @@ tscope_new(task_scope_t *parent)
     return ts;
 }
 
-/* TODO: have some refcounting scheme to ensure that we can 
- *       delete task_ops_t's whose time has come without
- *       trying to delete the static builtin ones.  Currently
- *       we just leak 'em all.
- */
+static gboolean
+cleanup_one_taskdef(gpointer key, gpointer value, gpointer userdata)
+{
+    task_ops_cleanup((task_ops_t *)value);
+    return TRUE;    /* remove me */
+}
+
 void
 tscope_delete(task_scope_t *ts)
 {
+    g_hash_table_foreach_remove(ts->taskdefs, cleanup_one_taskdef, 0);
     g_hash_table_destroy(ts->taskdefs);
     g_free(ts);
 }

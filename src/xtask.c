@@ -20,7 +20,7 @@
 #include "xtask.h"
 #include "job.h"
 
-CVSID("$Id: xtask.c,v 1.16 2001-11-21 10:18:57 gnb Exp $");
+CVSID("$Id: xtask.c,v 1.17 2001-11-21 16:31:34 gnb Exp $");
 
 typedef struct
 {
@@ -296,7 +296,7 @@ xtask_delete(task_t *task)
 #endif
 
     /* TODO: delete unrefed filesets */
-    /* TODO: delete unrefed taglists */
+    listdelete(xp->taglists, taglist_t, taglist_unref);
     
     props_delete(xp->properties);
 	
@@ -362,13 +362,13 @@ xtask_ops_new(const char *name)
     xops->task_ops.post_parse = 0;
     xops->task_ops.execute = xtask_execute;
     xops->task_ops.delete = xtask_delete;
+    xops->task_ops.cleanup = (void (*)(task_ops_t*))xtask_ops_delete;
     
     xops->property_map = props_new(0);
 
     return xops;
 }
 
-/* TODO: get this called!!!! */
 void
 xtask_ops_delete(xtask_ops_t *xops)
 {

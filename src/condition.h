@@ -42,8 +42,10 @@ struct condition_s
 
 void condition_init(condition_t *);
 void condition_free(condition_t *);
+#if 0
 condition_t *condition_new(void);
 void condition_delete(condition_t *);
+#endif
 void condition_set_if(condition_t *, const char *property);
 void condition_set_unless(condition_t *, const char *property);
 void condition_set_matches(condition_t *, const char *pattern,

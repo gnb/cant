@@ -22,7 +22,7 @@
 #include "estring.h"
 #endif
 
-CVSID("$Id: condition.c,v 1.2 2001-11-18 11:17:01 gnb Exp $");
+CVSID("$Id: condition.c,v 1.3 2001-11-21 16:31:34 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -40,6 +40,7 @@ condition_free(condition_t *cond)
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+#if 0
 
 condition_t *
 condition_new()
@@ -53,8 +54,6 @@ condition_new()
     return cond;
 }
 
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
-
 void
 condition_delete(condition_t *cond)
 {
@@ -62,6 +61,7 @@ condition_delete(condition_t *cond)
     g_free(cond);
 }
 
+#endif
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static void

@@ -20,7 +20,7 @@
 #include "cant.h"
 #include "xtask.h"
 
-CVSID("$Id: buildfile.c,v 1.18 2001-11-21 13:07:46 gnb Exp $");
+CVSID("$Id: buildfile.c,v 1.19 2001-11-21 16:31:34 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -469,6 +469,7 @@ parse_taglist(project_t *proj, xmlNode *node)
 	/* TODO: refcount to prevent problems deleting the project */
 	
     	xmlFree(buf);
+	taglist_ref(tl);
 	return tl;
     }
 
@@ -544,7 +545,7 @@ parse_taglist(project_t *proj, xmlNode *node)
     
     if (failed)
     {
-    	taglist_delete(tl);
+    	taglist_unref(tl);
 	tl = 0;
     }
         
@@ -562,7 +563,7 @@ parse_project_taglist(project_t *proj, xmlNode *node)
     if (project_find_taglist(proj, tl->namespace, tl->id) != 0)
     {
     	parse_node_error(node, "Duplicate taglist %s::%s\n", tl->namespace, tl->id);
-	taglist_delete(tl);
+	taglist_unref(tl);
 	return FALSE;
     }
 

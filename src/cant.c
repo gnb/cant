@@ -21,7 +21,7 @@
 #include "cant.h"
 #include "job.h"
 
-CVSID("$Id: cant.c,v 1.14 2001-11-21 09:36:26 gnb Exp $");
+CVSID("$Id: cant.c,v 1.15 2001-11-21 16:31:34 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -501,7 +501,8 @@ main(int argc, char **argv)
 #endif
 
     project_delete(proj);
-    
+    project_delete(project_globals);
+        
     return ret;
 }
 

@@ -133,6 +133,7 @@ struct task_ops_s
     task_child_t *children;     	    /* child elements and adder methods */
     gboolean is_fileset;    	    	    /* parse as a fileset */
     char *fileset_dir_name; 	    	    /* name of base dir property */
+    void (*cleanup)(task_ops_t*); 	    /* static dtor */
     
     /* Don't initialised these fields to anything except 0 */
     GHashTable *attrs_hashed;	    /* task_attr_t's hashed on name */
@@ -154,6 +155,7 @@ struct taglist_s
 {
     char *namespace;	    /* e.g. "library" -- fixed at creation */
     char *id;     	    /* must be fixed before attachment to project */
+    int refcount;
     GList *items;   	    /* list of tl_item_t */
 };
 
@@ -325,7 +327,8 @@ void tagexp_delete(tagexp_t *te);
 void tagexp_add_default_expansion(tagexp_t *te, const char *s);
 void tagexp_add_expansion(tagexp_t *te, const char *tag, const char *exp);
 taglist_t *taglist_new(const char *namespace);
-void taglist_delete(taglist_t *tl);
+void taglist_ref(taglist_t *tl);
+void taglist_unref(taglist_t *tl);
 void taglist_set_id(taglist_t *tl, const char *s);
 tl_item_t *taglist_add_item(taglist_t *tl, const char *tag,
 		const char *name, tl_item_type_t type, const char *value);
