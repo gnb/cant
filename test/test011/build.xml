@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+
+<!-- $Id: build.xml,v 1.1 2002-02-04 05:17:49 gnb Exp $ -->
+
+<project name="test011" default="all" basedir=".">
+
+  <target name="all">
+    <cant dir="src" target="all"/>
+    <cant dir="libsrc" target="all"/>
+  </target>
+
+  <target name="install">
+    <cant dir="src" target="install"/>
+    <cant dir="libsrc" target="install"/>
+  </target>
+
+  <target name="clean">
+    <cant dir="src" target="clean"/>
+    <cant dir="libsrc" target="clean"/>
+  </target>
+
+</project>

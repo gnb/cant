@@ -1,0 +1,5 @@
+#!/bin/sh
+
+set -x
+(cd src ; /bin/rm -f *.o foo)
+(cd libsrc ; /bin/rm -f *.o libfoo.a)

@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+
+<!-- $Id: build.xml,v 1.1 2002-02-04 05:17:49 gnb Exp $ -->
+
+<project name="test005-src" default="all" basedir=".">
+
+  <!-- The C source files for the foo library -->
+  <fileset id="libfoo-sources" dir="." includes="[g-z]*.c"/>
+  
+  <target name="all">
+    <compile refid="libfoo-sources"/>
+    <arlib library="foo" refid="libfoo-sources"/>
+  </target>
+
+  <target name="install">
+    <copy todir="${libdir}">
+      <fileset dir="." includes="lib*.a"/>
+    </copy>
+  </target>
+
+  <target name="clean">
+    <delete>
+      <fileset dir=".">
+	<include name="*.o"/>
+	<include name="lib*.a"/>
+      </fileset>
+    </delete>
+  </target>
+
+</project>

@@ -1,0 +1,29 @@
+#!/bin/sh
+#
+# $Id: runtest,v 1.1 2002-02-04 05:17:49 gnb Exp $
+#
+
+. ../testfunctions.sh
+
+test "$VERBOSE" = yes && CV="--verbose"
+
+build_test ()
+{
+    VALUE="$1"
+    
+    start_test "sub-project build"
+    
+    /bin/rm -rf src/*.o src/foo
+    /bin/rm -rf libsrc/*.o libsrc/libfoo.a
+    cant $CV $VALUE
+    
+}
+
+build_test all
+check_file_executable src/foo
+check_file_exists libsrc/libfoo.a
+run_prog src/foo
+
+build_test clean
+check_file_notexists src/foo
+check_file_notexists libsrc/libfoo.a
