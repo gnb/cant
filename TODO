@@ -17,3 +17,156 @@ x  job scheduling should handle transitive nature of Java compiles;
 x  start job worker threads on demand, i.e. when a job is runnable,
    the start queue is full, and there are less than the maximum
    number of worker threads, start another.
+x  Implement filtersets and make <copy> use them.
+x  Design and implement some form of referrable arglist so that
+   e.g. CPPFLAGS can be handled in a whitespace-safe manner, i.e.
+   without using bloody properties.
+x  Design and implement a way to neatly package up the data about
+   a particular library, so that it's -I/-D and -L/-l flags are
+   set up correctly.  This needs to be a high-level description
+   which is orthogonal with compiler definitions.  Something like
+   (at project level)
+   
+   <libdef id="foo" depends="bar">
+     <incdir name="/usr/include/foodir">
+     <define name="FOO" value="xyzzy">
+     <libdir name="/usr/lib/foodir">
+     <lib name="bar"/>
+   </libdef>
+   <libdef id="bar">
+     <incdir name="/usr/include/bardir">
+     <define name="BAR" value="xyzzy">
+     <libdir name="/usr/lib/bardir">
+     <lib name="bar"/>
+   </libdef>
+   
+   Then the <compile> task can do
+   
+     <compile dir="." includes="a.c">
+        <library refid="foo"/>
+     </compile>
+   
+   to generate
+   
+   gcc \
+	-I/usr/include/foodir -I/usr/include/bardir \
+	-DFOO=xyzzy -DBAR=xyzzy \
+	-c a.c
+	
+    and the <link> task can do
+
+     <link program="baz" dir="." includes="a.c">
+        <library refid="foo"/>
+     </link>
+     
+   to generate
+   
+   gcc \
+	-o baz a.o
+	-L/usr/lib/foodir -lfoo \
+	-L/usr/lib/bardir -lbar \
+	
+     
+   We also need to cater for the modern style config program,
+   where a single program uses --cflags and --libs to generate
+   a line of -I etc options.  So:
+   
+   <libdef id="gtk">
+     <configprog name="gtk-config">
+   </libdef>
+   
+   The only question is, can I figure out a way to do any of this
+   without massively specialcasing it and the <compile> and <link>
+   tasks?  I don't want to compromise the xtask design.
+   
+x  An idea for a generalised data structure to support libraries,
+   arglists etc: a tagged sequence (TS).  This is a list of elements,
+   where the order is significant, each element comprising a
+   string tag, a string value, and a type which is one of VALUE,
+   LINE, or FILE.  VALUE and LINE are as in xtasks, FILE is a filename,
+   i.e. canonicalised internally when necessary.
+   
+   The guts of a library definition (except for toplevel details such
+   as name, depends etc) can be stored internally as a TS, e.g. the
+   "foo" definition above is:
+   
+   { /* tag, type, value */
+     { "incdir", FILE, "/usr/include/foodir" },
+     { "define", SHIT IT DOESN't WORK ALREADY 
+     { "libdir", FILE, "/usr/lib/foodir" },
+     { "lib", VALUE, "bar" }
+   }
+
+   A related data structure is the tagged expansion set (TES), which
+   is a hash table which maps tags to expansions, i.e. strings.  One
+   of the entries is the default expansion.  The most important operation
+   is to apply a TES to a TS, resulting in some strings being added to
+   a string array. The operation proceeds thus: for each element (in
+   order) in the TS, look up the tag in the TES. If it's not present
+   use the given default expansion from the TES. If neither are present,
+   continue to the next element.  Create a temporary properties scope and
+   set a known property (probably "arg") to the value of the element
+   (if type is VALUE) a whitespace expansion of the value of the element
+   (if type is LINE) or the value of the element canonicalised as a filename
+   (if type is FILE).  Using this scope, expand the expansion from the TES.
+   If the result is non-NULL, add it to the string array.
+
+   This generalised data structure should allow the efficient coding of
+   libdefs and arglists and all sorts of neato stuff.
+   
+   I may need to provide for a conditional_t on each element also.
+   
+   The taskdef for the <compile> task should look something like this:
+   
+  <xtaskdef
+    	name="compile"
+	logmessage="Compiling ${file}"
+	fileset="true"
+	foreach="true"
+	executable="${gnu.CC}">
+    <depmapper name="glob" from="*.c" to="*.o"/>
+    <attr attribute="debug"/>
+    <attr attribute="warnings"/>
+    <attr attribute="optimize"/>
+    <taglist name="library">
+    <tagexpand to="library" exp_incdir="-I${arg}"/>
+    <tagexpand to="library" exp_define="-D${fuck}=${shit}"/>
+    <arg line="${gnu.CWARNFLAGS}" if="warnings"/>
+    <arg value="-g" if="debug"/>
+    <arg value="-O2" if="optimize"/>
+    <arg value="-c"/>
+    <arg value="${file}"/>
+  </xtaskdef>
+
+  And the <link> task:
+  
+  <xtaskdef
+    	name="link"
+	logmessage="Linking ${program}"
+	fileset="true"
+	foreach="false"
+	executable="${gnu.CC}"
+	deptarget="${program}">
+    <mapper name="glob" from="*.c" to="*.o"/>
+    <attr attribute="program"/>
+    <attr attribute="debug"/>
+    <taglist name="library">
+    <arg value="-g" if="debug"/>
+    <arg value="-o"/>
+    <arg value="${program}"/>
+    <files/>
+    <tagexpand to="library" exp_libdir="-L${arg}" exp_lib="-l${arg}">
+  </xtaskdef>
+  
+
+x  Improve the taglist implementation so that tagexp_t can
+   contain *lists* of expansions for particular tags, so that
+   for example this will work:
+   
+    <tagexpand namespace="library">
+      <expand tag="incdir" to="-idirafter"/>
+      <expand tag="incdir" to="${value}"/>
+    </tagexpand>
+    
+x  Implement a generic way of running a config program with
+   "--libs" etc to generate a <library> definition.
