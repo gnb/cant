@@ -2,4 +2,18 @@
 
 x  modify task_execute() to run all jobs at tasks marked barriers
 x  organise to mark most tasks as barriers!
-x  solve log context issue.
+x  automatic shim and/or ptrace based dependency information
+   generation, saving, and feeding into job scheduling.  Controlled
+   from xtaskdef *somehow*
+x  Dep information should have a `quality' factor applied to it,
+   which is used to help judge what to do when things go wrong.
+   Explicit dep information in the build file is the highest Q,
+   automatic dep info from xtask depmappers next best, current
+   (source file not more recent than dep info) extracted deps
+   next best, and noncurrent extracted deps worst.
+x  job scheduling should handle transitive nature of Java compiles;
+   should check mod times for all immediate upstream jobs and set
+   state accordingly.
+x  start job worker threads on demand, i.e. when a job is runnable,
+   the start queue is full, and there are less than the maximum
+   number of worker threads, start another.
