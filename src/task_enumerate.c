@@ -19,7 +19,7 @@
 
 #include "cant.h"
 
-CVSID("$Id: task_enumerate.c,v 1.7 2001-11-19 01:18:07 gnb Exp $");
+CVSID("$Id: task_enumerate.c,v 1.8 2001-11-21 13:04:20 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -42,7 +42,7 @@ enumerate_add_fileset(task_t *task, xmlNode *node)
 
     *listp = g_list_append(*listp, fs);
 
-    return FALSE;
+    return TRUE;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -63,10 +63,10 @@ enumerate_execute(task_t *task)
     {
     	fileset_t *fs = (fileset_t *)list->data;
 	
-	logf("-->\n");
+	logf("{\n");
 	fileset_apply(fs, project_get_props(task->project),
 	    	      enumerate_one_file, 0);
-	logf("<--\n");
+	logf("}\n");
     }
     
     return TRUE;
