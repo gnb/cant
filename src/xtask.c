@@ -20,7 +20,7 @@
 #include "xtask.h"
 #include "job.h"
 
-CVSID("$Id: xtask.c,v 1.15 2001-11-20 18:02:41 gnb Exp $");
+CVSID("$Id: xtask.c,v 1.16 2001-11-21 10:18:57 gnb Exp $");
 
 typedef struct
 {
@@ -107,17 +107,7 @@ xtask_build_command(task_t *task, strarray_t *command)
 	    exp = props_expand(xp->properties, xa->data.arg);
 	    strnullnorm(exp);
 	    if (exp != 0)
-	    {
-		/* tokenise value on whitespace */
-		char *x, *buf2 = exp;
-
-		while ((x = strtok(buf2, " \t\n\r")) != 0)
-		{
-		    buf2 = 0;
-		    strarray_append(command, x);
-		}
-		g_free(exp);
-	    }
+	    	strarray_split_tom(command, exp, /*sep*/0);
 	    break;
 	    /* TODO: <env> child */
 	

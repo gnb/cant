@@ -39,5 +39,21 @@ void strarray_remove(strarray_t *, int i);
 #define strarray_data(sa) \
     ((const char **)((sa)->pdata))
 
+/*
+ * Splits `str' at seperator chars defined by `sep' into
+ * a new strarray.  If `sep' is NULL, whitespace is used
+ * as seperators.
+ */
+strarray_t *strarray_split(const char *str, const char *sep);
+/*
+ * Like strarray_split but appends to strarray `sa' and
+ * returns the number of strings appended.
+ */
+int strarray_split_to(strarray_t *sa, const char *str, const char *sep);
+/*
+ * Like strarray_split_to but consumes its `str' argument.
+ */
+int strarray_split_tom(strarray_t *sa, char *str, const char *sep);
+
 
 #endif /* _strarray_h_ */
