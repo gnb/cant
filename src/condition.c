@@ -22,7 +22,7 @@
 #include "estring.h"
 #endif
 
-CVSID("$Id: condition.c,v 1.1 2001-11-14 10:59:03 gnb Exp $");
+CVSID("$Id: condition.c,v 1.2 2001-11-18 11:17:01 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -144,16 +144,17 @@ condition_evaluate(const condition_t *cond, const props_t *props)
     }
     else
     {
-    	/* treat value as a boolean */
+    	/*
+    	 * Treat value as a boolean:
+	 * undefined -> false
+	 * empty -> false
+	 * "false", "off", "no", "0" -> false
+	 * any other value -> true
+	 */
 	if (value == 0 || *value == '\0')
 	    res = FALSE;
-	else if (!strcasecmp(expvalue, "false") ||
-	    	 !strcasecmp(expvalue, "off") ||
-	    	 !strcasecmp(expvalue, "no") ||
-	    	 !strcmp(expvalue, "0"))
-	    res = FALSE;
-	else	/* any other defined value -> true */
-	    res = TRUE;
+	else
+	    res = strbool(expvalue, TRUE);
     }
     
     /* at this point `res' is true if the condition matched */

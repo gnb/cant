@@ -19,7 +19,7 @@
 
 #include "common.h"
 
-CVSID("$Id: common.c,v 1.2 2001-11-13 04:08:05 gnb Exp $");
+CVSID("$Id: common.c,v 1.3 2001-11-18 11:17:01 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -40,6 +40,26 @@ cant_malloc(size_t sz)
     }
     
     return x;
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+int
+strbool(const char *s, int deflt)
+{
+    int res = deflt;
+    
+    if (!strcasecmp(s, "true") ||
+    	!strcasecmp(s, "yes") ||
+    	!strcasecmp(s, "on") ||
+    	!strcmp(s, "1"))
+    	res = TRUE;
+    else if (!strcasecmp(s, "false") ||
+    	     !strcasecmp(s, "no") ||
+    	     !strcasecmp(s, "off") ||
+    	     !strcmp(s, "0"))
+    	res = FALSE;
+    return res;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

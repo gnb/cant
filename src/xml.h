@@ -31,10 +31,16 @@
     	    xmlNodeListGetString((at)->node->doc, (at)->val, /*inLine*/TRUE)
 
 gboolean cantXmlGetBooleanProp(xmlNode *node, const char *name, gboolean deflt);
-gboolean cantXmlStringToBoolean(const char *val, gboolean deflt);
 
-#define boolassign(bv, s) \
-    (bv) = cantXmlStringToBoolean((s), (bv))
 
+typedef struct
+{
+    const char *filename;   	/* points into `filenames' hashtable */
+    int lineno;
+} node_info_t;
+
+xmlDoc *cantXmlParseFile(const char *filename);
+const node_info_t *cantXmlNodeInfoGet(const xmlNode *node);
+void cantXmlNodeInfoClear(void);
 
 #endif /* _cant_xml_h_ */

@@ -69,6 +69,8 @@
 	} \
     } while(0)
 
+#define boolassign(bv, s) \
+    (bv) = strbool((s), (bv))
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -82,8 +84,9 @@
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 extern void *cant_malloc(size_t sz);
-
 #define new(ty)     	((ty *)cant_malloc(sizeof(ty)))
+
+extern int strbool(const char *s, int deflt/*may be -1*/);
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 

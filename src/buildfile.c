@@ -19,49 +19,90 @@
 
 #include "cant.h"
 #include "xtask.h"
-#include <parser.h>
 
-CVSID("$Id: buildfile.c,v 1.12 2001-11-16 05:22:37 gnb Exp $");
+CVSID("$Id: buildfile.c,v 1.13 2001-11-18 11:17:01 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-/* static xmlParserCtxt *parser_context; */
 static int num_errs;
+static GList *parse_node_stack;     /* just for error reporting */
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-    	/* TODO: abort parse */
+static void
+parse_node_push(const xmlNode *node)
+{
+    parse_node_stack = g_list_prepend(parse_node_stack, (gpointer)node);
+}
+
+static void
+parse_node_pop(void)
+{
+    parse_node_stack = g_list_remove_link(parse_node_stack, parse_node_stack);
+}
+
+const xmlNode *
+parse_node_top(void)
+{
+    return (parse_node_stack == 0 ? 0 :
+    	    	(const xmlNode *)parse_node_stack->data);
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+static void
+parse_node_errorv(const xmlNode *node, const char *fmt, va_list args)
+{
+    const node_info_t *ni;
+
+    if (node != 0 && (ni = cantXmlNodeInfoGet(node)) != 0)
+	fprintf(stderr, "%s:%d: ", ni->filename, ni->lineno);
+    fprintf(stderr, "ERROR: ");
+    
+    vfprintf(stderr, fmt, args);
+    
+    num_errs++;
+}
+
+void
+parse_node_error(const xmlNode *node, const char *fmt, ...)
+{
+    va_list args;
+    
+    va_start(args, fmt);
+    parse_node_errorv(node, fmt, args);
+    va_end(args);
+}
 
 void
 parse_error(const char *fmt, ...)
 {
     va_list args;
     
-    fprintf(stderr, "ERROR: ");
     va_start(args, fmt);
-#if 0
-    fprintf(stderr, "%s:%d: ",
-    	parser_context->input->filename,
-	parser_context->input->line);
-#endif
-    vfprintf(stderr, fmt, args);
+    parse_node_errorv(parse_node_top(), fmt, args);
     va_end(args);
-    
-    num_errs++;
 }
 
 void
 parse_error_unknown_attribute(const xmlAttr *attr)
 {
-    parse_error("Unknown attribute \"%s\" on \"%s\"\n",
+    parse_node_error(attr->node, "Unknown attribute \"%s\" on \"%s\"\n",
     	    	attr->name, attr->node->name);
 }
 
 void
 parse_error_required_attribute(const xmlNode *node, const char *attrname)
 {
-    parse_error("Required attribute \"%s\" missing from \"%s\"\n",
+    parse_node_error(node, "Required attribute \"%s\" missing from \"%s\"\n",
     	    	attrname, node->name);
+}
+
+void
+parse_error_unexpected_element(const xmlNode *node)
+{
+    parse_node_error(node, "Element \"%s\" unexpected at this point\n",
+    	    	node->name);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -83,12 +124,12 @@ parse_condition(condition_t *cond, xmlNode *node)
     gboolean res = FALSE;
     
     if (if_attr != 0 && unless_attr != 0)
-    	parse_error("Cannot specify both \"if\" and \"unless\" attributes\n");
+    	parse_node_error(node, "Cannot specify both \"if\" and \"unless\" attributes\n");
     else if (matches_attr != 0 && matchesregex_attr != 0)
-    	parse_error("Cannot specify both \"matches\" and \"matchesregex\" attributes\n");
+    	parse_node_error(node, "Cannot specify both \"matches\" and \"matchesregex\" attributes\n");
     else if ((matches_attr != 0 || matchesregex_attr != 0) &&
     	     (if_attr == 0 && unless_attr == 0))
-    	parse_error("Cannot specify \"matches\" or \"matchesregex\" attributes without \"if\" or \"unless\"\n");
+    	parse_node_error(node, "Cannot specify \"matches\" or \"matchesregex\" attributes without \"if\" or \"unless\"\n");
     else
     {
     	if (if_attr != 0)
@@ -145,7 +186,7 @@ parse_property(project_t *proj, xmlNode *node)
 	if (refid != 0) n++;
 
 	if (n != 1)
-	    parse_error("You must specify exactly one of \"value\", \"location\", and \"refid\"\n");
+	    parse_node_error(node, "You must specify exactly one of \"value\", \"location\", and \"refid\"\n");
     	else if (value != 0)
 	{
 	    project_set_property(proj, name, value);
@@ -188,7 +229,7 @@ parse_property(project_t *proj, xmlNode *node)
 	if (environment != 0) n++;
 
 	if (n != 1)
-	    parse_error("You must specify exactly one of \"resource\", \"file\", and \"environment\"\n");
+	    parse_node_error(node, "You must specify exactly one of \"resource\", \"file\", and \"environment\"\n");
     	else if (resource != 0)
 	{
 	    /* TODO */
@@ -292,7 +333,7 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
 	    	xmlFree(buf);
 	    }
 	    else
-	    	parse_error("One of \"line\" or \"value\" must be set\n");
+	    	parse_node_error(node, "One of \"line\" or \"value\" must be set\n");
 	}
 	else if (!strcmp(child->name, "attr"))
 	{
@@ -336,7 +377,7 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
 		xops->dep_mappers = g_list_append(xops->dep_mappers, ma);
 	}
 	else
-	    parse_error("Unexpected child \"%s\"\n", child->name);
+	    parse_node_error(node, "Unexpected child \"%s\"\n", child->name);
 
     	if (xa == 0)
 	    continue;
@@ -369,7 +410,7 @@ parse_fileset(project_t *proj, xmlNode *node, const char *dirprop)
     	/* Handle reference to an existing fileset */
     	if ((buf2 = xmlGetProp(node, "id")) != 0)
 	{
-	    parse_error("Cannot specify both \"id\" and \"refid\"\n");
+	    parse_node_error(node, "Cannot specify both \"id\" and \"refid\"\n");
 	    xmlFree(buf);
 	    xmlFree(buf2);
 	    return 0;
@@ -381,7 +422,7 @@ parse_fileset(project_t *proj, xmlNode *node, const char *dirprop)
     	     * TODO: order dependency.... May need to scan the project
 	     *       for non-tasks first before parsing tasks.
 	     */
-	    parse_error("Cannot find fileset \"%s\" to satisfy \"refid\"\n", buf);
+	    parse_node_error(node, "Cannot find fileset \"%s\" to satisfy \"refid\"\n", buf);
 	    xmlFree(buf);
 	    return 0;
 	}
@@ -503,7 +544,7 @@ parse_project_fileset(project_t *proj, xmlNode *node)
 	
     if (fs->id == 0)
     {
-    	parse_error("<fileset> at project scope must have \"id\" attribute\n");
+    	parse_node_error(node, "<fileset> at project scope must have \"id\" attribute\n");
     	return;
     }
     /* TODO: detect duplicate fileset ids */
@@ -570,40 +611,29 @@ parse_mapper(project_t *proj, xmlNode *node)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
+typedef struct
+{
+    xmlNode *node;
+    gboolean failed;
+} attr_check_rec_t;
+
 static void
 check_one_attribute(const task_attr_t *ta, void *userdata)
 {
-    xmlNode *node = (xmlNode *)userdata;
+    attr_check_rec_t *rec = (attr_check_rec_t *)userdata;
     char *value;
 
     if (!(ta->flags & TT_REQUIRED))
     	return;
 	
-    if ((value = xmlGetProp(node, ta->name)) == 0)
+    if ((value = xmlGetProp(rec->node, ta->name)) == 0)
     {
-	parse_error_required_attribute(node, ta->name);
-	/* TODO: task_delete(task); */
-	return;
+	parse_error_required_attribute(rec->node, ta->name);
+	rec->failed = TRUE;
     }
-    xmlFree(value);
+    else
+	xmlFree(value);
 }
-
-static gboolean
-dummy_task_execute(task_t *task)
-{
-    logf("dummy\n");
-    return TRUE;
-}
-
-static task_ops_t dummy_ops = 
-{
-    "dummy",
-    /*init*/0,
-    /*parse*/0,
-    dummy_task_execute,
-    /*delete*/0,
-    /*attrs*/0
-};
 
 task_t *
 parse_task(project_t *proj, xmlNode *node)
@@ -613,6 +643,7 @@ parse_task(project_t *proj, xmlNode *node)
     xmlNode *child;
     task_ops_t *ops;
     task_child_t *tc;
+    gboolean failed = FALSE;
     
 #if DEBUG
     fprintf(stderr, "parse_task: parsing task \"%s\"\n", node->name);
@@ -620,13 +651,12 @@ parse_task(project_t *proj, xmlNode *node)
 
     if ((ops = tscope_find(proj->tscope, node->name)) == 0)
     {
-    	parse_error("Unknown task \"%s\"\n", node->name);
-	
-	/* TODO: return 0 */
-	ops = g_memdup(&dummy_ops, sizeof(dummy_ops));
-	ops->name = g_strdup(node->name);
+    	parse_node_error(node, "Unknown task \"%s\"\n", node->name);
+	return 0;
     }
 
+    parse_node_push(node);
+    
     task = task_new();
     task->project = proj;
     task->ops = ops;
@@ -648,29 +678,27 @@ parse_task(project_t *proj, xmlNode *node)
 	else if (ops->is_fileset &&
 	    	 is_fileset_attribute(attr->name, ops->fileset_dir_name))
 	    ;	/* parse_fileset will get it later */
-	else
+	else if (!task_set_attribute(task, attr->name, value))
 	{
-	    if (!task_set_attribute(task, attr->name, value))
-	    {
-		parse_error_unknown_attribute(attr);
-	    	task_delete(task);
-	    	return 0;
-	    }
-	    /* TODO: whinge about superfluous attributes */
+	    parse_error_unknown_attribute(attr);
+	    failed = TRUE;
 	}
     	xmlFree(value);
     }
     
     /* scan for required attributes and whinge about their absence */
-    task_ops_attributes_apply(ops, check_one_attribute, node);
-    /* TODO: whinge about absence of "dir" */
+    {
+    	attr_check_rec_t rec;
+	
+	rec.node = node;
+	rec.failed = failed;
+	task_ops_attributes_apply(ops, check_one_attribute, &rec);
+	failed = rec.failed;
+    }
 
     if (ops->is_fileset &&
     	(task->fileset = parse_fileset(proj, node, ops->fileset_dir_name)) == 0)
-    {
-    	task_delete(task);
-	return 0;
-    }
+    	failed = TRUE;
 
     /* parse the child nodes */
     for (child = node->childs ; child != 0 ; child = child->next)
@@ -680,22 +708,34 @@ parse_task(project_t *proj, xmlNode *node)
 	/* TODO: handle character data */
 	
 	tc = (task_child_t *)g_hash_table_lookup(ops->children_hashed, child->name);
-	if (tc != 0 && !(*tc->adder)(task, child))
+	if (tc == 0)
 	{
-	    task_delete(task);
-	    return 0;
-	}
-	/* TODO: whinge about superfluous children */
+	    parse_error_unexpected_element(child);
+	    failed = TRUE;
+	    continue;
+    	}
+	parse_node_push(child);
+	if (!(*tc->adder)(task, child))
+	    failed = TRUE;
+	parse_node_pop();
     }
     
     /* TODO: scan for required children */
-    
-    if (ops->post_parse != 0 && !(*ops->post_parse)(task))
+
+    /* call the task's post-parse function */    
+    if (!failed && ops->post_parse != 0)
     {
-    	task_delete(task);
-	return 0;
+	if (!(*ops->post_parse)(task))
+	    failed = TRUE;
     }
 
+    parse_node_pop();
+
+    if (failed)
+    {
+    	task_delete(task);
+	task = 0;
+    }
     return task;
 }
 
@@ -766,7 +806,7 @@ parse_target(project_t *proj, xmlNode *node)
     {
     	if (targ->flags & T_DEFINED)
 	{
-	    parse_error("Target \"%s\" already defined\n", name);
+	    parse_node_error(node, "Target \"%s\" already defined\n", name);
 	    xmlFree(name);
 	    return FALSE;
 	}
@@ -821,11 +861,10 @@ parse_target(project_t *proj, xmlNode *node)
 static void
 check_one_target(gpointer key, gpointer value, gpointer userdata)
 {
-/*    project_t *proj = (project_t *)userdata; */
     target_t *targ = (target_t *)value;
     
     if ((targ->flags & (T_DEFINED|T_DEPENDED_ON)) == T_DEPENDED_ON)
-    	parse_error("Target \"%s\" is depended on but never defined\n", targ->name);
+    	parse_node_error(0, "Target \"%s\" is depended on but never defined\n", targ->name);
 }
 
 static project_t *
@@ -885,7 +924,7 @@ parse_project(xmlNode *node, project_t *parent)
 	else
 	    /* TODO: fileset */
 	    /* TODO: patternset */
-	    parse_error("Element \"%s\" unexpected at this point.\n", child->name);
+	    parse_node_error(node, "Element \"%s\" unexpected at this point.\n", child->name);
     }
 
     if (!globals)    
@@ -896,18 +935,19 @@ parse_project(xmlNode *node, project_t *parent)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
+
 project_t *
 read_buildfile(const char *filename, project_t *parent)
 {
     xmlDoc *doc;
     xmlNode *root;
     project_t *proj;
-
+    
 #if DEBUG
     fprintf(stderr, "Reading file \"%s\"\n", filename);
 #endif
 
-    if ((doc = xmlParseFile(filename)) == 0)
+    if ((doc = cantXmlParseFile(filename)) == 0)
     {
     	/* TODO: print error message */
 	logf("Failed to load file \"%s\"\n", filename);
@@ -917,11 +957,19 @@ read_buildfile(const char *filename, project_t *parent)
     num_errs = 0;
     root = xmlDocGetRootElement(doc);
 
+    if (root == 0)
+    {
+    	parse_node_error(0, "No elements in buildfile\n");
+	xmlFreeDoc(doc);
+	cantXmlNodeInfoClear();
+	return 0;
+    }
+    
     if (strcmp(root->name, (parent == 0 ? "globals" : "project")))
     {
-	parse_error("Element \"%s\" unexpected at this point.\n",
-		    	root->name);
+    	parse_error_unexpected_element(root);
 	xmlFreeDoc(doc);
+	cantXmlNodeInfoClear();
 	return 0;
     }
 
@@ -934,10 +982,12 @@ read_buildfile(const char *filename, project_t *parent)
     	logf("%s: found %d errors\n", filename, num_errs);
 	project_delete(proj);
 	xmlFreeDoc(doc);
+	cantXmlNodeInfoClear();
 	return 0;
     }
 	
     xmlFreeDoc(doc);
+    cantXmlNodeInfoClear();
     
     return proj;
 }

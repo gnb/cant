@@ -158,9 +158,11 @@ EXTERN gboolean verbose;
 void fatal(const char *fmt, ...);
 
 /* buildfile.c */
+void parse_node_error(const xmlNode *, const char *fmt, ...);
 void parse_error(const char *fmt, ...);
 void parse_error_unknown_attribute(const xmlAttr *attr);
 void parse_error_required_attribute(const xmlNode *node, const char *attrname);
+void parse_error_unexpected_element(const xmlNode *node);
 extern gboolean parse_condition(condition_t *cond, xmlNode *node);
 extern fileset_t *parse_fileset(project_t *, xmlNode *, const char *dirprop);	/* for e.g. <delete> */
 mapper_t *parse_mapper(project_t *proj, xmlNode *node);
