@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 # 
-# $Id: Makefile.am,v 1.21 2002-02-08 16:51:07 gnb Exp $
+# $Id: Makefile.am,v 1.22 2002-02-10 15:30:38 gnb Exp $
 #
 
 bin_PROGRAMS=	cant
@@ -29,7 +29,8 @@ TASK_SOURCES=	\
 		task_copy.c \
 		task_echo.c \
 		task_cant.c \
-		task_foreach.c
+		task_foreach.c \
+		task_redirect.c
 
 MAPPER_SOURCES=	\
 		mapper_identity.c \
