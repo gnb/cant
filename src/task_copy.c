@@ -38,7 +38,7 @@ typedef struct
     unsigned ncopied;
 } copy_private_t;
 
-CVSID("$Id: task_copy.c,v 1.8 2001-11-19 01:18:07 gnb Exp $");
+CVSID("$Id: task_copy.c,v 1.9 2002-02-08 07:41:27 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -385,11 +385,7 @@ copy_delete(task_t *task)
 	mapper_delete(cp->mapper);
     
     /* delete filesets */
-    while (cp->filesets != 0)
-    {
-    	fileset_delete((fileset_t *)cp->filesets->data);
-    	cp->filesets = g_list_remove_link(cp->filesets, cp->filesets);
-    }
+    listdelete(cp->filesets, fileset_t, fileset_unref);
 
 #if 0
     /* delete filtersets */
