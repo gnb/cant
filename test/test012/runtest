@@ -1,0 +1,68 @@
+#!/bin/sh
+#
+# $Id: runtest,v 1.1 2002-02-08 16:51:52 gnb Exp $
+#
+
+. ../testfunctions.sh
+CANT=../../src/normalise_test
+
+normalise_test ()
+{
+    VALUE="$1"
+    RELDIR="$2"
+    BASEDIR="$3"
+    EXPECTED="$4"
+    
+    start_test "normalise"
+    cant "$RELDIR" "$BASEDIR"
+    check_output_re '^file_normalise(.*-> "'$EXPECTED'"'
+}
+
+normalise_test  1 foo base base/foo
+normalise_test  2 foo/bar base base/foo/bar
+normalise_test  3 .. base .
+normalise_test  4 ../foo base foo
+normalise_test  5 ../../foo base ../foo
+
+normalise_test  6 foo .. ../foo
+normalise_test  7 foo/bar .. ../foo/bar
+normalise_test  8 .. .. ../..
+normalise_test  9 ../foo .. ../../foo
+normalise_test 10 ../../foo .. ../../../foo
+
+normalise_test 11 foo . foo
+normalise_test 12 foo/bar . foo/bar
+normalise_test 13 .. . ..
+normalise_test 14 ../foo . ../foo
+normalise_test 15 ../../foo . ../../foo
+
+normalise_test 16 foo / /foo
+normalise_test 17 foo/bar / /foo/bar
+normalise_test 18 .. / /
+normalise_test 19 ../foo / /foo
+normalise_test 20 ../../foo / /foo
+
+normalise_test 21 foo ../.. ../../foo
+normalise_test 22 foo/bar ../.. ../../foo/bar
+normalise_test 23 .. ../.. ../../..
+normalise_test 24 ../foo ../.. ../../../foo
+normalise_test 25 ../../foo ../.. ../../../../foo
+
+normalise_test 26 /foo base /foo
+normalise_test 27 /foo .. /foo
+normalise_test 28 /foo . /foo
+normalise_test 29 /foo / /foo
+normalise_test 30 /foo ../.. /foo
+
+normalise_test 31 foo/.. base base
+normalise_test 32 foo/.. .. ..
+normalise_test 33 foo/.. . .
+normalise_test 34 foo/.. / /
+normalise_test 35 foo/.. ../.. ../..
+
+
+
+
+
+
+
