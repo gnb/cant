@@ -26,7 +26,7 @@
 #include "queue.h"
 #endif
 
-CVSID("$Id: job.c,v 1.3 2001-11-16 03:34:19 gnb Exp $");
+CVSID("$Id: job.c,v 1.4 2002-02-04 05:15:00 gnb Exp $");
 
 
 typedef enum
@@ -53,7 +53,7 @@ struct job_s
 };
 
 
-extern int process_run(strarray_t *command, strarray_t *env);
+extern int process_run(strarray_t *command, strarray_t *env, const char *dir);
 
 static GHashTable *all_jobs;
 static GList *runnable_jobs;
@@ -87,6 +87,7 @@ typedef struct
     strarray_t *command;
     strarray_t *env;
     logmsg_t *logmessage;
+    char *directory;
 } job_process_private_t;
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -98,7 +99,7 @@ job_process_execute(void *userdata)
     
     if (jpp->logmessage != 0)
     	logmsg_emit(jpp->logmessage);
-    return process_run(jpp->command, jpp->env);
+    return process_run(jpp->command, jpp->env, jpp->directory);
 }
 
 static char *
@@ -118,6 +119,7 @@ job_process_delete(void *userdata)
 	strarray_delete(jpp->command);
     if (jpp->env != 0)
 	strarray_delete(jpp->env);
+    strdelete(jpp->directory);
 	
     if (jpp->logmessage != 0)
 	logmsg_delete(jpp->logmessage);
@@ -254,6 +256,7 @@ job_add_command(
     jpp->command = command;
     jpp->env = env;
     jpp->logmessage = logmessage;
+    jpp->directory = g_strdup(file_top_dir());
     
     return job_add(name, &job_process_ops, jpp);
 }
@@ -596,7 +599,7 @@ job_immediate_command(
 	    logmsg_emit(logmessage);
 	    logmsg_delete(logmessage);
 	}
-	result = process_run(command, env);
+	result = process_run(command, env, file_top_dir());
     }
     
     /* clean up immediately */
