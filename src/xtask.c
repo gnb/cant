@@ -19,7 +19,7 @@
 
 #include "cant.h"
 
-CVSID("$Id: xtask.c,v 1.1 2001-11-06 14:10:02 gnb Exp $");
+CVSID("$Id: xtask.c,v 1.2 2001-11-07 08:36:00 gnb Exp $");
 
 typedef struct
 {
@@ -58,7 +58,7 @@ xtask_parse(task_t *task, xmlNode *node)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static gboolean
-xtask_append_file(const char *filename, void *userdata)
+xtask_append_file_estring(const char *filename, void *userdata)
 {
     estring *ep = (estring *)userdata;
     
@@ -72,13 +72,23 @@ xtask_append_file(const char *filename, void *userdata)
 }
 
 static gboolean
+xtask_append_file_strarray(const char *filename, void *userdata)
+{
+    strarray_t *sa = (strarray_t *)userdata;
+    
+    strarray_append(sa, filename);
+    
+    return TRUE;   /* keep going */
+}
+
+static gboolean
 xtask_execute_command(task_t *task)
 {
     xtask_ops_t *xops = (xtask_ops_t *)task->ops;
-    estring command;
+    strarray_t *command;
     GList *iter;
     char *exp;
-    gboolean ret = FALSE;
+    int status;
     
     if (xops->logmessage != 0)
     {
@@ -88,14 +98,10 @@ xtask_execute_command(task_t *task)
     }
 
     /* build the command from args and properties */
-    estring_init(&command);
+    command = strarray_new();
     
     if (xops->executable != 0)
-    {
-    	exp = task_expand(task, xops->executable);
-    	estring_append_string(&command, exp);
-	g_free(exp);
-    }
+    	strarray_appendm(command, task_expand(task, xops->executable));
     
     for (iter = xops->args ; iter != 0 ; iter = iter->next)
     {
@@ -104,7 +110,7 @@ xtask_execute_command(task_t *task)
 	if (xa->fileset != 0)
 	{
 	    /* <fileset> child */
-	    fileset_apply(xa->fileset, xtask_append_file, &command);
+	    fileset_apply(xa->fileset, xtask_append_file_strarray, command);
 	}
 	else
 	{
@@ -112,26 +118,52 @@ xtask_execute_command(task_t *task)
 	    /* TODO: implement "if", "unless" conditions */
 	    /* TODO: implement XT_WHITESPACE */
 	    exp = task_expand(task, xa->arg);
-	    if (exp != 0 && *exp != '\0')
+	    
+	    if (exp != 0 && *exp == '\0')
 	    {
-		if (command.length > 0)
-	    	    estring_append_char(&command, ' ');
-		estring_append_string(&command, exp);
+	    	g_free(exp);
+		exp = 0;
 	    }
-	    g_free(exp);
+	    
+	    if (exp != 0)
+	    {
+	    	if (xa->flags & XT_WHITESPACE)
+		    strarray_appendm(command, exp);
+		else
+		{
+		    /* tokenise value on whitespace */
+		    char *x, *buf2 = exp;
+		    
+		    while ((x = strtok(buf2, " \t\n\r")) != 0)
+		    {
+		    	buf2 = 0;
+			strarray_append(command, x);
+		    }
+		    g_free(exp);
+		}
+	    }
 	}
+	/* TODO: <arg arglistref=""> child */
+	/* TODO: <env> child */
     }
     
     /* execute the command */
 #if DEBUG
-    fprintf(stderr, "xtask_execute_command: \"%s\"\n", command.data);
+    {
+    	int i;
+	fprintf(stderr, "xtask_execute_command:");
+	for (i = 0 ; i < command->len ; i++)
+	    fprintf(stderr, " \"%s\"", strarray_nth(command, i));
+	fprintf(stderr, "\n");
+    }
 #endif
 
-    ret = (system(command.data) == 0);
+    if ((status = process_run(command, 0)) != 0)
+    	process_log_status(strarray_nth(command, 0), status);
     
-    estring_free(&command);
+    strarray_delete(command);
     
-    return ret;
+    return (status == 0);
 }
 
 static gboolean
@@ -170,7 +202,7 @@ xtask_execute(task_t *task)
     	    estring files;
 
 	    estring_init(&files);
-	    fileset_apply(xp->fileset, xtask_append_file, &files);
+	    fileset_apply(xp->fileset, xtask_append_file_estring, &files);
 	    /* TODO: project_set_propertym?? */
 	    props_setm(task->project->properties, "files", files.data);
 

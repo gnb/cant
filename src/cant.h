@@ -283,5 +283,9 @@ int file_build_tree(const char *dirname, mode_t mode);	/* make sequence of direc
 mode_t file_mode_from_string(const char *str, mode_t base, mode_t deflt);
 int file_apply_children(const char *filename, file_apply_proc_t, void *userdata);
 
+/* process.c */
+int process_run(strarray_t *command, strarray_t *env);
+void process_log_status(const char *command, int status);
+
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 #endif /* _cant_h_ */
