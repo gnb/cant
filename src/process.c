@@ -23,7 +23,7 @@
 #include <sys/wait.h>
 #endif
 
-CVSID("$Id: process.c,v 1.4 2001-11-16 03:34:19 gnb Exp $");
+CVSID("$Id: process.c,v 1.5 2002-02-04 05:07:41 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -73,7 +73,7 @@ vulture(pid_t pid)
  */
   
 gboolean
-process_run(strarray_t *command, strarray_t *env)
+process_run(strarray_t *command, strarray_t *env, const char *dir)
 {
     pid_t pid;
     int status;
@@ -93,6 +93,9 @@ process_run(strarray_t *command, strarray_t *env)
     if (pid == 0)
     {
     	/* child */
+    	if (dir != 0)
+	    chdir(dir);
+
 	if (env != 0)
 	    for (i = 0 ; i < env->len ; i++)
 		putenv((char *)strarray_nth(env, i));
