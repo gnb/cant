@@ -1,0 +1,20 @@
+
+This is intended to be an implementation of the Apache/Tomcat
+project's ANT build tool in the C language.  Hence, C-ANT or CANT.
+
+Basically, CANT is used to build large and complex software
+projects cleanly and simply.  It is similar in purpose to
+GNU make plus a set of makefiles, e.g. GNU automake, but
+cleaner to use and without weird 1970s semantics.
+
+The input format for CANT is in XML, and is designed to be
+a minimal set of data needed to know how to build the software,
+e.g. filenames.  Details of how to proceed from filenames to
+finished software are designed to be centralised and easily
+controlled.  In contrast, make requires a specific, dated
+and complex format which ultimately requires that each Makefile
+contain the complete specification of how to build software.
+
+Greg Banks <gnb@alphalink.com.au>
+2 November 2001.
+
