@@ -20,7 +20,7 @@
 #include "cant.H"
 #include "tok.H"
 
-CVSID("$Id: project.C,v 1.4 2002-04-02 11:52:28 gnb Exp $");
+CVSID("$Id: project.C,v 1.5 2002-04-06 11:34:39 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -39,10 +39,10 @@ project_new(project_t *parent)
     proj->tl_defs = new hashtable_t<const char*, tl_def_t>;
     proj->tscope = new task_scope_t(parent == 0 ? task_scope_t::builtins : parent->tscope);
     
-    proj->properties = props_new((parent == 0 ? 0 : parent->properties));
-    proj->fixed_properties = props_new(proj->properties);
+    proj->properties = new props_t((parent == 0 ? 0 : parent->properties));
+    proj->fixed_properties = new props_t(proj->properties);
 
-    props_set(proj->fixed_properties, "ant.version", VERSION);
+    proj->fixed_properties->set("ant.version", VERSION);
     	
     return proj;
 }
@@ -97,8 +97,8 @@ project_delete(project_t *proj)
     proj->taglists->foreach_remove(project_delete_one_taglist, 0);
     delete proj->taglists;
     
-    props_delete(proj->properties);
-    props_delete(proj->fixed_properties);
+    delete proj->properties;
+    delete proj->fixed_properties;
     
     g_free(proj);
 }
@@ -109,7 +109,7 @@ void
 project_set_name(project_t *proj, const char *s)
 {
     strassign(proj->name, s);
-    props_set(proj->fixed_properties, "ant.project.name", proj->name);
+    proj->fixed_properties->set("ant.project.name", proj->name);
 }
 
 void
@@ -167,7 +167,7 @@ project_set_basedir(project_t *proj, const char *s)
     {
     	strassign(proj->basedir, s);
     }
-    props_set(proj->fixed_properties, "basedir", proj->basedir);
+    proj->fixed_properties->set("basedir", proj->basedir);
     project_update_magic_paths(proj);
 }
 
@@ -176,7 +176,7 @@ project_set_filename(project_t *proj, const char *s)
 {
     strassign(proj->filename, s);
 
-    props_setm(proj->fixed_properties, "ant.file",
+    proj->fixed_properties->setm("ant.file",
     	    	file_normalise(proj->filename, 0));
 }
 
@@ -185,7 +185,7 @@ project_set_filename(project_t *proj, const char *s)
 void
 project_override_properties(project_t *proj, props_t *props)
 {
-    props_copy_contents(proj->properties, props);
+    proj->properties->copy_contents(props);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -291,23 +291,23 @@ project_remove_taglist(project_t *proj, taglist_t *tl)
 const char *
 project_get_property(project_t *proj, const char *name)
 {
-    return props_get(proj->fixed_properties, name);
+    return proj->fixed_properties->get(name);
 }
 
 void
 project_set_property(project_t *proj, const char *name, const char *value)
 {
-    props_set(proj->properties, name, value);
+    proj->properties->set(name, value);
 }
 
 void
 project_append_property(project_t *proj, const char *name, const char *value)
 {
-    const char *oldval = props_get(proj->properties, name);
+    const char *oldval = proj->properties->get(name);
     if (oldval == 0)
-	props_set(proj->properties, name, value);
+	proj->properties->set(name, value);
     else
-	props_setm(proj->properties, name, g_strconcat(oldval, value, 0));
+	proj->properties->setm(name, g_strconcat(oldval, value, 0));
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

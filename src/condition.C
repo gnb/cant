@@ -22,7 +22,7 @@
 #include "estring.H"
 #endif
 
-CVSID("$Id: condition.C,v 1.1 2002-03-29 12:36:26 gnb Exp $");
+CVSID("$Id: condition.C,v 1.2 2002-04-06 11:34:39 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -134,8 +134,8 @@ condition_evaluate(const condition_t *cond, const props_t *props)
     if (!(cond->flags & (COND_IF|COND_UNLESS)))
     	return TRUE;	    	/* no condition -> trivially true */
 	
-    value = props_get(props, cond->property);
-    expvalue = props_expand(props, value);
+    value = props->get(cond->property);
+    expvalue = props->expand(value);
 
     if (cond->flags & COND_MATCHES)
     {

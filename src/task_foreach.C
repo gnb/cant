@@ -21,7 +21,7 @@
 #include "tok.H"
 #include <time.h>
 
-CVSID("$Id: task_foreach.C,v 1.3 2002-04-02 11:52:28 gnb Exp $");
+CVSID("$Id: task_foreach.C,v 1.4 2002-04-06 11:34:39 gnb Exp $");
 
 class foreach_task_t : public task_t
 {
@@ -90,7 +90,7 @@ do_iteration(const char *val, void *userdata)
      * TODO: need a props stack... (per-task?) to get scope right.
      * For now, this variable goes into the project scope.
      */
-    props_set(ft->project_->properties, ft->variable_e_, val);
+    ft->project_->properties->set(ft->variable_e_, val);
     if (verbose)
 	logf("%s = %s\n", ft->variable_e_, val);
 

@@ -20,7 +20,7 @@
 #include "cant.H"
 #include <fcntl.h>
 
-CVSID("$Id: task_redirect.C,v 1.2 2002-04-02 11:52:28 gnb Exp $");
+CVSID("$Id: task_redirect.C,v 1.3 2002-04-06 11:34:39 gnb Exp $");
 
 static const char tmpfile_proto[] = "/tmp/cant-redirect-propXXXXXX";
 
@@ -209,7 +209,7 @@ exec()
 	    goto cleanups;
 	}
 
-    	val = props_get(project_get_props(project_), exp);
+    	val = project_get_props(project_)->get(exp);
 	write(new_stdin, val, strlen(val));
 	lseek(new_stdin, 0, SEEK_SET);
 	
@@ -298,7 +298,7 @@ exec()
 	}
 	fclose(fp);
 	new_stdout = -1;
-	props_setm(project_->properties, output_property, buf.data);
+	project_->properties->setm(output_property, buf.data);
     }
 
     /*

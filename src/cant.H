@@ -218,7 +218,7 @@ void project_add_fileset(project_t *, fileset_t *);
 fileset_t *project_find_fileset(project_t *, const char *id);
 #define project_get_props(proj)     ((proj)->fixed_properties)
 #define project_expand(proj, str) \
-    props_expand(project_get_props((proj)), (str))
+    project_get_props((proj))->expand((str))
 gboolean project_execute_target_by_name(project_t *, const char *);
 
 /* target.c */

@@ -20,7 +20,7 @@
 #include "cant.H"
 #include "tok.H"
 
-CVSID("$Id: taglist.C,v 1.5 2002-04-06 04:16:38 gnb Exp $");
+CVSID("$Id: taglist.C,v 1.6 2002-04-06 11:34:39 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -263,7 +263,7 @@ gather_exps(
 
     for (i = 0 ; i < exps->len ; i++)
     {    
-	expexp = props_expand(localprops, exps->nth(i));
+	expexp = localprops->expand(exps->nth(i));
 	strnullnorm(expexp);
 	if (expexp != 0)
 	{
@@ -306,7 +306,7 @@ taglist_gather(
      *       deleting it from the head instead of just iterating.
      */
     
-    localprops = props_new(/*parent*/props);
+    localprops = new props_t(/*parent*/props);
     
     for (iter = tl->items.first() ; iter != 0 ; ++iter)
     {
@@ -326,19 +326,19 @@ taglist_gather(
 	    	    	    tlitem->tag, tlitem->name, tlitem->value);
 #endif
 
-	props_set(localprops, "name", tlitem->name);
-	props_set(localprops, "tag", tlitem->tag);
+	localprops->set("name", tlitem->name);
+	localprops->set("tag", tlitem->tag);
 
 	switch (tlitem->type)
 	{
 	case TL_VALUE:
-	    props_set(localprops, "value", tlitem->value);
+	    localprops->set("value", tlitem->value);
     	    gather_exps(localprops, exps, sa);
 	    break;
 
 	case TL_LINE:
 	    /* to get whitespace semantics right, need to pre-expand */
-	    expvalue = props_expand(props, tlitem->value);
+	    expvalue = props->expand(tlitem->value);
 	    if (expvalue != 0)
 	    {
 		/* tokenise value on whitespace */
@@ -347,7 +347,7 @@ taglist_gather(
 
 		while ((x = tok.next()) != 0)
 		{
-		    props_set(localprops, "value", x);
+		    localprops->set("value", x);
     		    gather_exps(localprops, exps, sa);
 		}
 	    }
@@ -355,18 +355,18 @@ taglist_gather(
 
 	case TL_FILE:
 	    /* to canonicalise the right filename, need to pre-expand */
-	    expvalue = props_expand(props, tlitem->value);
+	    expvalue = props->expand(tlitem->value);
 	    strnullnorm(expvalue);
 	    if (expvalue != 0)
 	    {
-	    	props_setm(localprops, "value", expvalue);
+	    	localprops->setm("value", expvalue);
     		gather_exps(localprops, exps, sa);
 	    }
 	    break;
 	}
     }
     
-    props_delete(localprops);
+    delete localprops;
 
 #if DEBUG
     fprintf(stderr, "taglist_gather: }\n");
