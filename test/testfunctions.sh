@@ -1,7 +1,7 @@
 #
 # Common functions for CANT test harness
 #
-# $Id: testfunctions.sh,v 1.3 2002-03-29 11:14:01 gnb Exp $
+# $Id: testfunctions.sh,v 1.4 2002-04-21 06:02:47 gnb Exp $
 #
 
 CANT="../../src/cant"
@@ -167,8 +167,8 @@ run_prog ()
 {
     vmessage "Running program $*"
     if [ $VERBOSE = yes ]; then
-	$* || failed
+	"$@" || failed
     else
-	$* >/dev/null || failed
+	"$@" >/dev/null || failed
     fi
 }
