@@ -18,8 +18,9 @@
  */
 
 #include "cant.h"
+#include "tok.h"
 
-CVSID("$Id: taglist.c,v 1.5 2002-02-04 05:15:49 gnb Exp $");
+CVSID("$Id: taglist.c,v 1.6 2002-02-08 07:37:18 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -341,15 +342,16 @@ taglist_gather(
 	    if (expvalue != 0)
 	    {
 		/* tokenise value on whitespace */
-		char *x, *buf2 = expvalue;
-
-		while ((x = strtok(buf2, " \t\n\r")) != 0)
+		const char *x;
+		tok_t tok;
+		
+		tok_init_m(&tok, expvalue, " \t\n\r");
+		while ((x = tok_next(&tok)) != 0)
 		{
-		    buf2 = 0;
 		    props_set(localprops, "value", x);
     		    gather_exps(localprops, exps, sa);
 		}
-		g_free(expvalue);
+		tok_free(&tok);
 	    }
 	    break;
 
