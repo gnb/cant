@@ -25,7 +25,7 @@
 #include "globber.H"
 #include <dirent.h>
 
-CVSID("$Id: fileset.C,v 1.9 2002-04-07 06:22:51 gnb Exp $");
+CVSID("$Id: fileset.C,v 1.10 2002-04-13 03:18:40 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -241,5 +241,41 @@ fileset_t::gather_mapped(
     apply(props, fileset_gather_one, &rec);
 }
 
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+#if DEBUG
+
+#define boolstr(b)  ((b) ? "true" : "false")
+
+void
+fileset_t::dump() const
+{
+    list_iterator_t<fileset_t::spec_t> iter;
+    char *cond_desc;
+    
+    fprintf(stderr, "    FILESET {\n");
+    fprintf(stderr, "        ID=\"%s\"\n", id_);
+    fprintf(stderr, "        REFCOUNT=%d\n", refcount_);
+    fprintf(stderr, "        DIRECTORY=\"%s\"\n", directory_);
+    fprintf(stderr, "        DEFAULT_EXCLUDES=%s\n", boolstr(default_excludes_));
+    fprintf(stderr, "        CASE_SENSITIVE=%s\n", boolstr(case_sensitive_));
+
+    for (iter = specs_.first() ; iter != 0 ; ++iter)
+    {
+    	spec_t *fss = *iter;
+	
+	fprintf(stderr, "        FS_SPEC {\n");
+	fprintf(stderr, "            FLAGS=%d\n", fss->flags_);
+	fprintf(stderr, "            FILENAME=\"%s\"\n", fss->filename_);
+	fprintf(stderr, "            PATTERN=\"%s\"\n", fss->pattern_.get_pattern());
+	cond_desc = fss->condition_.describe();
+	fprintf(stderr, "            CONDITION=%s\n", cond_desc);
+	g_free(cond_desc);
+	fprintf(stderr, "        }\n");
+    }
+        
+    fprintf(stderr, "    }\n");
+}
+
+#endif
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 /*END*/

@@ -107,6 +107,11 @@ public:
     gboolean check_dangling_targets() const;
     
     gboolean execute_target_by_name(const char *);
+    
+#if DEBUG
+    void dump_properties() const;
+    void dump() const;
+#endif    
 };
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

@@ -20,7 +20,7 @@
 #include "cant.H"
 #include "job.H"
 
-CVSID("$Id: target.C,v 1.8 2002-04-13 02:30:18 gnb Exp $");
+CVSID("$Id: target.C,v 1.9 2002-04-13 03:18:40 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -123,5 +123,41 @@ target_t::execute()
     return TRUE;
 }
 
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+#if DEBUG
+
+void
+target_t::dump() const
+{
+    list_iterator_t<target_t> diter;
+    list_iterator_t<task_t> titer;
+    char *cond_desc;
+    
+    fprintf(stderr, "    TARGET {\n");
+    fprintf(stderr, "        NAME=\"%s\"\n", name_);
+    fprintf(stderr, "        DESCRIPTION=\"%s\"\n", description_);
+    fprintf(stderr, "        FLAGS=\"%08x\"\n", flags_);
+    cond_desc = condition_.describe();
+    fprintf(stderr, "        CONDITION=%s\n", cond_desc);
+    g_free(cond_desc);
+    fprintf(stderr, "        DEPENDS {\n");
+    for (diter = depends_.first() ; diter != 0 ; ++diter)
+    {
+    	target_t *dep = *diter;
+	fprintf(stderr, "            \"%s\"\n", dep->name_);
+    }
+    fprintf(stderr, "        }\n");
+    for (titer = tasks_.first() ; titer != 0 ; ++titer)
+    {
+    	task_t *task = *titer;
+	fprintf(stderr, "        TASK {\n");
+	fprintf(stderr, "            NAME = \"%s\"\n", task->name());
+	fprintf(stderr, "            ID = \"%s\"\n", task->id());
+	fprintf(stderr, "        }\n");
+    }
+    fprintf(stderr, "    }\n");
+}
+
+#endif
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 /*END*/

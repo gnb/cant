@@ -59,11 +59,6 @@ EXTERN gboolean verbose;
  * Extern Functions
  */
 
-/* cant.c */
-#if DEBUG
-void dump_project(project_t *proj);
-#endif
-
 /* buildfile.c */
 extern gboolean parse_condition(condition_t *cond, xml_node_t *node);
 extern taglist_t *parse_taglist(project_t *proj, xml_node_t *node);

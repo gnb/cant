@@ -20,7 +20,7 @@
 #include "cant.H"
 #include <time.h>
 
-CVSID("$Id: task_cant.C,v 1.4 2002-04-13 02:30:18 gnb Exp $");
+CVSID("$Id: task_cant.C,v 1.5 2002-04-13 03:18:40 gnb Exp $");
 
 class cant_task_t : public task_t
 {
@@ -124,7 +124,7 @@ exec()
     g_free(dir_e);
     
 #if DEBUG
-    dump_project(proj);
+    proj->dump();
 #endif
 
     /*

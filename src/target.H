@@ -72,6 +72,10 @@ public:
     void add_depend(target_t *dep);
 
     gboolean execute();
+    
+#if DEBUG
+    void dump() const;
+#endif
 };
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

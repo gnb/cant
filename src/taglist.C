@@ -20,7 +20,7 @@
 #include "cant.H"
 #include "tok.H"
 
-CVSID("$Id: taglist.C,v 1.9 2002-04-12 13:07:24 gnb Exp $");
+CVSID("$Id: taglist.C,v 1.10 2002-04-13 03:18:40 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -386,5 +386,33 @@ taglist_t::list_gather(
     }
 }
 
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+#if DEBUG
+
+void
+taglist_t::dump() const
+{
+    list_iterator_t<item_t> iter;
+    
+    fprintf(stderr, "    TAGLIST {\n");
+    fprintf(stderr, "        NAMESPACE=\"%s\"\n", name_space_);
+    fprintf(stderr, "        ID=\"%s\"\n", id_);
+
+    for (iter = first_item() ; iter != 0 ; ++iter)
+    {
+    	item_t *tlitem = *iter;
+	
+	fprintf(stderr, "        TL_SPEC {\n");
+	fprintf(stderr, "            TAG=\"%s\"\n", tlitem->tag_);
+	fprintf(stderr, "            NAME=\"%s\"\n", tlitem->name_);
+	fprintf(stderr, "            TYPE=%d\n", tlitem->type_);
+	fprintf(stderr, "            VALUE=\"%s\"\n", tlitem->value_);
+	fprintf(stderr, "        }\n");
+    }
+        
+    fprintf(stderr, "    }\n");
+}
+
+#endif
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 /*END*/

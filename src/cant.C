@@ -21,7 +21,7 @@
 #include "cant.H"
 #include "job.H"
 
-CVSID("$Id: cant.C,v 1.10 2002-04-13 02:30:18 gnb Exp $");
+CVSID("$Id: cant.C,v 1.11 2002-04-13 03:18:40 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -342,136 +342,6 @@ parse_args(int argc, char **argv)
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
-#if DEBUG
-
-#define boolstr(b)  ((b) ? "true" : "false")
-
-static void
-dump_one_property(const char *name, const char *value, void *userdata)
-{
-    const char *spaces = (const char *)userdata;
-    
-    fprintf(stderr, "%s\"%s\"=\"%s\"\n", spaces, name, value);
-}
-
-static void
-dump_one_taglist(gpointer key, gpointer value, gpointer userdata)
-{
-    taglist_t *tl = (taglist_t *)value;
-    list_iterator_t<taglist_t::item_t> iter;
-    
-    fprintf(stderr, "    TAGLIST {\n");
-    fprintf(stderr, "        NAMESPACE=\"%s\"\n", tl->name_space());
-    fprintf(stderr, "        ID=\"%s\"\n", tl->id());
-
-    for (iter = tl->first_item() ; iter != 0 ; ++iter)
-    {
-    	taglist_t::item_t *tlitem = *iter;
-	
-	fprintf(stderr, "        TL_SPEC {\n");
-	fprintf(stderr, "            TAG=\"%s\"\n", tlitem->tag_);
-	fprintf(stderr, "            NAME=\"%s\"\n", tlitem->name_);
-	fprintf(stderr, "            TYPE=%d\n", tlitem->type_);
-	fprintf(stderr, "            VALUE=\"%s\"\n", tlitem->value_);
-	fprintf(stderr, "        }\n");
-    }
-        
-    fprintf(stderr, "    }\n");
-}
-
-static void
-dump_one_fileset(gpointer key, gpointer value, gpointer userdata)
-{
-    fileset_t *fs = (fileset_t *)value;
-    list_iterator_t<fileset_t::spec_t> iter;
-    char *cond_desc;
-    
-    fprintf(stderr, "    FILESET {\n");
-    fprintf(stderr, "        ID=\"%s\"\n", fs->id());
-    fprintf(stderr, "        REFCOUNT=%d\n", fs->refcount());
-    fprintf(stderr, "        DIRECTORY=\"%s\"\n", fs->directory());
-    fprintf(stderr, "        DEFAULT_EXCLUDES=%s\n", boolstr(fs->default_excludes()));
-    fprintf(stderr, "        CASE_SENSITIVE=%s\n", boolstr(fs->case_sensitive()));
-
-    for (iter = fs->first_spec() ; iter != 0 ; ++iter)
-    {
-    	fileset_t::spec_t *fss = *iter;
-	
-	fprintf(stderr, "        FS_SPEC {\n");
-	fprintf(stderr, "            FLAGS=%d\n", fss->flags_);
-	fprintf(stderr, "            FILENAME=\"%s\"\n", fss->filename_);
-	fprintf(stderr, "            PATTERN=\"%s\"\n", fss->pattern_.get_pattern());
-	cond_desc = fss->condition_.describe();
-	fprintf(stderr, "            CONDITION=%s\n", cond_desc);
-	g_free(cond_desc);
-	fprintf(stderr, "        }\n");
-    }
-        
-    fprintf(stderr, "    }\n");
-}
-
-
-static void
-dump_one_target(gpointer key, gpointer value, gpointer userdata)
-{
-    target_t *targ = (target_t *)value;
-    list_iterator_t<target_t> diter;
-    list_iterator_t<task_t> titer;
-    char *cond_desc;
-    
-    fprintf(stderr, "    TARGET {\n");
-    fprintf(stderr, "        NAME=\"%s\"\n", targ->name);
-    fprintf(stderr, "        DESCRIPTION=\"%s\"\n", targ->description);
-    fprintf(stderr, "        FLAGS=\"%08x\"\n", targ->flags);
-    cond_desc = targ->condition.describe();
-    fprintf(stderr, "        CONDITION=%s\n", cond_desc);
-    g_free(cond_desc);
-    fprintf(stderr, "        DEPENDS {\n");
-    for (diter = targ->depends.first() ; diter != 0 ; ++diter)
-    {
-    	target_t *dep = *diter;
-	fprintf(stderr, "            \"%s\"\n", dep->name);
-    }
-    fprintf(stderr, "        }\n");
-    for (titer = targ->tasks.first() ; titer != 0 ; ++titer)
-    {
-    	task_t *task = *titer;
-	fprintf(stderr, "        TASK {\n");
-	fprintf(stderr, "            NAME = \"%s\"\n", task->name());
-	fprintf(stderr, "            ID = \"%s\"\n", task->id());
-	fprintf(stderr, "        }\n");
-    }
-    fprintf(stderr, "    }\n");
-}
-
-static void
-dump_project_properties(project_t *proj)
-{
-    fprintf(stderr, "    FIXED_PROPERTIES {\n");
-    proj->fixed_properties->apply_local(dump_one_property, (gpointer)"        ");
-    fprintf(stderr, "    }\n");
-    fprintf(stderr, "    PROPERTIES {\n");
-    proj->properties->apply_local(dump_one_property, (gpointer)"        ");
-    fprintf(stderr, "    }\n");
-}
-
-void
-dump_project(project_t *proj)
-{
-    fprintf(stderr, "PROJECT {\n");
-    fprintf(stderr, "    NAME=\"%s\"\n", proj->name);
-    fprintf(stderr, "    DESCRIPTION=\"%s\"\n", proj->description);
-    fprintf(stderr, "    DEFAULT=\"%s\"\n", proj->default_target);
-    fprintf(stderr, "    BASEDIR=\"%s\"\n", proj->basedir);
-    g_hash_table_foreach(proj->targets, dump_one_target, 0);
-    g_hash_table_foreach(proj->taglists, dump_one_taglist, 0);
-    g_hash_table_foreach(proj->filesets, dump_one_fileset, 0);
-    dump_project_properties(proj);
-    fprintf(stderr, "}\n");
-}
-
-#endif /* DEBUG */
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 int
 main(int argc, char **argv)
@@ -515,14 +385,14 @@ main(int argc, char **argv)
 	proj->override_properties(command_defines);
     	
 #if DEBUG
-    dump_project(globals);
-    dump_project(proj);
+    globals->dump();
+    proj->dump();
 #endif
     
     ret = !build_commandline_targets(proj);
     
 #if 0 /*DEBUG*/
-    dump_project_properties(proj);
+    proj->dump_properties();
 #endif
 
 #if PATTERN_TEST

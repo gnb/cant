@@ -100,6 +100,9 @@ public:
 		     const props_t *props, strarray_t *sa);
 
 
+#if DEBUG
+    void dump() const;
+#endif
 };
 
 // for passing to list_t::apply_remove

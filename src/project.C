@@ -22,7 +22,7 @@
 #include "filename.H"
 #include "tok.H"
 
-CVSID("$Id: project.C,v 1.11 2002-04-13 02:30:18 gnb Exp $");
+CVSID("$Id: project.C,v 1.12 2002-04-13 03:18:40 gnb Exp $");
 
 project_t *project_t::globals_;
 
@@ -393,5 +393,61 @@ project_t::execute_target_by_name(const char *name)
     return targ->execute();
 }
 
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+#if DEBUG
+
+static void
+dump_one_property(const char *name, const char *value, void *userdata)
+{
+    const char *spaces = (const char *)userdata;
+    
+    fprintf(stderr, "%s\"%s\"=\"%s\"\n", spaces, name, value);
+}
+
+void
+project_t::dump_properties() const
+{
+    fprintf(stderr, "    FIXED_PROPERTIES {\n");
+    fixed_properties_->apply_local(dump_one_property, (gpointer)"        ");
+    fprintf(stderr, "    }\n");
+    fprintf(stderr, "    PROPERTIES {\n");
+    properties_->apply_local(dump_one_property, (gpointer)"        ");
+    fprintf(stderr, "    }\n");
+}
+
+static void
+dump_one_target(const char *key, target_t *value, gpointer closure)
+{
+    value->dump();
+}
+
+static void
+dump_one_taglist(char *key, taglist_t *value, gpointer closure)
+{
+    value->dump();
+}
+
+static void
+dump_one_fileset(const char *key, fileset_t *value, gpointer closure)
+{
+    value->dump();
+}
+
+void
+project_t::dump() const
+{
+    fprintf(stderr, "PROJECT {\n");
+    fprintf(stderr, "    NAME=\"%s\"\n", name_);
+    fprintf(stderr, "    DESCRIPTION=\"%s\"\n", description_);
+    fprintf(stderr, "    DEFAULT=\"%s\"\n", default_target_);
+    fprintf(stderr, "    BASEDIR=\"%s\"\n", basedir_);
+    targets_->foreach(dump_one_target, 0);
+    taglists_->foreach(dump_one_taglist, 0);
+    filesets_->foreach(dump_one_fileset, 0);
+    dump_properties();
+    fprintf(stderr, "}\n");
+}
+
+#endif
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 /*END*/

@@ -74,10 +74,6 @@ public:
     // and falling to 0 deletes it.
     void ref();
     void unref();
-#if DEBUG
-    // avoid using this in logic, it should only be used for diagnostics
-    unsigned int refcount() const { return refcount_; }
-#endif
 
     const char *id() const { return id_; }
     void set_id(const char *id);
@@ -96,10 +92,6 @@ public:
     spec_t *add_include_file(const char *s);
     spec_t *add_exclude(const char *s);
     spec_t *add_exclude_file(const char *s);
-#if DEBUG
-    // for diagnostic use only
-    list_iterator_t<spec_t> first_spec() const { return specs_.first(); }
-#endif
 
     // iterate the function `func' over all filenames which the fileset generates.
     void apply(const props_t *props,
@@ -110,6 +102,10 @@ public:
     // mappers `mappers'.
     void gather_mapped(const props_t *props, strarray_t *sa,
 		       const list_t<mapper_t> *mappers/*may be 0*/) const;
+
+#if DEBUG
+    void dump() const;
+#endif
 };
 
 // for use in list_t.apply_remove()
