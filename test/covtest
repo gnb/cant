@@ -1,0 +1,13 @@
+#!/bin/sh
+
+top_srcdir=..
+
+make -C $top_srcdir all-gcov
+
+make -C $top_srcdir pre-gcov
+./runtest $@
+make -C $top_srcdir post-gcov >gcov.txt 2>&1
+
+
+
+
