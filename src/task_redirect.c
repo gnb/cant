@@ -20,7 +20,7 @@
 #include "cant.h"
 #include <fcntl.h>
 
-CVSID("$Id: task_redirect.c,v 1.1 2002-02-10 15:30:50 gnb Exp $");
+CVSID("$Id: task_redirect.c,v 1.2 2002-02-11 02:01:30 gnb Exp $");
 
 typedef struct
 {
@@ -28,6 +28,7 @@ typedef struct
     char *output_property;
     char *input_file;
     char *input_property;
+    gboolean collapse_whitespace:1;
     GList *subtasks;
 } redirect_private_t;
 
@@ -74,6 +75,15 @@ redirect_set_input_property(task_t *task, const char *name, const char *value)
     redirect_private_t *rp = (redirect_private_t *)task->private;
 
     strassign(rp->input_property, value);
+    return TRUE;
+}
+
+static gboolean
+redirect_set_collapse_whitespace(task_t *task, const char *name, const char *value)
+{
+    redirect_private_t *rp = (redirect_private_t *)task->private;
+
+    boolassign(rp->collapse_whitespace, value);
     return TRUE;
 }
 
@@ -279,18 +289,44 @@ redirect_execute(task_t *task)
      */
     if (output_property != 0)
     {
-    	int n;
-    	char buf[1024];
-	
-	project_set_property(task->project, output_property, "");
+    	gboolean inws = FALSE;
+    	int c;
+	estring buf;
+	FILE *fp;
+
+    	estring_init(&buf);
 	lseek(new_stdout, 0, SEEK_SET);
-	while ((n = read(new_stdout, buf, sizeof(buf)-1)) > 0)
+	fp = fdopen(new_stdout, "r");
+	while ((c = fgetc(fp)) != EOF)
 	{
-	    buf[n] = '\0';
-	    project_append_property(task->project, output_property, buf);
+	    if (rp->collapse_whitespace)
+	    {
+		if (inws)
+		{
+	    	    if (!isspace(c))
+		    {
+			inws = FALSE;
+			if (buf.length > 0)
+			    estring_append_char(&buf, ' ');
+			estring_append_char(&buf, c);
+		    }
+		}
+		else
+		{
+	    	    if (isspace(c))
+			inws = TRUE;
+		    else
+		    	estring_append_char(&buf, c);
+		}
+	    }
+	    else
+	    {
+	    	estring_append_char(&buf, c);
+	    }
 	}
-	if (n < 0)
-	    perror("read");
+	fclose(fp);
+	new_stdout = -1;
+	props_setm(task->project->properties, output_property, buf.data);
     }
 
     /*
@@ -348,6 +384,7 @@ static task_attr_t redirect_attrs[] =
     TASK_ATTR(redirect, output_property, 0),
     TASK_ATTR(redirect, input_file, 0),
     TASK_ATTR(redirect, input_property, 0),
+    TASK_ATTR(redirect, collapse_whitespace, 0),
     {0}
 };
 
