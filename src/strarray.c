@@ -18,8 +18,9 @@
  */
 
 #include "strarray.h"
+#include "tok.h"
 
-CVSID("$Id: strarray.c,v 1.3 2001-11-21 10:18:57 gnb Exp $");
+CVSID("$Id: strarray.c,v 1.4 2002-02-08 07:36:42 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -69,19 +70,16 @@ int
 strarray_split_tom(strarray_t *sa, char *str, const char *sep)
 {
     /* tokenise value on whitespace */
-    char *x, *buf2 = str;
-    char *state = 0;
+    const char *x;
     int oldlen = sa->len;
+    tok_t tok;
     
     if (sep == 0)
     	sep = " \t\n\r";
-
-    while ((x = strtok_r(buf2, sep, &state)) != 0)
-    {
-	buf2 = 0;
+    tok_init_m(&tok, str, sep);
+    while ((x = tok_next(&tok)) != 0)
 	strarray_append(sa, x);
-    }
-    g_free(str);
+    tok_free(&tok);
     return sa->len - oldlen;
 }
 
@@ -100,6 +98,23 @@ strarray_split(const char *str, const char *sep)
     sa = strarray_new();
     strarray_split_to(sa, str, sep);
     return sa;
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+static int
+strarray_default_compare(const char **s1, const char **s2)
+{
+    return strcmp(*s1, *s2);
+}
+
+void
+strarray_sort(strarray_t *sa, int (*compare)(const char **, const char **))
+{
+    if (compare == 0)
+    	compare = strarray_default_compare;
+    qsort(sa->pdata, sa->len, sizeof(char*),
+    	    	(int (*)(const void*, const void*))compare);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
