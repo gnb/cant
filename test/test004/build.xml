@@ -1,0 +1,142 @@
+<?xml version="1.0"?>
+
+<!-- $Id: build.xml,v 1.1 2001-11-13 03:10:31 gnb Exp $ -->
+
+<project name="test003" default="all" basedir=".">
+
+  <property name="prefix" value="/home/gnb/cant-test-instdir"/>
+  <property name="exec_prefix" value="${prefix}"/>
+  <property name="bindir" value="${exec_prefix}/bin"/>
+  <property name="libdir" value="${exec_prefix}/lib"/>
+  <property name="program_prefix" value=""/>
+  <property name="CC" value="${program_prefix}gcc"/>
+  <property name="srcdir" value="."/>
+  <property name="CPPFLAGS" value="-I${srcdir}"/>
+  <property name="CFLAGS" value=""/>
+  <property name="CWARNFLAGS" value="-Wall"/>
+  <property name="c.debug" value="true"/>
+  <property name="c.warnings" value="true"/>
+  <property name="c.optimize" value="true"/>
+  <property name="AR" value="${program_prefix}ar"/>
+  <property name="ARFLAGS" value="ruv"/>
+
+  <!-- name=str => name of the new task element -->
+  <!-- TODO: "if", "unless", and "os" attributes on "xtaskdef" and "arg"s -->
+  <!--
+    executable=str is to be exactly the same as an initial "arg line="
+    and so optional, so can be left out and "arg value=" children added
+    to handle whitespace in the executable name
+  -->  
+  <!-- fileset=true => fileset-like attributes and fileset children parsed  -->
+  <!--
+    foreach=true => apply command once for each filename, setting
+    ${cant.task.file} for each filename.  TODO: allow for tasks to
+    override properties locally, so this can be just ${file}.
+    foreach=false => run command only once with ${cant.task.files}
+    TODO: allow a sort-of "filesetref" child to insert the fileset result,
+    preserving whitespace in filenames.
+    TODO: figure out how to integrate dependencies and mappers
+  -->
+  <!--
+    logmessage=str => message issued at start of each command invocation,
+    i.e. once if foreach=false and once per file if foreach=true
+  -->
+  <!-- TODO: support "env" children a la "exec" -->
+  <!-- TODO: allow task definitions to be per-project instead of global -->
+  <!--
+    TODO: need a whitespace-safe technique for generating reusable lists of
+    arguments to functions, e.g. CPPFLAGS.  Something like an "arglist"
+    or "argset" with an "id" attribute which can be referenced from amidst
+    the list of "arg=".
+  -->
+  <!-- TODO: support "verbose" and "quiet" options on the defined task -->
+  
+  <xtaskdef
+    	name="compile"
+	logmessage="Compiling ${file}"
+	fileset="true"
+	foreach="true"
+	executable="${CC}">
+    <depmapper name="glob" from="*.c" to="*.o"/>
+    <attr attribute="debug"/>
+    <attr attribute="warnings"/>
+    <attr attribute="optimize"/>
+    <arg line="${CFLAGS}"/>
+    <arg line="${CPPFLAGS}"/>
+    <arg line="${CWARNFLAGS}" if="warnings"/>
+    <arg value="-g" if="debug"/>
+    <arg value="-O2" if="optimize"/>
+    <arg value="-c"/>
+    <arg value="${file}"/>
+  </xtaskdef>
+
+  <!--
+    TODO: need to have a way to map some kind of child arglist into
+          the commandline, e.g. for libraries.
+  -->
+  <xtaskdef
+    	name="link"
+	logmessage="Linking ${program}"
+	fileset="true"
+	foreach="false"
+	executable="${CC}"
+	deptarget="${program}">
+    <mapper name="glob" from="*.c" to="*.o"/>
+    <attr attribute="program"/>
+    <attr attribute="debug"/>
+    <arg line="${CFLAGS}"/>
+    <arg value="-g" if="debug"/>
+    <arg value="-o"/>
+    <arg value="${program}"/>
+    <files/>
+    <!-- TODO: libraries -->
+  </xtaskdef>
+
+  <xtaskdef
+    	name="arlib"
+	logmessage="Building lib${library}"
+	fileset="true"
+	foreach="false"
+	executable="${AR}"
+	deptarget="lib${library}.a">
+    <mapper name="glob" from="*.c" to="*.o"/>
+    <attr attribute="library"/>
+    <arg line="${ARFLAGS}"/>
+    <arg value="lib${library}.a"/>
+    <files/>
+    <!-- TODO: libraries -->
+  </xtaskdef>
+
+  <!-- The C source files for the foo program -->
+  <fileset id="foo-sources" dir="." includes="[a-f]*.c"/>
+  
+  <!-- The C source files for the foo library -->
+  <fileset id="libfoo-sources" dir="." includes="[g-z]*.c"/>
+  
+  <target name="all">
+    <compile refid="foo-sources"/>
+    <link program="foo" refid="foo-sources"/>
+    <compile refid="libfoo-sources"/>
+    <arlib library="foo" refid="libfoo-sources"/>
+  </target>
+
+  <target name="install">
+    <copy file="foo" todir="${bindir}"/>
+    <copy todir="${libdir}">
+      <fileset dir="." includes="lib*.a"/>
+    </copy>
+  </target>
+
+  <target name="clean">
+    <delete>
+      <fileset dir=".">
+	<include name="foo"/>
+	<include name="*.o"/>
+	<include name="lib*.a"/>
+      </fileset>
+    </delete>
+  </target>
+
+  <target name="null"/>
+
+</project>
