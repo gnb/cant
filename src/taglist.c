@@ -19,7 +19,7 @@
 
 #include "cant.h"
 
-CVSID("$Id: taglist.c,v 1.2 2001-11-21 07:17:31 gnb Exp $");
+CVSID("$Id: taglist.c,v 1.3 2001-11-21 10:18:31 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -297,7 +297,8 @@ taglist_gather(
     {
     	tl_item_t *tlitem = (tl_item_t *)iter->data;
 	
-	/* TODO: evaluate tlitem->condition at this point */
+	if (!condition_evaluate(&tlitem->condition, props))
+	    continue;
 	
 	exps = g_hash_table_lookup(te->exps, tlitem->tag);
 	if (exps == 0)
