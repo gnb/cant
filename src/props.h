@@ -31,6 +31,11 @@ props_t *props_new(props_t *parent);
 props_t *props_delete(props_t *);
 
 /*
+ * Copy all the name/value pairs from `orig' to `props'.
+ */
+void props_copy_contents(props_t *props, const props_t *orig);
+
+/*
  * Get a property value from this props_t or any of
  * its ancestors.  Set a property value in this props_t.
  */

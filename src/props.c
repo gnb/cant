@@ -26,7 +26,7 @@ struct props_s
     GHashTable *values;
 };
 
-CVSID("$Id: props.c,v 1.3 2001-11-06 09:29:06 gnb Exp $");
+CVSID("$Id: props.c,v 1.4 2001-11-06 14:06:43 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -41,6 +41,20 @@ props_new(props_t *parent)
     props->values = g_hash_table_new(g_str_hash, g_str_equal);
     
     return props;
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+static void
+_props_copy_one(gpointer key, gpointer value, gpointer userdata)
+{
+    props_set((props_t *)userdata, (const char *)key, (const char *)value);
+}
+
+void
+props_copy_contents(props_t *props, const props_t *orig)
+{
+    g_hash_table_foreach(orig->values, _props_copy_one, props);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
