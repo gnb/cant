@@ -24,7 +24,7 @@
 #include "log.h"
 #include <dirent.h>
 
-CVSID("$Id: fileset.c,v 1.12 2002-02-08 07:29:25 gnb Exp $");
+CVSID("$Id: fileset.c,v 1.13 2002-02-08 07:54:36 gnb Exp $");
 
 static void fs_spec_delete(fs_spec_t *fss);
 
@@ -463,6 +463,9 @@ fileset_apply(
     {
     	fs_spec_t *fss = (fs_spec_t *)iter->data;
 	
+	if (!condition_evaluate(&fss->condition, props))
+	    continue;
+
 	if (fss->flags & FS_FILE)
 	    fs_apply_file(&state, fss->filename, (fss->flags & FS_INCLUDE));
 	else if (fss->flags & FS_INCLUDE)
