@@ -1,5 +1,7 @@
 <?xml version="1.0"?>
 
+<!-- $Id: build.xml,v 1.2 2001-11-10 03:20:39 gnb Exp $ -->
+
 <project name="test003" default="all" basedir=".">
 
   <property name="prefix" value="/home/gnb/cant-test-instdir"/>
