@@ -1,39 +1,59 @@
 #!/usr/bin/awk -f
 #
-# $Id: changes2html,v 1.2 2001-11-16 11:23:09 gnb Exp $
+# $Id: changes2html,v 1.3 2001-11-16 12:55:42 gnb Exp $
 #
 # Awk script to convert a GNU ChangeLog into HTML for the Web page
 #
 BEGIN {
     # \1=date \2=name \3@\4=email
     header_re = "([A-Z][a-z][a-z] [A-Z][a-z][a-z] [ 0-9][0-9] [0-2][0-9]:[0-5][0-9]:[0-5][0-9] [12][0-9][0-9][0-9]) +([^<]+) +<([^@>]+)@([^@>]+)>";
-    in_para = 0;
+    in_item = 0;
+    in_list = 0;
 }
-function end_para () {
-    if (in_para)
+function end_item () {
+    in_item = 0;
+}
+function end_list () {
+    end_item();
+    if (in_list)
     {
-	print "</p>";
-	in_para = 0;
+	print "</ul>";
+	in_list = 0;
     }
 }
-function start_para () {
-    print "<p>";
-    in_para = 1;
+function start_list () {
+    if (!in_list)
+    {
+    	print "<ul>";
+    	in_list = 1;
+	in_item = 0;
+    }
+}
+function start_item () {
+    end_item();
+    start_list();
+    print "<li>";
+    in_item = 1;
+}
+function spacer () {
+    if (in_item)
+    	print "<br>";
 }
 /^[A-Z]/ {
     # Header lines
-    end_para();
+    end_list();
     print gensub(header_re, "<p><b>\\1 \\2</b></p>", "g");
+    start_list();
     next;
 }
 /^[ \t]*$/ {
-    # ignore empty lines
+    # empty line
+    spacer();
     next;
 }
 /^[ \t]+\*[ \t]+/ {
     # first line of record.
-    end_para();
-    start_para();
+    start_item();
     print gensub("^[ \t]+\\*[ \t]+", "", "g");
     next;
 }
@@ -42,5 +62,5 @@ function start_para () {
     print gensub("^[ \t]*", "", "g");
 }
 END {
-    end_para();
+    end_list();
 }
