@@ -20,7 +20,7 @@
 #include "cant.H"
 #include "xtask.H"
 
-CVSID("$Id: buildfile.C,v 1.4 2002-04-06 04:16:38 gnb Exp $");
+CVSID("$Id: buildfile.C,v 1.5 2002-04-06 11:20:26 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -284,7 +284,7 @@ parse_property(project_t *proj, xmlNode *node)
 	else if (shellfile != 0)
 	{
 	    if (doit)
-		failed = !props_read_shellfile(proj->properties, shellfile);
+		failed = !proj->properties->read_shellfile(shellfile);
 	}
 	else if (environment != 0)
 	{
@@ -1148,7 +1148,7 @@ parse_mapper(project_t *proj, xmlNode *node)
     	return 0;
     }
     
-    ma = mapper_new(name, from, to);
+    ma = mapper_t::create(name, from, to);
     
     xmlFree(name);
     xmlFree(from);
