@@ -20,7 +20,7 @@
 #include "cant.h"
 #include <time.h>
 
-CVSID("$Id: task_tstamp.c,v 1.6 2001-11-13 04:08:05 gnb Exp $");
+CVSID("$Id: task_tstamp.c,v 1.7 2001-11-16 05:22:37 gnb Exp $");
 
 typedef struct
 {
@@ -190,7 +190,7 @@ tstamp_format_parse(task_t *task, xmlNode *node)
     property = xmlGetProp(node, "property");
     if (property == 0)
     {
-    	parse_error("Required attribute \"property\" missing\n");
+	parse_error_required_attribute(node, "property");
 	return 0;
     }
     fmt = tstamp_format_new();
@@ -203,7 +203,7 @@ tstamp_format_parse(task_t *task, xmlNode *node)
     pattern = xmlGetProp(node, "pattern");
     if (pattern == 0)
     {
-    	parse_error("Required attribute \"pattern\" missing\n");
+	parse_error_required_attribute(node, "pattern");
 	tstamp_format_delete(fmt);
 	return 0;
     }

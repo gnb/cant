@@ -21,7 +21,7 @@
 #include "xtask.h"
 #include <parser.h>
 
-CVSID("$Id: buildfile.c,v 1.11 2001-11-16 03:34:19 gnb Exp $");
+CVSID("$Id: buildfile.c,v 1.12 2001-11-16 05:22:37 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -48,6 +48,20 @@ parse_error(const char *fmt, ...)
     va_end(args);
     
     num_errs++;
+}
+
+void
+parse_error_unknown_attribute(const xmlAttr *attr)
+{
+    parse_error("Unknown attribute \"%s\" on \"%s\"\n",
+    	    	attr->name, attr->node->name);
+}
+
+void
+parse_error_required_attribute(const xmlNode *node, const char *attrname)
+{
+    parse_error("Required attribute \"%s\" missing from \"%s\"\n",
+    	    	attrname, node->name);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -215,8 +229,7 @@ parse_property(project_t *proj, xmlNode *node)
 	    !strcmp(attr->name, "classpathref"))
 	    ;
 	else
-	    parse_error("Unknown attribute \"%s\" in \"property\"\n",
-	    	    	attr->name);	/* TODO: warning? */
+	    parse_error_unknown_attribute(attr);	/* TODO: warning? */
 
     	xmlFree(value);
     }
@@ -243,8 +256,8 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
 
     if ((buf = xmlGetProp(node, "name")) == 0)
     {
-    	parse_error("Required attribute \"name\" missing\n");
-	return;
+	parse_error_required_attribute(node, "name");
+	return;     /* TODO: return failure */
     }
 
     xops = xtask_ops_new(buf);
@@ -286,7 +299,7 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
 	    char *from = 0, *to = 0;
 	    
 	    if ((from = xmlGetProp(child, "attribute")) == 0)
-	    	parse_error("Required attribute \"attribute\" missing\n");
+		parse_error_required_attribute(node, "attribute");
 	    else if ((to = xmlGetProp(child, "property")) == 0)
 	    	to = xmlMemStrdup(from);
 
@@ -381,7 +394,7 @@ parse_fileset(project_t *proj, xmlNode *node, const char *dirprop)
     /* Handle definition of a new fileset */
     if (dirprop != 0 && (buf = xmlGetProp(node, dirprop)) == 0)
     {
-    	parse_error("Required attribute \"%s\" not present\n", dirprop);
+	parse_error_required_attribute(node, dirprop);
     	return 0;
     }
 
@@ -454,7 +467,7 @@ parse_fileset(project_t *proj, xmlNode *node, const char *dirprop)
 	    
 	if ((buf = xmlGetProp(child, "name")) == 0)
 	{
-	    parse_error("Required attribute \"name\" missing\n");
+	    parse_error_required_attribute(node, "name");
 	    continue;
 	}
 	
@@ -497,6 +510,21 @@ parse_project_fileset(project_t *proj, xmlNode *node)
     project_add_fileset(proj, fs);
 }
 
+
+static gboolean
+is_fileset_attribute(const char *attrname, const char *dirprop)
+{
+    return ((dirprop != 0 && !strcmp(attrname, dirprop)) ||
+	    !strcmp(attrname, "includes") ||
+    	    !strcmp(attrname, "includesfile") ||
+    	    !strcmp(attrname, "excludes") ||
+    	    !strcmp(attrname, "excludesfile") ||
+    	    !strcmp(attrname, "casesensitive") ||
+    	    !strcmp(attrname, "defaultexcludes") ||
+    	    !strcmp(attrname, "refid"));
+}
+
+
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static void
@@ -518,20 +546,20 @@ parse_mapper(project_t *proj, xmlNode *node)
     
     if ((name = xmlGetProp(node, "name")) == 0)
     {
-    	parse_error("Required attribute \"%s\" missing\n", "name");
+	parse_error_required_attribute(node, "name");
     	return 0;
     }
 
     if ((from = xmlGetProp(node, "from")) == 0)
     {
-    	parse_error("Required attribute \"%s\" missing\n", "from");
+	parse_error_required_attribute(node, "from");
 	xmlFree(name);
     	return 0;
     }
 
     if ((to = xmlGetProp(node, "to")) == 0)
     {
-    	parse_error("Required attribute \"%s\" missing\n", "to");
+	parse_error_required_attribute(node, "to");
 	xmlFree(name);
 	xmlFree(from);
     	return 0;
@@ -553,7 +581,7 @@ check_one_attribute(const task_attr_t *ta, void *userdata)
 	
     if ((value = xmlGetProp(node, ta->name)) == 0)
     {
-	parse_error("Required attribute \"%s\" missing\n", ta->name);
+	parse_error_required_attribute(node, ta->name);
 	/* TODO: task_delete(task); */
 	return;
     }
@@ -617,12 +645,14 @@ parse_task(project_t *proj, xmlNode *node)
 	    task_set_name(task, value);
     	else if (!strcmp(attr->name, "description"))
 	    task_set_description(task, value);
-	else if (ops->is_fileset && !strcmp(attr->name, ops->fileset_dir_name))
+	else if (ops->is_fileset &&
+	    	 is_fileset_attribute(attr->name, ops->fileset_dir_name))
 	    ;	/* parse_fileset will get it later */
 	else
 	{
 	    if (!task_set_attribute(task, attr->name, value))
 	    {
+		parse_error_unknown_attribute(attr);
 	    	task_delete(task);
 	    	return 0;
 	    }
@@ -722,7 +752,7 @@ parse_target(project_t *proj, xmlNode *node)
     
     if (name == 0)
     {
-    	parse_error("Required attribute \"name\" missing from \"target\"\n");
+	parse_error_required_attribute(node, "name");
     	return FALSE;
     }
     
@@ -768,7 +798,7 @@ parse_target(project_t *proj, xmlNode *node)
     	else if (is_condition_attribute(attr->name))
 	    ;
 	else
-	    parse_error("Unknown attribute \"%s\" on \"target\"\n", attr->name);
+	    parse_error_unknown_attribute(attr);
 
     	xmlFree(value);
     }
@@ -827,12 +857,12 @@ parse_project(xmlNode *node, project_t *parent)
     	    else if (!strcmp(attr->name, "basedir"))
 		project_set_basedir(proj, value);
 	    else
-		parse_error("Unknown attribute \"%s\" on \"%s\"\n", attr->name, node->name);
+		parse_error_unknown_attribute(attr);
 
     	    xmlFree(value);
 	}
 	if (proj->default_target == 0)
-    	    parse_error("Required attribute \"default\" missing from \"project\"\n");
+	    parse_error_required_attribute(node, "default");
     }
         
 

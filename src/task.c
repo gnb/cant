@@ -19,7 +19,7 @@
 
 #include "cant.h"
 
-CVSID("$Id: task.c,v 1.8 2001-11-14 06:30:26 gnb Exp $");
+CVSID("$Id: task.c,v 1.9 2001-11-16 05:22:37 gnb Exp $");
 
 task_scope_t *tscope_builtins;
 
@@ -78,10 +78,7 @@ task_set_attribute(task_t *task, const char *name, const char *value)
 	ta = (task_attr_t *)g_hash_table_lookup(task->ops->attrs_hashed, name);
 
     if (ta == 0)
-    {
-    	fprintf(stderr, "Unknown attribute \"%s\"\n", name);
-    	return TRUE;	/* just ignore unknown attributes */
-    }
+    	return FALSE;
 
     return (*ta->setter)(task, name, value);
 }
