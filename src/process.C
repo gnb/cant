@@ -23,7 +23,7 @@
 #include <sys/wait.h>
 #endif
 
-CVSID("$Id: process.C,v 1.1 2002-03-29 12:36:26 gnb Exp $");
+CVSID("$Id: process.C,v 1.2 2002-03-29 13:57:32 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -98,10 +98,10 @@ process_run(strarray_t *command, strarray_t *env, const char *dir)
 
 	if (env != 0)
 	    for (i = 0 ; i < env->len ; i++)
-		putenv((char *)strarray_nth(env, i));
+		putenv((char *)env->nth(i));
 	    
-	execvp(strarray_nth(command, 0), (char * const *)strarray_data(command));
-	perror(strarray_nth(command, 0));
+	execvp(command->nth(0), (char * const *)command->data());
+	perror(command->nth(0));
 	exit(1);
     }
     else
@@ -118,7 +118,7 @@ process_run(strarray_t *command, strarray_t *env, const char *dir)
 	{
 	    status &= ~SIGNAL_FLAG;
     	    logf("Command \"%s\" was terminated by signal %d (%s)\n",
-	    	    strarray_nth(command, 0),
+	    	    command->nth(0),
 		    status,
 		    g_strsignal(status));
 	    return FALSE;
@@ -126,7 +126,7 @@ process_run(strarray_t *command, strarray_t *env, const char *dir)
 	else if (status > 0)
 	{
     	    logf("Command \"%s\" exited with status %d\n",
-	    	    strarray_nth(command, 0),
+	    	    command->nth(0),
 		    status);
 	    return FALSE;
 	}

@@ -20,7 +20,7 @@
 #include "xtask.H"
 #include "job.H"
 
-CVSID("$Id: xtask.C,v 1.1 2002-03-29 12:36:27 gnb Exp $");
+CVSID("$Id: xtask.C,v 1.2 2002-03-29 13:57:32 gnb Exp $");
 
 typedef struct
 {
@@ -83,7 +83,7 @@ xtask_build_command(task_t *task, strarray_t *command)
     char *exp;
 
     if (xops->executable != 0)
-    	strarray_appendm(command, props_expand(xp->properties, xops->executable));
+    	command->appendm(props_expand(xp->properties, xops->executable));
     
     for (iter = xops->args ; iter != 0 ; iter = iter->next)
     {
@@ -99,14 +99,14 @@ xtask_build_command(task_t *task, strarray_t *command)
 	    exp = props_expand(xp->properties, xa->data.arg);
 	    strnullnorm(exp);
 	    if (exp != 0)
-		strarray_appendm(command, exp);
+		command->appendm(exp);
 	    break;
 
 	case XT_LINE:	    /* <arg line=""> child */
 	    exp = props_expand(xp->properties, xa->data.arg);
 	    strnullnorm(exp);
 	    if (exp != 0)
-	    	strarray_split_tom(command, exp, /*sep*/0);
+	    	command->split_tom(exp, /*sep*/0);
 	    break;
 	    /* TODO: <env> child */
 	
@@ -114,8 +114,7 @@ xtask_build_command(task_t *task, strarray_t *command)
 	    exp = props_expand(xp->properties, xa->data.arg);
 	    strnullnorm(exp);
 	    if (exp != 0)
-	    	strarray_appendm(command,
-		    	    	 file_normalise_m(exp, task->project->basedir));
+	    	command->appendm(file_normalise_m(exp, task->project->basedir));
 	    break;
 	    
 	case XT_FILESET:    /* <fileset> child */
@@ -138,7 +137,7 @@ xtask_build_command(task_t *task, strarray_t *command)
     
 #if DEBUG
     {
-    	char *commstr = strarray_join(command, "\" \"");
+    	char *commstr = command->join("\" \"");
 	fprintf(stderr, "xtask_build_command: \"%s\"\n", commstr);
 	g_free(commstr);
     }
@@ -162,7 +161,7 @@ xtask_execute_command(task_t *task)
        
     /* try to build dependency information for the command */
 
-    depfiles = strarray_new();
+    depfiles = new strarray_t;
 
     if (xops->task_ops.is_fileset)
     {
@@ -172,7 +171,7 @@ xtask_execute_command(task_t *task)
 	    char *depfile;
 
 	    depfile = props_expand(xp->properties, "${file}");
-	    strarray_appendm(depfiles, depfile);
+	    depfiles->appendm(depfile);
 	    
 	    for (iter = xops->dep_mappers ; iter != 0 ; iter = iter->next)
 	    {
@@ -198,19 +197,19 @@ xtask_execute_command(task_t *task)
 
 
     /* build the command from args and properties */
-    command = strarray_new();
+    command = new strarray_t;
     
     if (!xtask_build_command(task, command))
     {
     	strdelete(targfile);
-    	strarray_delete(command);
-    	strarray_delete(depfiles);
+    	delete command;
+    	delete depfiles;
 	return FALSE;
     }
     
     
     if (verbose)
-    	logmsg = logmsg_newnm(strarray_join(command, " "));
+    	logmsg = logmsg_newnm(command->join(" "));
     else if (xops->logmessage != 0)
     	logmsg = logmsg_newnm(props_expand(xp->properties, xops->logmessage));
 
@@ -228,11 +227,11 @@ xtask_execute_command(task_t *task)
 	
 	job = job_add_command(targfile, command, /*env*/0, logmsg);
 	for (i = 0 ; i < depfiles->len ; i++)
-	    job_add_depend(job, strarray_nth(depfiles, i));
+	    job_add_depend(job, depfiles->nth(i));
     }
 
     strdelete(targfile);
-    strarray_delete(depfiles);
+    delete depfiles;
 
     return xp->result;    /* keep going unless failure */
 }

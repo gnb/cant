@@ -20,7 +20,7 @@
 #include "cant.H"
 #include "tok.H"
 
-CVSID("$Id: taglist.C,v 1.2 2002-03-29 13:02:36 gnb Exp $");
+CVSID("$Id: taglist.C,v 1.3 2002-03-29 13:57:32 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -121,7 +121,7 @@ static gboolean
 remove_one_expansion(gpointer key, gpointer value, gpointer userdata)
 {
     g_free((char *)key);
-    strarray_delete((strarray_t *)value);
+    delete (strarray_t *)value;
     return TRUE;    /* remove me please */
 }
 
@@ -130,7 +130,7 @@ tagexp_delete(tagexp_t *te)
 {
     strdelete(te->name_space);
     if (te->default_exps != 0)
-	strarray_delete(te->default_exps);
+	delete te->default_exps;
     g_hash_table_foreach_remove(te->exps, remove_one_expansion, 0);
     g_hash_table_destroy(te->exps);
     g_free(te);
@@ -142,8 +142,8 @@ void
 tagexp_add_default_expansion(tagexp_t *te, const char *s)
 {
     if (te->default_exps == 0)
-    	te->default_exps = strarray_new();
-    strarray_append(te->default_exps, s);
+    	te->default_exps = new strarray_t;
+    te->default_exps->append(s);
 }
 
 void
@@ -153,10 +153,10 @@ tagexp_add_expansion(tagexp_t *te, const char *tag, const char *exp)
     
     if ((sa = (strarray_t *)g_hash_table_lookup(te->exps, tag)) == 0)
     {
-    	sa = strarray_new();
+    	sa = new strarray_t;
 	g_hash_table_insert(te->exps, g_strdup(tag), sa);
     }
-    strarray_append(sa, exp);
+    sa->append(exp);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -263,11 +263,11 @@ gather_exps(
 
     for (i = 0 ; i < exps->len ; i++)
     {    
-	expexp = props_expand(localprops, strarray_nth(exps, i));
+	expexp = props_expand(localprops, exps->nth(i));
 	strnullnorm(expexp);
 	if (expexp != 0)
 	{
-	    strarray_appendm(sa, expexp);
+	    sa->appendm(expexp);
 #if DEBUG
 	    fprintf(stderr, "taglist_gather:     -> \"%s\"\n", expexp);
 #endif

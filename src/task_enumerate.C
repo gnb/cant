@@ -19,7 +19,7 @@
 
 #include "cant.H"
 
-CVSID("$Id: task_enumerate.C,v 1.1 2002-03-29 12:36:27 gnb Exp $");
+CVSID("$Id: task_enumerate.C,v 1.2 2002-03-29 13:57:32 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -55,18 +55,18 @@ enumerate_execute(task_t *task)
     for ( ; list != 0 ; list = list->next)
     {
     	fileset_t *fs = (fileset_t *)list->data;
-	strarray_t *sa = strarray_new();
+	strarray_t *sa = new strarray_t;
 	int i;
 	
 	fileset_gather_mapped(fs, project_get_props(task->project), sa, 0);
-    	strarray_sort(sa, 0);
+    	sa->sort(0);
 	
 	logf("{\n");
 	for (i = 0 ; i < sa->len ; i++)
-	    logf("%s\n", strarray_nth(sa, i));
+	    logf("%s\n", sa->nth(i));
 	logf("}\n");
 	
-	strarray_delete(sa);
+	delete sa;
     }
     
     return TRUE;

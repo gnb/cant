@@ -22,41 +22,68 @@
 
 #include "common.H"
 
-typedef GPtrArray   strarray_t;
-
-strarray_t *strarray_new(void);
-void strarray_delete(strarray_t *);
-
-int strarray_append(strarray_t *, const char *s);
-int strarray_appendm(strarray_t *, char *s);
-void strarray_remove(strarray_t *, int i);
-
-#define strarray_join(sa, sep) \
-    g_strjoinv((sep), (char **)(sa)->pdata)
-
-#define strarray_nth(sa, i) \
-    ((const char *)g_ptr_array_index((sa), (i)))
-#define strarray_data(sa) \
-    ((const char **)((sa)->pdata))
-
 /*
- * Splits `str' at seperator chars defined by `sep' into
- * a new strarray.  If `sep' is NULL, whitespace is used
- * as seperators.
+ * Wrapper for glib's GPtrArray structure.
+ *
+ * Note that for memory efficiency, we inherit from GPtrArray rather
+ * than contain a pointer to it.  The problem is that GPtrArray is
+ * actually a public subset of a larger private structure, so you
+ * must never, ever ever allocate strarray_t as auto variables or
+ * struct member, in fact any way except dynamically with new().
  */
-strarray_t *strarray_split(const char *str, const char *sep);
-/*
- * Like strarray_split but appends to strarray `sa' and
- * returns the number of strings appended.
- */
-int strarray_split_to(strarray_t *sa, const char *str, const char *sep);
-/*
- * Like strarray_split_to but consumes its `str' argument.
- */
-int strarray_split_tom(strarray_t *sa, char *str, const char *sep);
+
+class strarray_t : public GPtrArray
+{
+public:
+    /* ctor */
+    strarray_t();
+    /* dtor */
+    ~strarray_t();
+    
+    void *operator new(size_t);
+    void operator delete(void *);
+
+    int append(const char *s);
+    int appendm(char *s);
+    void remove(int i);
+
+    char *join(const char *sep)
+    {
+    	return g_strjoinv((sep), (char **)pdata);
+    }
+
+    const char *nth(unsigned i) const
+    {
+	return (const char *)g_ptr_array_index(this, i);
+    }
+    const char *operator[](unsigned i) const
+    {
+	return (const char *)g_ptr_array_index(this, i);
+    }
+    
+    const char **data() const
+    {
+	return (const char **)(pdata);
+    }
+
+    /*
+     * Splits `str' at seperator chars defined by `sep' into
+     * a new strarray.  If `sep' is NULL, whitespace is used
+     * as seperators.
+     */
+    static strarray_t *split(const char *str, const char *sep);
+    /*
+     * Like strarray_split but appends to strarray `sa' and
+     * returns the number of strings appended.
+     */
+    int split_to(const char *str, const char *sep);
+    /*
+     * Like strarray_split_to but consumes its `str' argument.
+     */
+    int split_tom(char *str, const char *sep);
 
 
-void strarray_sort(strarray_t *sa,
-    	    	    int (*compare)(const char **, const char **)/*0=strcmp*/);
+    void sort(int (*compare)(const char **, const char **)/*0=strcmp*/);
+};
 
 #endif /* _strarray_h_ */

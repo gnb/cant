@@ -20,79 +20,90 @@
 #include "strarray.H"
 #include "tok.H"
 
-CVSID("$Id: strarray.C,v 1.2 2002-03-29 13:02:36 gnb Exp $");
+CVSID("$Id: strarray.C,v 1.3 2002-03-29 13:57:32 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-strarray_t *
-strarray_new(void)
+void *
+strarray_t::operator new(size_t)
 {
     return g_ptr_array_new();
 }
 
 void
-strarray_delete(strarray_t *sa)
+strarray_t::operator delete(void *x)
+{
+    g_ptr_array_free((GPtrArray *)x, /*free_seg*/TRUE);
+}
+
+strarray_t::strarray_t()
+{
+}
+
+strarray_t::~strarray_t()
 {
     int i;
     
-    for (i = 0 ; i < sa->len ; i++)
-    	if (g_ptr_array_index(sa, i) != 0)
-    	    g_free(g_ptr_array_index(sa, i));
-    g_ptr_array_free(sa, /*free_seg*/TRUE);
+    for (i = 0 ; i < len ; i++)
+    	if (g_ptr_array_index(this, i) != 0)
+    	    g_free(g_ptr_array_index(this, i));
 }
 
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
 int
-strarray_appendm(strarray_t *sa, char *s)
+strarray_t::appendm(char *s)
 {
-    int i = sa->len;
-    g_ptr_array_add(sa, s);
+    int i = len;
+    
+    g_ptr_array_add(this, s);
     return i;
 }
 
 int
-strarray_append(strarray_t *sa, const char *s)
+strarray_t::append(const char *s)
 {
-    return strarray_appendm(sa, (s == 0 ? 0 : g_strdup(s)));
+    return appendm((s == 0 ? 0 : g_strdup(s)));
 }
 
 void
-strarray_remove(strarray_t *sa, int i)
+strarray_t::remove(int i)
 {
-    if (g_ptr_array_index(sa, i) != 0)
-    	g_free(g_ptr_array_index(sa, i));
-    g_ptr_array_remove_index(sa, i);
+    if (g_ptr_array_index(this, i) != 0)
+    	g_free(g_ptr_array_index(this, i));
+    g_ptr_array_remove_index(this, i);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 
 int
-strarray_split_tom(strarray_t *sa, char *str, const char *sep)
+strarray_t::split_tom(char *str, const char *sep)
 {
-    /* tokenise value on whitespace */
     const char *x;
-    int oldlen = sa->len;
+    int oldlen = len;
+    /* tokenise value on whitespace */
     tok_t tok(str, sep);
     
     while ((x = tok.next()) != 0)
-	strarray_append(sa, x);
-    return sa->len - oldlen;
+	append(x);
+    return len - oldlen;
 }
 
 
 int
-strarray_split_to(strarray_t *sa, const char *str, const char *sep)
+strarray_t::split_to(const char *str, const char *sep)
 {
-    return strarray_split_tom(sa, g_strdup(str), sep);
+    return split_tom(g_strdup(str), sep);
 }
 
 strarray_t *
-strarray_split(const char *str, const char *sep)
+strarray_t::split(const char *str, const char *sep)
 {
     strarray_t *sa;
     
-    sa = strarray_new();
-    strarray_split_to(sa, str, sep);
+    sa = new(strarray_t);
+    sa->split_to(str, sep);
     return sa;
 }
 
@@ -105,11 +116,11 @@ strarray_default_compare(const char **s1, const char **s2)
 }
 
 void
-strarray_sort(strarray_t *sa, int (*compare)(const char **, const char **))
+strarray_t::sort(int (*compare)(const char **, const char **))
 {
     if (compare == 0)
     	compare = strarray_default_compare;
-    qsort(sa->pdata, sa->len, sizeof(char*),
+    qsort(pdata, len, sizeof(char*),
     	    	(int (*)(const void*, const void*))compare);
 }
 

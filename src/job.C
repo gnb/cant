@@ -26,7 +26,7 @@
 #include "queue.H"
 #endif
 
-CVSID("$Id: job.C,v 1.1 2002-03-29 12:36:26 gnb Exp $");
+CVSID("$Id: job.C,v 1.2 2002-03-29 13:57:32 gnb Exp $");
 
 
 typedef enum
@@ -107,7 +107,7 @@ job_process_describe(void *userdata)
 {
     job_process_private_t *jpp = (job_process_private_t *)userdata;
 
-    return strarray_join(jpp->command, " ");
+    return jpp->command->join(" ");
 }
 
 static void
@@ -116,9 +116,9 @@ job_process_delete(void *userdata)
     job_process_private_t *jpp = (job_process_private_t *)userdata;
 
     if (jpp->command != 0)
-	strarray_delete(jpp->command);
+	delete jpp->command;
     if (jpp->env != 0)
-	strarray_delete(jpp->env);
+	delete jpp->env;
     strdelete(jpp->directory);
 	
     if (jpp->logmessage != 0)
@@ -603,9 +603,9 @@ job_immediate_command(
     }
     
     /* clean up immediately */
-    strarray_delete(command);
+    delete command;
     if (env != 0)
-	strarray_delete(env);
+	delete env;
     
     return result;
 }

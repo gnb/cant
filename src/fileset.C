@@ -24,7 +24,7 @@
 #include "log.H"
 #include <dirent.h>
 
-CVSID("$Id: fileset.C,v 1.2 2002-03-29 13:02:36 gnb Exp $");
+CVSID("$Id: fileset.C,v 1.3 2002-03-29 13:57:32 gnb Exp $");
 
 static void fs_spec_delete(fs_spec_t *fss);
 
@@ -507,7 +507,7 @@ fileset_gather_one(const char *filename, void *userdata)
 
     if (rec->mappers == 0)
     {
-	strarray_append(rec->strarray, filename);
+	rec->strarray->append(filename);
     }
     else
     {
@@ -523,7 +523,7 @@ fileset_gather_one(const char *filename, void *userdata)
 	}
 
 	if (mapped != 0)
-	    strarray_appendm(rec->strarray, mapped);
+	    rec->strarray->appendm(mapped);
     }
     
     return TRUE;   /* keep going */
