@@ -1,0 +1,116 @@
+<?xml version="1.0"?>
+
+<project name="test003" default="all" basedir=".">
+
+  <property name="prefix" value="/home/gnb/cant-test-instdir"/>
+  <property name="exec_prefix" value="${prefix}"/>
+  <property name="bindir" value="${exec_prefix}/bin"/>
+  <property name="libdir" value="${exec_prefix}/lib"/>
+  <property name="program_prefix" value=""/>
+  <property name="CC" value="${program_prefix}gcc"/>
+  <property name="srcdir" value="."/>
+  <property name="CPPFLAGS" value="-I${srcdir}"/>
+  <property name="CFLAGS" value=""/>
+  <property name="CWARNFLAGS" value="-Wall"/>
+  <property name="c.debug" value="true"/>
+  <property name="c.warnings" value="true"/>
+  <property name="c.optimize" value="true"/>
+
+  <!-- name=str => name of the new task element -->
+  <!-- TODO: "if", "unless", and "os" attributes on "xtaskdef" and "arg"s -->
+  <!--
+    executable=str is to be exactly the same as an initial "arg line="
+    and so optional, so can be left out and "arg value=" children added
+    to handle whitespace in the executable name
+  -->  
+  <!-- fileset=true => fileset-like attributes and fileset children parsed  -->
+  <!--
+    foreach=true => apply command once for each filename, setting
+    ${cant.task.file} for each filename.  TODO: allow for tasks to
+    override properties locally, so this can be just ${file}.
+    foreach=false => run command only once with ${cant.task.files}
+    TODO: allow a sort-of "filesetref" child to insert the fileset result,
+    preserving whitespace in filenames.
+    TODO: figure out how to integrate dependencies and mappers
+  -->
+  <!--
+    logmessage=str => message issued at start of each command invocation,
+    i.e. once if foreach=false and once per file if foreach=true
+  -->
+  <!-- TODO: support "env" children a la "exec" -->
+  <!-- TODO: allow task definitions to be per-project instead of global -->
+  <!--
+    TODO: need a whitespace-safe technique for generating reusable lists of
+    arguments to functions, e.g. CPPFLAGS.  Something like an "arglist"
+    or "argset" with an "id" attribute which can be referenced from amidst
+    the list of "arg=".
+  -->
+  <!-- TODO: support "verbose" and "quiet" options on the defined task -->
+  
+  <xtaskdef
+    	name="compile"
+	logmessage="Compiling ${file}"
+	fileset="true"
+	foreach="true"
+	executable="${CC}">
+    <attr attribute="debug" property="c.debug"/>
+    <attr attribute="warnings" property="c.warnings"/>
+    <attr attribute="optimize" property="c.optimize"/>
+    <arg line="${CFLAGS}"/>
+    <arg line="${CPPFLAGS}"/>
+    <arg line="${CWARNFLAGS}" if="c.warnings"/>
+    <arg value="-g" if="c.debug"/>
+    <arg value="-O2" if="c.optimize"/>
+    <arg value="-c"/>
+    <arg value="${file}"/>
+  </xtaskdef>
+
+  <!--
+    TODO: need to be able to mark attributes as required.
+    TODO: need to have a way to map some kind of child arglist into
+          the commandline, e.g. for libraries.
+  -->
+  <xtaskdef
+    	name="link"
+	logmessage="Linking ${program}"
+	fileset="false"
+	foreach="false"
+	executable="${CC}">
+    <attr attribute="program"/>
+    <arg line="${CFLAGS}"/>
+    <arg value="-g" if="c.debug"/>
+    <arg value="-O2" if="c.optimize"/>
+    <arg value="-o"/>
+    <arg value="${program}"/>
+    <fileset dir="." includes="*.o"/>
+    <!-- TODO: libraries -->
+  </xtaskdef>
+
+  <target name="all">
+    <compile dir="." includes="*.c"/>
+    <link program="foo"/>
+  </target>
+
+  <target name="install">
+    <copy file="foo" todir="${bindir}"/>
+    <copy todir="${libdir}">
+      <mapper name="glob" from="*.o" to="*.so"/>
+      <fileset dir=".">
+        <include name="*.o"/>
+      </fileset>
+    </copy>
+  </target>
+
+  <target name="clean">
+    <delete>
+      <fileset dir=".">
+	<include name="foo"/>
+	<include name="*.o"/>
+      </fileset>
+    </delete>
+  </target>
+  
+  <target name="null">
+  </target>
+
+</project>
