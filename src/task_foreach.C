@@ -21,7 +21,7 @@
 #include "tok.H"
 #include <time.h>
 
-CVSID("$Id: task_foreach.C,v 1.6 2002-04-12 13:07:24 gnb Exp $");
+CVSID("$Id: task_foreach.C,v 1.7 2002-04-12 14:28:21 gnb Exp $");
 
 class foreach_task_t : public task_t
 {
@@ -67,7 +67,7 @@ set_values(const char *name, const char *value)
 }
 
 gboolean
-add_fileset(xmlNode *node)
+add_fileset(xml_node_t *node)
 {
     fileset_t *fs;
     

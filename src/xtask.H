@@ -121,7 +121,7 @@ private:
     ~xtask_t();
     
     gboolean generic_setter(const char *name, const char *value);
-    gboolean generic_adder(xmlNode *node);
+    gboolean generic_adder(xml_node_t *node);
     
     gboolean build_command(strarray_t *command);
     gboolean execute_command();

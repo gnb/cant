@@ -20,7 +20,7 @@
 #include "xtask.H"
 #include "job.H"
 
-CVSID("$Id: xtask.C,v 1.10 2002-04-12 13:07:24 gnb Exp $");
+CVSID("$Id: xtask.C,v 1.11 2002-04-12 14:28:21 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -59,7 +59,7 @@ xtask_t::generic_setter(const char *name, const char *value)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 gboolean
-xtask_t::generic_adder(xmlNode *node)
+xtask_t::generic_adder(xml_node_t *node)
 {
     taglist_t *tl;
     
@@ -447,7 +447,7 @@ xtask_class_t::add_child(
     task_child_t proto;
     
     proto.name = (char *)name;
-    proto.adder = (gboolean (task_t::*)(xmlNode *))
+    proto.adder = (gboolean (task_t::*)(xml_node_t *))
     	    	    &xtask_t::generic_adder;
     proto.flags = 0;
 

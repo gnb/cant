@@ -20,7 +20,7 @@
 #include "cant.H"
 #include <time.h>
 
-CVSID("$Id: task_tstamp.C,v 1.4 2002-04-12 13:07:24 gnb Exp $");
+CVSID("$Id: task_tstamp.C,v 1.5 2002-04-12 14:28:21 gnb Exp $");
 
 class tstamp_format_t
 {
@@ -175,7 +175,7 @@ tstamp_task_t(task_class_t *tclass, project_t *proj)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 gboolean
-tstamp_task_t::add_format(xmlNode *node)
+tstamp_task_t::add_format(xml_node_t *node)
 {
     tstamp_format_t *fmt;
     char *property;
@@ -188,46 +188,46 @@ tstamp_task_t::add_format(xmlNode *node)
     /*
      * property
      */
-    property = cantXmlGetProp(node, "property");
+    property = node->get_attribute("property");
     if (property == 0)
     {
-	log_error_required_attribute(node, "property");
+	node->error_required_attribute("property");
 	return FALSE;
     }
     fmt = new tstamp_format_t;
     fmt->set_property(property);
-    xmlFree(property);
+    g_free(property);
 
     /*
      * pattern
      */
-    pattern = cantXmlGetProp(node, "pattern");
+    pattern = node->get_attribute("pattern");
     if (pattern == 0)
     {
-	log_error_required_attribute(node, "pattern");
+	node->error_required_attribute("pattern");
 	delete fmt;
 	return FALSE;
     }
     if (!fmt->set_pattern(pattern))
     {
     	log::errorf("Bad format in \"pattern\"\n");
-	xmlFree(pattern);
+	g_free(pattern);
 	delete fmt;
 	return FALSE;
     }
-    xmlFree(pattern);
+    g_free(pattern);
     
     /*
      * offset, unit
      */
-    offset_str = cantXmlGetProp(node, "offset");
-    unit_str = cantXmlGetProp(node, "unit");
+    offset_str = node->get_attribute("offset");
+    unit_str = node->get_attribute("unit");
     ok = TRUE;
     ok = fmt->set_offset(offset_str, unit_str);
     if (offset_str != 0)
-    	xmlFree(offset_str);
+    	g_free(offset_str);
     if (unit_str != 0)
-    	xmlFree(unit_str);
+    	g_free(unit_str);
     if (!ok)
     {
     	log::errorf("Bad format in \"offset\" or \"unit\"\n");
@@ -238,7 +238,7 @@ tstamp_task_t::add_format(xmlNode *node)
     /*
      * locale
      */
-    locale = cantXmlGetProp(node, "locale");
+    locale = node->get_attribute("locale");
     if (locale != 0)
     {
     	log::errorf("Sorry, <tstamp> does not support \"locale\"\n");

@@ -20,12 +20,12 @@
 #include "cant.H"
 #include "xtask.H"
 
-CVSID("$Id: buildfile.C,v 1.9 2002-04-12 13:07:23 gnb Exp $");
+CVSID("$Id: buildfile.C,v 1.10 2002-04-12 14:28:21 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static void
-parse_node_error(const xmlNode *node, const char *fmt, ...)
+parse_node_error(const xml_node_t *node, const char *fmt, ...)
 {
     va_list args;
     log_node_context_t context(node);
@@ -44,13 +44,13 @@ parse_node_error(const xmlNode *node, const char *fmt, ...)
  */
  
 gboolean
-parse_condition(condition_t *cond, xmlNode *node)
+parse_condition(condition_t *cond, xml_node_t *node)
 {
-    char *if_attr = cantXmlGetProp(node, "if");
-    char *unless_attr = cantXmlGetProp(node, "unless");
-    char *matches_attr = cantXmlGetProp(node, "matches");
-    char *matchesregex_attr = cantXmlGetProp(node, "matchesregex");
-    gboolean case_sens = cantXmlGetBooleanProp(node, "matchsensitive", TRUE);
+    char *if_attr = node->get_attribute("if");
+    char *unless_attr = node->get_attribute("unless");
+    char *matches_attr = node->get_attribute("matches");
+    char *matchesregex_attr = node->get_attribute("matchesregex");
+    gboolean case_sens = node->get_boolean_attribute("matchsensitive", TRUE);
     gboolean res = FALSE;
     
     if (if_attr != 0 && unless_attr != 0)
@@ -75,10 +75,10 @@ parse_condition(condition_t *cond, xmlNode *node)
     	res = TRUE; 	/* success!! */
     }
     
-    xmlFree(if_attr);
-    xmlFree(unless_attr);
-    xmlFree(matches_attr);
-    xmlFree(matchesregex_attr);
+    g_free(if_attr);
+    g_free(unless_attr);
+    g_free(matches_attr);
+    g_free(matchesregex_attr);
     return res;
 }
 
@@ -95,11 +95,11 @@ is_condition_attribute(const char *attrname)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static gboolean
-parse_property(project_t *proj, xmlNode *node)
+parse_property(project_t *proj, xml_node_t *node)
 {
     char *name = 0;
     char *name_e = 0;
-    xmlAttr *attr;
+    xml_iterator_t<xml_attribute_t> aiter;
     gboolean failed = FALSE;
     condition_t cond;
     gboolean doit = TRUE;
@@ -108,7 +108,7 @@ parse_property(project_t *proj, xmlNode *node)
 	doit = cond.evaluate(project_get_props(proj));
 
     /* a lot hinges on whether attribute "name" is present */    
-    name = cantXmlGetProp(node, "name");
+    name = node->get_attribute("name");
 
     if (name != 0)
     {
@@ -124,9 +124,9 @@ parse_property(project_t *proj, xmlNode *node)
     else if (name != 0)
     {
     	/* exactly one of "value", "location" and "refid" may be present */
-	char *value = cantXmlGetProp(node, "value");
-	char *location = cantXmlGetProp(node, "location");
-	char *refid = cantXmlGetProp(node, "refid");
+	char *value = node->get_attribute("value");
+	char *location = node->get_attribute("location");
+	char *refid = node->get_attribute("refid");
 	int n = 0;
 	
 	if (value != 0) n++;
@@ -142,7 +142,7 @@ parse_property(project_t *proj, xmlNode *node)
 	{
 	    if (doit)
 	    {
-		if (cantXmlGetBooleanProp(node, "append", FALSE))
+		if (node->get_boolean_attribute("append", FALSE))
 		    project_append_property(proj, name_e, value);
 		else
 		    project_set_property(proj, name_e, value);
@@ -172,19 +172,19 @@ parse_property(project_t *proj, xmlNode *node)
 	}
 	
 	if (value != 0)
-    	    xmlFree(value);
+    	    g_free(value);
 	if (location != 0)
-    	    xmlFree(location);
+    	    g_free(location);
 	if (refid != 0)
-    	    xmlFree(refid);
+    	    g_free(refid);
     }
     else
     {
     	/* exactly one of "resource", "file" and "environment" may be present */
-	char *resource = cantXmlGetProp(node, "resource");
-	char *file = cantXmlGetProp(node, "file");
-	char *shellfile = cantXmlGetProp(node, "shellfile");
-	char *environment = cantXmlGetProp(node, "environment");
+	char *resource = node->get_attribute("resource");
+	char *file = node->get_attribute("file");
+	char *shellfile = node->get_attribute("shellfile");
+	char *environment = node->get_attribute("environment");
 	int n = 0;
 	
 	if (resource != 0) n++;
@@ -222,45 +222,46 @@ parse_property(project_t *proj, xmlNode *node)
 	}
 	
 	if (resource != 0)
-    	    xmlFree(resource);
+    	    g_free(resource);
 	if (file != 0)
-    	    xmlFree(file);
+    	    g_free(file);
 	if (shellfile != 0)
-    	    xmlFree(shellfile);
+    	    g_free(shellfile);
 	if (environment != 0)
-    	    xmlFree(environment);
+    	    g_free(environment);
     }
 
     /* scan the attributes anyway, to detect misspellings etc */
-    for (attr = node->properties ; attr != 0 ; attr = attr->next)
+    for (aiter = node->first_attribute() ; aiter != 0 ; ++aiter)
     {
-    	char *value = cantXmlAttrValue(attr);
+	xml_attribute_t *attr = *aiter;
+    	char *value = attr->get_value();
 	
-    	if (!strcmp(cantXmlAttrName(attr), "name") ||
-	    !strcmp(cantXmlAttrName(attr), "value") ||
-	    !strcmp(cantXmlAttrName(attr), "location") ||
-	    !strcmp(cantXmlAttrName(attr), "append") ||
-	    !strcmp(cantXmlAttrName(attr), "refid") ||
-	    !strcmp(cantXmlAttrName(attr), "resource") ||
-	    !strcmp(cantXmlAttrName(attr), "file") ||
-	    !strcmp(cantXmlAttrName(attr), "shellfile") ||
-	    !strcmp(cantXmlAttrName(attr), "environment") ||
-	    !strcmp(cantXmlAttrName(attr), "classpath") ||
-	    !strcmp(cantXmlAttrName(attr), "classpathref") ||
-	    is_condition_attribute(cantXmlAttrName(attr)))
+    	if (!strcmp(attr->get_name(), "name") ||
+	    !strcmp(attr->get_name(), "value") ||
+	    !strcmp(attr->get_name(), "location") ||
+	    !strcmp(attr->get_name(), "append") ||
+	    !strcmp(attr->get_name(), "refid") ||
+	    !strcmp(attr->get_name(), "resource") ||
+	    !strcmp(attr->get_name(), "file") ||
+	    !strcmp(attr->get_name(), "shellfile") ||
+	    !strcmp(attr->get_name(), "environment") ||
+	    !strcmp(attr->get_name(), "classpath") ||
+	    !strcmp(attr->get_name(), "classpathref") ||
+	    is_condition_attribute(attr->get_name()))
 	    ;
 	else
 	{
-	    log_error_unknown_attribute(attr);
+	    attr->error_unknown_attribute();
 	    failed = TRUE;
 	}
 
-    	xmlFree(value);
+    	g_free(value);
     }
     
 
     if (name != 0)
-    	xmlFree(name);
+    	g_free(name);
     strdelete(name_e);
 	
     return !failed;
@@ -269,17 +270,18 @@ parse_property(project_t *proj, xmlNode *node)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static gboolean
-check_childless(xmlNode *node)
+check_childless(xml_node_t *node)
 {
-    xmlNode *child;
+    xml_iterator_t<xml_node_t> iter;
     gboolean res = TRUE;
 
-    for (child = node->childs ; child != 0 ; child = child->next)
+    for (iter = node->first_child() ; iter != 0 ; ++iter)
     {
-    	if (child->type != XML_ELEMENT_NODE)
+    	xml_node_t *child = *iter;
+    	if (child->get_type() != XML_ELEMENT_NODE)
 	    continue;
 
-    	log_error_unexpected_element(child);
+    	child->error_unexpected_element();
 	res = FALSE;
     }
     
@@ -288,57 +290,58 @@ check_childless(xmlNode *node)
 
 
 static tagexp_t *
-parse_tagexpand(project_t *proj, xmlNode *node)
+parse_tagexpand(project_t *proj, xml_node_t *node)
 {
     char *buf;
     tagexp_t *te;
-    xmlNode *child;
+    xml_iterator_t<xml_node_t> iter;
     gboolean failed = FALSE;
 
 #if DEBUG
     fprintf(stderr, "Parsing tagexpand\n");
 #endif
 
-    if ((buf = cantXmlGetProp(node, "namespace")) == 0)
+    if ((buf = node->get_attribute("namespace")) == 0)
     {
-	log_error_required_attribute(node, "namespace");
+	node->error_required_attribute("namespace");
 	return 0;
     }
     
     te = new tagexp_t(buf);
-    xmlFree(buf);
+    g_free(buf);
 
 #if 0 /* TODO */
-    te->set_follow_depends(cantXmlGetBooleanProp(node, "followdepends", FALSE));
-    te->set_reverse_order(cantXmlGetBooleanProp(node, "reverse", FALSE));
+    te->set_follow_depends(node->get_boolean_attribute("followdepends", FALSE));
+    te->set_reverse_order(node->get_boolean_attribute("reverse", FALSE));
 #endif
 
-    if ((buf = cantXmlGetProp(node, "default")) != 0)
+    if ((buf = node->get_attribute("default")) != 0)
     {
     	te->add_default_expansion(buf);
-    	xmlFree(buf);
+    	g_free(buf);
     }
     
     /* TODO: check no other attributes are present */
     
-    for (child = node->childs ; child != 0 ; child = child->next)
+    for (iter = node->first_child() ; iter != 0 ; ++iter)
     {
-    	if (child->type != XML_ELEMENT_NODE)
+    	xml_node_t *child = *iter;
+    	if (child->get_type() != XML_ELEMENT_NODE)
 	    continue;
 
-    	if (!strcmp(cantXmlNodeGetName(child), "expand"))
+    	if (!strcmp(child->get_name(), "expand"))
 	{
 	    char *tag = 0, *to = 0;
 	    
-	    if ((tag = cantXmlGetProp(child, "tag")) == 0)
+	    if ((tag = child->get_attribute("tag")) == 0)
 	    {
-	    	log_error_required_attribute(child, "tag");
+	    	child->error_required_attribute("tag");
 	    	failed = TRUE;
 	    }
 	    	    
-	    if ((to = cantXmlGetProp(child, "to")) == 0)
+	    if ((to = child->get_attribute("to")) == 0)
 	    {
-	    	log_error_required_attribute(child, "to");
+	    	child->error_required_attribute("to");
 	    	failed = TRUE;
 	    }
 	    
@@ -351,17 +354,17 @@ parse_tagexpand(project_t *proj, xmlNode *node)
 	    	failed = TRUE;
 	    
 	    if (tag != 0)
-	    	xmlFree(tag);
+	    	g_free(tag);
 	    if (to != 0)
-	    	xmlFree(to);
+	    	g_free(to);
 	}
-    	else if (!strcmp(cantXmlNodeGetName(child), "default"))
+    	else if (!strcmp(child->get_name(), "default"))
 	{
 	    char *to = 0;
 	    
-	    if ((to = cantXmlGetProp(child, "to")) == 0)
+	    if ((to = child->get_attribute("to")) == 0)
 	    {
-	    	log_error_required_attribute(child, "to");
+	    	child->error_required_attribute("to");
 	    	failed = TRUE;
 	    }
 	    
@@ -374,11 +377,11 @@ parse_tagexpand(project_t *proj, xmlNode *node)
 	    	failed = TRUE;
 	    
 	    if (to != 0)
-	    	xmlFree(to);
+	    	g_free(to);
 	}
 	else
 	{
-	    log_error_unexpected_element(child);
+	    child->error_unexpected_element();
 	    failed = TRUE;
 	}
     }
@@ -397,15 +400,15 @@ parse_tagexpand(project_t *proj, xmlNode *node)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 taglist_t *
-parse_taglist(project_t *proj, xmlNode *node)
+parse_taglist(project_t *proj, xml_node_t *node)
 {
     char *buf, *buf2;
     tl_def_t *tldef;
     taglist_t *tl;
     const tl_def_t::tag_t *tag;
-    xmlNode *child;
+    xml_iterator_t<xml_node_t> iter;
     gboolean failed = FALSE;
-    const char *name_space = cantXmlNodeGetName(node);
+    const char *name_space = node->get_name();
     
 
 #if DEBUG
@@ -418,14 +421,14 @@ parse_taglist(project_t *proj, xmlNode *node)
 	return 0;
     }
     
-    if ((buf = cantXmlGetProp(node, "refid")) != 0)
+    if ((buf = node->get_attribute("refid")) != 0)
     {
     	/* Handle reference to an existing taglist */
-    	if ((buf2 = cantXmlGetProp(node, "id")) != 0)
+    	if ((buf2 = node->get_attribute("id")) != 0)
 	{
 	    parse_node_error(node, "Cannot specify both \"id\" and \"refid\"\n");
-	    xmlFree(buf);
-	    xmlFree(buf2);
+	    g_free(buf);
+	    g_free(buf2);
 	    return 0;
 	}
 	
@@ -433,44 +436,45 @@ parse_taglist(project_t *proj, xmlNode *node)
 	{
 	    /* TODO: order dependency */
 	    parse_node_error(node, "Cannot find taglist \"%s\" to satisfy \"refid\"\n", buf);
-	    xmlFree(buf);
+	    g_free(buf);
 	    return 0;
 	}
 	/* TODO: refcount to prevent problems deleting the project */
 	
-    	xmlFree(buf);
+    	g_free(buf);
 	tl->ref();
 	return tl;
     }
 
     /* actual taglist definition */
-    if ((buf = cantXmlGetProp(node, "id")) == 0)
+    if ((buf = node->get_attribute("id")) == 0)
     {
-	log_error_required_attribute(node, "id");
+	node->error_required_attribute("id");
 	return 0;
     }
 
     tl = new taglist_t(name_space);
     tl->set_id(buf);
-    xmlFree(buf);
+    g_free(buf);
     
     /* TODO: parse optional "depends" attribute */
     /* TODO: syntax check other attributes */
     
-    for (child = node->childs ; child != 0 ; child = child->next)
+    for (iter = node->first_child() ; iter != 0 ; ++iter)
     {
-    	if (child->type != XML_ELEMENT_NODE)
+    	xml_node_t *child = *iter;
+    	if (child->get_type() != XML_ELEMENT_NODE)
 	    continue;
 
-    	if ((tag = tldef->find_tag(cantXmlNodeGetName(child))) != 0)
+    	if ((tag = tldef->find_tag(child->get_name())) != 0)
 	{
-	    char *name = cantXmlGetProp(child, "name");
+	    char *name = child->get_attribute("name");
 	    char *value = 0;
 	    taglist_t::item_t *tlitem = 0;
 
 	    if (name == 0 && tag->name_avail_ == AV_MANDATORY)
 	    {
-		log_error_required_attribute(child, "name");
+		child->error_required_attribute("name");
 		failed = TRUE;
 	    }
 	    else if (name != 0 && tag->name_avail_ == AV_FORBIDDEN)
@@ -479,12 +483,12 @@ parse_taglist(project_t *proj, xmlNode *node)
 	    	failed = TRUE;
 	    }
 
-	    if ((value = cantXmlGetProp(child, "value")) != 0)
-		tlitem = tl->add_value(cantXmlNodeGetName(child), name, value);
-	    else if ((value = cantXmlGetProp(child, "line")) != 0)
-		tlitem = tl->add_line(cantXmlNodeGetName(child), name, value);
-	    else if ((value = cantXmlGetProp(child, "file")) != 0)
-		tlitem = tl->add_file(cantXmlNodeGetName(child), name, value);
+	    if ((value = child->get_attribute("value")) != 0)
+		tlitem = tl->add_value(child->get_name(), name, value);
+	    else if ((value = child->get_attribute("line")) != 0)
+		tlitem = tl->add_line(child->get_name(), name, value);
+	    else if ((value = child->get_attribute("file")) != 0)
+		tlitem = tl->add_file(child->get_name(), name, value);
 	    
 	    if (value == 0 && tag->value_avail_ == AV_MANDATORY)
 	    {
@@ -501,13 +505,13 @@ parse_taglist(project_t *proj, xmlNode *node)
 	    	failed = TRUE;
 
 	    if (name != 0)
-		xmlFree(name);
+		g_free(name);
 	    if (value != 0)
-		xmlFree(value);
+		g_free(value);
     	}
 	else
 	{
-	    log_error_unexpected_element(child);
+	    child->error_unexpected_element();
 	    failed = FALSE;
 	}
     }
@@ -523,7 +527,7 @@ parse_taglist(project_t *proj, xmlNode *node)
 }
 
 static gboolean
-parse_project_taglist(project_t *proj, xmlNode *node)
+parse_project_taglist(project_t *proj, xml_node_t *node)
 {
     taglist_t *tl;
     
@@ -544,11 +548,11 @@ parse_project_taglist(project_t *proj, xmlNode *node)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static gboolean
-parse_xtaskdef(project_t *proj, xmlNode *node)
+parse_xtaskdef(project_t *proj, xml_node_t *node)
 {
     char *buf;
     xtask_class_t *xtclass;
-    xmlNode *child;
+    xml_iterator_t<xml_node_t> iter;
     xtask_class_t::arg_t *xa;
     fileset_t *fs;
     gboolean failed = FALSE;
@@ -557,59 +561,60 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
     fprintf(stderr, "Parsing xtaskdef\n");
 #endif
 
-    if ((buf = cantXmlGetProp(node, "name")) == 0)
+    if ((buf = node->get_attribute("name")) == 0)
     {
-	log_error_required_attribute(node, "name");
+	node->error_required_attribute("name");
 	return FALSE;
     }
 
     log_node_context_t context(node);
     xtclass = new xtask_class_t(buf);
-    xmlFree(buf);
+    g_free(buf);
 
-    buf = cantXmlGetProp(node, "executable");
+    buf = node->get_attribute("executable");
     xtclass->set_executable(buf);
-    xmlFree(buf);
+    g_free(buf);
     
-    buf = cantXmlGetProp(node, "logmessage");
+    buf = node->get_attribute("logmessage");
     xtclass->set_logmessage(buf);
-    xmlFree(buf);
+    g_free(buf);
 
-    xtclass->set_is_fileset(cantXmlGetBooleanProp(node, "fileset", FALSE));
+    xtclass->set_is_fileset(node->get_boolean_attribute("fileset", FALSE));
     
     xtclass->set_fileset_dir_name("dir");	/* TODO */
     
-    xtclass->set_foreach(cantXmlGetBooleanProp(node, "foreach", FALSE));
+    xtclass->set_foreach(node->get_boolean_attribute("foreach", FALSE));
     
-    buf = cantXmlGetProp(node, "deptarget");
+    buf = node->get_attribute("deptarget");
     xtclass->set_dep_target(buf);
-    xmlFree(buf);
+    g_free(buf);
 
     /* TODO: syntax check other attributes */
     
-    for (child = node->childs ; child != 0 ; child = child->next)
+    for (iter = node->first_child() ; iter != 0 ; ++iter)
     {
-    	if (child->type != XML_ELEMENT_NODE)
+    	xml_node_t *child = *iter;
+    	if (child->get_type() != XML_ELEMENT_NODE)
 	    continue;
 
 	log_node_context_t context(node);
     	xa = 0;
-    	if (!strcmp(cantXmlNodeGetName(child), "arg"))
+    	if (!strcmp(child->get_name(), "arg"))
 	{
-	    if ((buf = cantXmlGetProp(child, "value")) != 0)
+	    if ((buf = child->get_attribute("value")) != 0)
 	    {
 	    	xa = xtclass->add_value(buf);
-	    	xmlFree(buf);
+	    	g_free(buf);
 	    }
-	    else if ((buf = cantXmlGetProp(child, "line")) != 0)
+	    else if ((buf = child->get_attribute("line")) != 0)
 	    {
 	    	xa = xtclass->add_line(buf);
-	    	xmlFree(buf);
+	    	g_free(buf);
 	    }
-	    else if ((buf = cantXmlGetProp(child, "file")) != 0)
+	    else if ((buf = child->get_attribute("file")) != 0)
 	    {
 	    	xa = xtclass->add_file(buf);
-	    	xmlFree(buf);
+	    	g_free(buf);
 	    }
 	    else
 	    {
@@ -617,54 +622,54 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
     	    	failed = TRUE;
 	    }
 	}
-	else if (!strcmp(cantXmlNodeGetName(child), "attr"))
+	else if (!strcmp(child->get_name(), "attr"))
 	{
 	    char *from = 0, *to = 0;
 	    
-	    if ((from = cantXmlGetProp(child, "attribute")) == 0)
+	    if ((from = child->get_attribute("attribute")) == 0)
 	    {
-		log_error_required_attribute(node, "attribute");
+		node->error_required_attribute("attribute");
 		failed = TRUE;
 	    }
-	    else if ((to = cantXmlGetProp(child, "property")) == 0)
+	    else if ((to = child->get_attribute("property")) == 0)
 	    	to = xmlMemStrdup(from);
 
     	    if (from != 0)
     	    	xtclass->add_attribute(from, to,
-		    	cantXmlGetBooleanProp(child, "required", FALSE));
+		    	child->get_boolean_attribute("required", FALSE));
 	    /* TODO: specify default value */
 	    if (from != 0)
-		xmlFree(from);
+		g_free(from);
 	    if (to != 0)
-		xmlFree(to);
+		g_free(to);
 	}
-	else if (!strcmp(cantXmlNodeGetName(child), "taglist"))
+	else if (!strcmp(child->get_name(), "taglist"))
 	{
 	    char *name_space = 0;
 	    
-	    if ((name_space = cantXmlGetProp(child, "namespace")) == 0)
+	    if ((name_space = child->get_attribute("namespace")) == 0)
 	    {
-		log_error_required_attribute(node, "namespace");
+		node->error_required_attribute("namespace");
 		failed = TRUE;
 	    }
 
 	    xtclass->add_child(name_space);
 	    
 	    if (name_space != 0)
-		xmlFree(name_space);
+		g_free(name_space);
     	}	
-	else if (!strcmp(cantXmlNodeGetName(child), "fileset"))
+	else if (!strcmp(child->get_name(), "fileset"))
 	{
 	    if ((fs = parse_fileset(proj, child, "dir")) == 0)
 	    	failed = TRUE;
 	    else
 	    	xa = xtclass->add_fileset(fs);
 	}
-	else if (!strcmp(cantXmlNodeGetName(child), "files"))
+	else if (!strcmp(child->get_name(), "files"))
 	{
 	    xa = xtclass->add_files();
 	}
-	else if (!strcmp(cantXmlNodeGetName(child), "tagexpand"))
+	else if (!strcmp(child->get_name(), "tagexpand"))
 	{
 	    tagexp_t *te;
 	    
@@ -673,7 +678,7 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
 	    else
 		xa = xtclass->add_tagexpand(te);
 	}
-	else if (!strcmp(cantXmlNodeGetName(child), "mapper"))
+	else if (!strcmp(child->get_name(), "mapper"))
 	{
 	    mapper_t *ma;
 	    
@@ -682,7 +687,7 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
 	    else
 		xtclass->add_mapper(ma);
 	}
-	else if (!strcmp(cantXmlNodeGetName(child), "depmapper"))
+	else if (!strcmp(child->get_name(), "depmapper"))
 	{
 	    mapper_t *ma;
 	    
@@ -693,7 +698,7 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
 	}
 	else
 	{
-	    log_error_unexpected_element(child);
+	    child->error_unexpected_element();
 	    failed = TRUE;
 	}
 
@@ -722,7 +727,7 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
 
 static gboolean
 parse_availability_attr(
-    xmlNode *node,
+    xml_node_t *node,
     const char *attrname,
     availability_t *availp)
 {
@@ -731,7 +736,7 @@ parse_availability_attr(
     /* default value */
     *availp = AV_OPTIONAL;
 
-    if ((val = cantXmlGetProp(node, attrname)) == 0)
+    if ((val = node->get_attribute(attrname)) == 0)
     	return TRUE;
 	
     if (!strcasecmp(val, "mandatory"))
@@ -744,52 +749,53 @@ parse_availability_attr(
     {
     	parse_node_error(node, "Attribute \"%s\" must be one of \"mandatory\", \"optional\" or \"forbidden\"\n",
 	    	    	    attrname);
-    	xmlFree(val);
+    	g_free(val);
     	return FALSE;
     }
 	
-    xmlFree(val);
+    g_free(val);
     return TRUE;
 }
 
 
 static gboolean
-parse_taglistdef(project_t *proj, xmlNode *node)
+parse_taglistdef(project_t *proj, xml_node_t *node)
 {
     char *buf;
     tl_def_t *tldef;
-    xmlNode *child;
+    xml_iterator_t<xml_node_t> iter;
     gboolean failed = FALSE;
     
 #if DEBUG
     fprintf(stderr, "Parsing taglistdef\n");
 #endif
 
-    if ((buf = cantXmlGetProp(node, "name")) == 0)
+    if ((buf = node->get_attribute("name")) == 0)
     {
-	log_error_required_attribute(node, "name");
+	node->error_required_attribute("name");
 	return FALSE;
     }
 
     tldef = new tl_def_t(buf);
-    xmlFree(buf);
+    g_free(buf);
 
     /* TODO: syntax check other attributes */
     
-    for (child = node->childs ; child != 0 ; child = child->next)
+    for (iter = node->first_child() ; iter != 0 ; ++iter)
     {
-    	if (child->type != XML_ELEMENT_NODE)
+    	xml_node_t *child = *iter;
+    	if (child->get_type() != XML_ELEMENT_NODE)
 	    continue;
 
-    	if (!strcmp(cantXmlNodeGetName(child), "tag"))
+    	if (!strcmp(child->get_name(), "tag"))
 	{
 	    char *tag = 0;
 	    availability_t name_avail = AV_OPTIONAL;
 	    availability_t value_avail = AV_OPTIONAL;
 	    
-	    if ((tag = cantXmlGetProp(child, "tag")) == 0)
+	    if ((tag = child->get_attribute("tag")) == 0)
 	    {
-	    	log_error_required_attribute(child, "tag");
+	    	child->error_required_attribute("tag");
 	    	failed = TRUE;
 	    }
 	    
@@ -801,11 +807,11 @@ parse_taglistdef(project_t *proj, xmlNode *node)
     	    if (tag != 0)	    
 	    {
 		tldef->add_tag(tag, name_avail, value_avail);
-		xmlFree(tag);
+		g_free(tag);
 	    }
 	}
 	else
-	    log_error_unexpected_element(child);
+	    child->error_unexpected_element();
     }    
 
     /* TODO: handle duplicate registrations cleanly */
@@ -816,12 +822,12 @@ parse_taglistdef(project_t *proj, xmlNode *node)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 fileset_t *
-parse_fileset(project_t *proj, xmlNode *node, const char *dirprop)
+parse_fileset(project_t *proj, xml_node_t *node, const char *dirprop)
 {
     fileset_t *fs;
     fileset_t::spec_t *fss;
     char *buf, *buf2, *x;
-    xmlNode *child;
+    xml_iterator_t<xml_node_t> iter;
     gboolean appending = FALSE;
     static const char sep[] = ", \t\n\r";
 
@@ -829,21 +835,21 @@ parse_fileset(project_t *proj, xmlNode *node, const char *dirprop)
     fprintf(stderr, "parsing fileset\n");
 #endif
 
-    if ((buf = cantXmlGetProp(node, "refid")) != 0)
+    if ((buf = node->get_attribute("refid")) != 0)
     {
     	/* Handle reference to an existing fileset */
-    	if ((buf2 = cantXmlGetProp(node, "id")) != 0)
+    	if ((buf2 = node->get_attribute("id")) != 0)
 	{
 	    parse_node_error(node, "Cannot specify both \"id\" and \"refid\"\n");
-	    xmlFree(buf);
-	    xmlFree(buf2);
+	    g_free(buf);
+	    g_free(buf2);
 	    return 0;
 	}
-    	if ((buf2 = cantXmlGetProp(node, "append")) != 0)
+    	if ((buf2 = node->get_attribute("append")) != 0)
 	{
 	    parse_node_error(node, "Cannot specify both \"append\" and \"refid\"\n");
-	    xmlFree(buf);
-	    xmlFree(buf2);
+	    g_free(buf);
+	    g_free(buf2);
 	    return 0;
 	}
 	
@@ -854,28 +860,28 @@ parse_fileset(project_t *proj, xmlNode *node, const char *dirprop)
 	     *       for non-tasks first before parsing tasks.
 	     */
 	    parse_node_error(node, "Cannot find fileset \"%s\" to satisfy \"refid\"\n", buf);
-	    xmlFree(buf);
+	    g_free(buf);
 	    return 0;
 	}
-    	xmlFree(buf);
+    	g_free(buf);
 	fs->ref();
 	return fs;
     }
-    else if ((buf = cantXmlGetProp(node, "append")) != 0)
+    else if ((buf = node->get_attribute("append")) != 0)
     {
     	/* Handle appending to an existing fileset */
-    	if ((buf2 = cantXmlGetProp(node, "id")) != 0)
+    	if ((buf2 = node->get_attribute("id")) != 0)
 	{
 	    parse_node_error(node, "Cannot specify both \"id\" and \"append\"\n");
-	    xmlFree(buf);
-	    xmlFree(buf2);
+	    g_free(buf);
+	    g_free(buf2);
 	    return 0;
 	}
-    	if ((buf2 = cantXmlGetProp(node, "refid")) != 0)
+    	if ((buf2 = node->get_attribute("refid")) != 0)
 	{
 	    parse_node_error(node, "Cannot specify both \"refid\" and \"append\"\n");
-	    xmlFree(buf);
-	    xmlFree(buf2);
+	    g_free(buf);
+	    g_free(buf2);
 	    return 0;
 	}
 
@@ -887,10 +893,10 @@ parse_fileset(project_t *proj, xmlNode *node, const char *dirprop)
 	     *       for non-tasks first before parsing tasks.
 	     */
 	    parse_node_error(node, "Cannot find fileset \"%s\" to satisfy \"append\"\n", buf);
-	    xmlFree(buf);
+	    g_free(buf);
 	    return 0;
 	}
-    	xmlFree(buf);
+    	g_free(buf);
 	strdelete(buf2);
 	appending = TRUE;
     }
@@ -900,93 +906,94 @@ parse_fileset(project_t *proj, xmlNode *node, const char *dirprop)
 
 	fs = new fileset_t();
 
-	if (dirprop != 0 && (buf = cantXmlGetProp(node, dirprop)) != 0)
+	if (dirprop != 0 && (buf = node->get_attribute(dirprop)) != 0)
 	{
 	    fs->set_directory(buf);
-	    xmlFree(buf);
+	    g_free(buf);
     	}
 
-	if ((buf = cantXmlGetProp(node, "id")) != 0)
+	if ((buf = node->get_attribute("id")) != 0)
 	{
     	    fs->set_id(buf);
-    	    xmlFree(buf);
+    	    g_free(buf);
 	}
 
 
 	fs->set_case_sensitive(
-    	    		cantXmlGetBooleanProp(node, "casesensitive", TRUE));
+    	    		node->get_boolean_attribute("casesensitive", TRUE));
 	fs->set_default_excludes(
-    	    		cantXmlGetBooleanProp(node, "defaultexcludes", TRUE));
+    	    		node->get_boolean_attribute("defaultexcludes", TRUE));
     }
 
     /*
      * "includes" attribute
      * TODO: use tok_t
      */
-    buf = buf2 = cantXmlGetProp(node, "includes");
+    buf = buf2 = node->get_attribute("includes");
     if (buf != 0)
 	while ((x = strtok(buf2, sep)) != 0)
 	{
 	    buf2 = 0;
 	    fs->add_include(x);
 	}
-    xmlFree(buf);
+    g_free(buf);
 
     /*
      * "includesfile" attribute
      */
-    buf = cantXmlGetProp(node, "includesfile");
+    buf = node->get_attribute("includesfile");
     if (buf != 0)
 	fs->add_include_file(buf);
-    xmlFree(buf);
+    g_free(buf);
     
 
     /*
      * "excludes" attribute
      * TODO: use tok_t
      */
-    buf = buf2 = cantXmlGetProp(node, "excludes");
+    buf = buf2 = node->get_attribute("excludes");
     if (buf != 0)
 	while ((x = strtok(buf2, sep)) != 0)
 	{
 	    buf2 = 0;
 	    fs->add_exclude(x);
 	}
-    xmlFree(buf);
+    g_free(buf);
 
     /*
      * "excludesfile" attribute
      */
-    buf = cantXmlGetProp(node, "excludesfile");
+    buf = node->get_attribute("excludesfile");
     if (buf != 0)
 	fs->add_exclude_file(buf);
-    xmlFree(buf);
+    g_free(buf);
     
     /*
      * children
      */
-    for (child = node->childs ; child != 0 ; child = child->next)
+    for (iter = node->first_child() ; iter != 0 ; ++iter)
     {
-    	if (child->type != XML_ELEMENT_NODE)
+    	xml_node_t *child = *iter;
+    	if (child->get_type() != XML_ELEMENT_NODE)
 	    continue;
 	    
-	if ((buf = cantXmlGetProp(child, "name")) == 0)
+	if ((buf = child->get_attribute("name")) == 0)
 	{
-	    log_error_required_attribute(node, "name");
+	    node->error_required_attribute("name");
 	    continue;
 	}
 	
 	fss = 0;
-	if (!strcmp(cantXmlNodeGetName(child), "include"))
+	if (!strcmp(child->get_name(), "include"))
 	    fss = fs->add_include(buf);
-	else if (!strcmp(cantXmlNodeGetName(child), "includesfile"))
+	else if (!strcmp(child->get_name(), "includesfile"))
 	    fss = fs->add_include_file(buf);
-	else if (!strcmp(cantXmlNodeGetName(child), "exclude"))
+	else if (!strcmp(child->get_name(), "exclude"))
 	    fss = fs->add_exclude(buf);
-	else if (!strcmp(cantXmlNodeGetName(child), "excludesfile"))
+	else if (!strcmp(child->get_name(), "excludesfile"))
 	    fss = fs->add_exclude_file(buf);
 	    
-	xmlFree(buf);
+	g_free(buf);
 	if (fss == 0)
 	    continue;
 
@@ -999,7 +1006,7 @@ parse_fileset(project_t *proj, xmlNode *node, const char *dirprop)
 
 
 static gboolean
-parse_project_fileset(project_t *proj, xmlNode *node)
+parse_project_fileset(project_t *proj, xml_node_t *node)
 {
     fileset_t *fs;
     
@@ -1035,7 +1042,7 @@ is_fileset_attribute(const char *attrname, const char *dirprop)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static gboolean
-parse_path(project_t *proj, xmlNode *node)
+parse_path(project_t *proj, xml_node_t *node)
 {
 #if DEBUG
     fprintf(stderr, "ignoring path\n");
@@ -1046,39 +1053,39 @@ parse_path(project_t *proj, xmlNode *node)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 mapper_t *
-parse_mapper(project_t *proj, xmlNode *node)
+parse_mapper(project_t *proj, xml_node_t *node)
 {
     char *name;
     char *from;
     char *to;
     mapper_t *ma;
     
-    if ((name = cantXmlGetProp(node, "name")) == 0)
+    if ((name = node->get_attribute("name")) == 0)
     {
-	log_error_required_attribute(node, "name");
+	node->error_required_attribute("name");
     	return 0;
     }
 
-    if ((from = cantXmlGetProp(node, "from")) == 0)
+    if ((from = node->get_attribute("from")) == 0)
     {
-	log_error_required_attribute(node, "from");
-	xmlFree(name);
+	node->error_required_attribute("from");
+	g_free(name);
     	return 0;
     }
 
-    if ((to = cantXmlGetProp(node, "to")) == 0)
+    if ((to = node->get_attribute("to")) == 0)
     {
-	log_error_required_attribute(node, "to");
-	xmlFree(name);
-	xmlFree(from);
+	node->error_required_attribute("to");
+	g_free(name);
+	g_free(from);
     	return 0;
     }
     
     ma = mapper_t::create(name, from, to);
     
-    xmlFree(name);
-    xmlFree(from);
-    xmlFree(to);
+    g_free(name);
+    g_free(from);
+    g_free(to);
     
     return ma;
 }
@@ -1087,7 +1094,7 @@ parse_mapper(project_t *proj, xmlNode *node)
 
 typedef struct
 {
-    xmlNode *node;
+    xml_node_t *node;
     gboolean failed;
 } attr_check_rec_t;
 
@@ -1100,33 +1107,33 @@ check_one_attribute(const task_attr_t *ta, void *userdata)
     if (!(ta->flags & TT_REQUIRED))
     	return;
 	
-    if ((value = cantXmlGetProp(rec->node, ta->name)) == 0)
+    if ((value = rec->node->get_attribute(ta->name)) == 0)
     {
-	log_error_required_attribute(rec->node, ta->name);
+	rec->node->error_required_attribute(ta->name);
 	rec->failed = TRUE;
     }
     else
-	xmlFree(value);
+	g_free(value);
 }
 
 task_t *
-parse_task(project_t *proj, xmlNode *node)
+parse_task(project_t *proj, xml_node_t *node)
 {
     task_t *task;
-    xmlAttr *attr;
-    xmlNode *child;
+    xml_iterator_t<xml_attribute_t> aiter;
+    xml_iterator_t<xml_node_t> iter;
     task_class_t *tclass;
     const task_child_t *tc;
     char *content;
     gboolean failed = FALSE;
     
 #if DEBUG
-    fprintf(stderr, "parse_task: parsing task \"%s\"\n", cantXmlNodeGetName(node));
+    fprintf(stderr, "parse_task: parsing task \"%s\"\n", node->get_name());
 #endif
 
-    if ((tclass = proj->tscope->find(cantXmlNodeGetName(node))) == 0)
+    if ((tclass = proj->tscope->find(node->get_name())) == 0)
     {
-    	parse_node_error(node, "Unknown task \"%s\"\n", cantXmlNodeGetName(node));
+    	parse_node_error(node, "Unknown task \"%s\"\n", node->get_name());
 	return 0;
     }
 
@@ -1134,25 +1141,26 @@ parse_task(project_t *proj, xmlNode *node)
     
     task = tclass->create_task(proj);
     
-    for (attr = node->properties ; attr != 0 ; attr = attr->next)
+    for (aiter = node->first_attribute() ; aiter != 0 ; ++aiter)
     {
-    	char *value = cantXmlAttrValue(attr);
+	xml_attribute_t *attr = *aiter;
+    	char *value = attr->get_value();
 	
-    	if (!strcmp(cantXmlAttrName(attr), "id"))
+    	if (!strcmp(attr->get_name(), "id"))
 	    task->set_id(value);
-    	else if (!strcmp(cantXmlAttrName(attr), "taskname"))
+    	else if (!strcmp(attr->get_name(), "taskname"))
 	    task->set_name(value);
-    	else if (!strcmp(cantXmlAttrName(attr), "description"))
+    	else if (!strcmp(attr->get_name(), "description"))
 	    task->set_description(value);
 	else if (tclass->is_fileset() &&
-	    	 is_fileset_attribute(cantXmlAttrName(attr), tclass->fileset_dir_name()))
+	    	 is_fileset_attribute(attr->get_name(), tclass->fileset_dir_name()))
 	    ;	/* parse_fileset will get it later */
-	else if (!task->set_attribute(cantXmlAttrName(attr), value))
+	else if (!task->set_attribute(attr->get_name(), value))
 	{
-	    log_error_unknown_attribute(attr);
+	    attr->error_unknown_attribute();
 	    failed = TRUE;
 	}
-    	xmlFree(value);
+    	g_free(value);
     }
     
     /* scan for required attributes and whinge about their absence */
@@ -1175,13 +1183,14 @@ parse_task(project_t *proj, xmlNode *node)
     }
 
     /* parse the child nodes */
-    for (child = node->childs ; child != 0 ; child = child->next)
+    for (iter = node->first_child() ; iter != 0 ; ++iter)
     {
-    	if (child->type != XML_ELEMENT_NODE)
+    	xml_node_t *child = *iter;
+    	if (child->get_type() != XML_ELEMENT_NODE)
 	    continue;
 	/* TODO: handle character data */
 
-	if ((tc = tclass->find_child(cantXmlNodeGetName(child))) != 0)
+	if ((tc = tclass->find_child(child->get_name())) != 0)
 	{
 	    log_node_context_t context(node);
 	    if (!(task->*tc->adder)(child))
@@ -1199,18 +1208,18 @@ parse_task(project_t *proj, xmlNode *node)
 	    continue;
 	}
 	
-	log_error_unexpected_element(child);
+	child->error_unexpected_element();
 	failed = TRUE;
     }
     
     /* TODO: scan for required children */
     
     /* handle text content */
-    if ((content = cantXmlNodeGetContent(node)) != 0)
+    if ((content = node->get_content()) != 0)
     {
     	if (!task->set_content(content))
 	    failed = TRUE;
-    	xmlFree(content);
+    	g_free(content);
     }
 
     /* call the task's post-parse function */    
@@ -1259,12 +1268,12 @@ add_depends(project_t *proj, target_t *targ, const char *str)
 
 
 static gboolean
-parse_target(project_t *proj, xmlNode *node)
+parse_target(project_t *proj, xml_node_t *node)
 {
     target_t *targ;
     char *name = 0;
-    xmlAttr *attr;
-    xmlNode *child;
+    xml_iterator_t<xml_attribute_t> aiter;
+    xml_iterator_t<xml_node_t> iter;
     
     
     /*
@@ -1273,11 +1282,11 @@ parse_target(project_t *proj, xmlNode *node)
      * we've parsed all the attributes, but of course we need
      * to scan the attributes to get the name to add...
      */
-    name = cantXmlGetProp(node, "name");
+    name = node->get_attribute("name");
     
     if (name == 0)
     {
-	log_error_required_attribute(node, "name");
+	node->error_required_attribute("name");
     	return FALSE;
     }
     
@@ -1292,11 +1301,11 @@ parse_target(project_t *proj, xmlNode *node)
     	if (target_is_defined(targ))
 	{
 	    parse_node_error(node, "Target \"%s\" already defined\n", name);
-	    xmlFree(name);
+	    g_free(name);
 	    return FALSE;
 	}
     }
-    xmlFree(name);
+    g_free(name);
     target_set_is_defined(targ, TRUE);
     
     if (!parse_condition(&targ->condition, node))
@@ -1310,27 +1319,29 @@ parse_target(project_t *proj, xmlNode *node)
     /*
      * Now parse the attributes for real.
      */    
-    for (attr = node->properties ; attr != 0 ; attr = attr->next)
+    for (aiter = node->first_attribute() ; aiter != 0 ; ++aiter)
     {
-    	char *value = cantXmlAttrValue(attr);
+	xml_attribute_t *attr = *aiter;
+    	char *value = attr->get_value();
 	
-    	if (!strcmp(cantXmlAttrName(attr), "name"))
+    	if (!strcmp(attr->get_name(), "name"))
 	    /* not an error */;
-    	else if (!strcmp(cantXmlAttrName(attr), "description"))
+    	else if (!strcmp(attr->get_name(), "description"))
 	    target_set_description(targ, value);
-    	else if (!strcmp(cantXmlAttrName(attr), "depends"))
+    	else if (!strcmp(attr->get_name(), "depends"))
 	    add_depends(proj, targ, value);
-    	else if (is_condition_attribute(cantXmlAttrName(attr)))
+    	else if (is_condition_attribute(attr->get_name()))
 	    ;
 	else
-	    log_error_unknown_attribute(attr);
+	    attr->error_unknown_attribute();
 
-    	xmlFree(value);
+    	g_free(value);
     }
 
-    for (child = node->childs ; child != 0 ; child = child->next)
+    for (iter = node->first_child() ; iter != 0 ; ++iter)
     {
-    	if (child->type == XML_ELEMENT_NODE)
+    	xml_node_t *child = *iter;
+    	if (child->get_type() == XML_ELEMENT_NODE)
 	{
     	    task_t *task;
 	    if ((task = parse_task(targ->project, child)) != 0)
@@ -1356,10 +1367,10 @@ check_one_target(const char *key, target_t *targ, void *userdata)
 }
 
 static project_t *
-parse_project(xmlNode *node, project_t *parent)
+parse_project(xml_node_t *node, project_t *parent)
 {
     project_t *proj;
-    xmlNode *child;
+    xml_iterator_t<xml_node_t> iter;
     gboolean globals = (parent == 0);
     gboolean failed = FALSE;
    
@@ -1372,57 +1383,59 @@ parse_project(xmlNode *node, project_t *parent)
     }
     else
     {
-	xmlAttr *attr;
+	xml_iterator_t<xml_attribute_t> aiter;
 	
-	for (attr = node->properties ; attr != 0 ; attr = attr->next)
+	for (aiter = node->first_attribute() ; aiter != 0 ; ++aiter)
 	{
-    	    char *value = cantXmlAttrValue(attr);
+	    xml_attribute_t *attr = *aiter;
+    	    char *value = attr->get_value();
 
-    	    if (!strcmp(cantXmlAttrName(attr), "name"))
+    	    if (!strcmp(attr->get_name(), "name"))
 		project_set_name(proj, value);
-    	    else if (!strcmp(cantXmlAttrName(attr), "default"))
+    	    else if (!strcmp(attr->get_name(), "default"))
 		project_set_default_target(proj, value);
-    	    else if (!strcmp(cantXmlAttrName(attr), "basedir"))
+    	    else if (!strcmp(attr->get_name(), "basedir"))
 		project_set_basedir(proj, value);
 	    else
 	    {
-		log_error_unknown_attribute(attr);
+		attr->error_unknown_attribute();
 		failed = TRUE;
 	    }
 
-    	    xmlFree(value);
+    	    g_free(value);
 	}
 	if (proj->default_target == 0)
 	{
-	    log_error_required_attribute(node, "default");
+	    node->error_required_attribute("default");
 	    failed = TRUE;
 	}
     }
         
 
-    for (child = node->childs ; child != 0 ; child = child->next)
+    for (iter = node->first_child() ; iter != 0 ; ++iter)
     {
-    	if (child->type != XML_ELEMENT_NODE)
+    	xml_node_t *child = *iter;
+    	if (child->get_type() != XML_ELEMENT_NODE)
 	    continue;
 	    
-    	if (!strcmp(cantXmlNodeGetName(child), "property"))
+    	if (!strcmp(child->get_name(), "property"))
 	    failed |= !parse_property(proj, child);
-	else if (!strcmp(cantXmlNodeGetName(child), "path"))
+	else if (!strcmp(child->get_name(), "path"))
 	    failed |= !parse_path(proj, child);
-    	else if (!strcmp(cantXmlNodeGetName(child), "fileset"))
+    	else if (!strcmp(child->get_name(), "fileset"))
 	    failed |= !parse_project_fileset(proj, child);
-	else if (!strcmp(cantXmlNodeGetName(child), "xtaskdef"))
+	else if (!strcmp(child->get_name(), "xtaskdef"))
 	    failed |= !parse_xtaskdef(proj, child);
-    	else if (!strcmp(cantXmlNodeGetName(child), "taglistdef"))
+    	else if (!strcmp(child->get_name(), "taglistdef"))
 	    failed |= !parse_taglistdef(proj, child);
-	else if (!globals && !strcmp(cantXmlNodeGetName(child), "target"))
+	else if (!globals && !strcmp(child->get_name(), "target"))
 	    failed |= !parse_target(proj, child);
-	else if (project_find_tl_def(proj, cantXmlNodeGetName(child)) != 0)
+	else if (project_find_tl_def(proj, child->get_name()) != 0)
 	    failed |= !parse_project_taglist(proj, child);
 	else
 	{
 	    /* TODO: patternset */
-	    log_error_unexpected_element(child);
+	    child->error_unexpected_element();
 	    failed = TRUE;
 	}
     }
@@ -1446,7 +1459,7 @@ project_t *
 read_buildfile(const char *filename, project_t *parent)
 {
     xmlDoc *doc;
-    xmlNode *root;
+    xml_node_t *root;
     project_t *proj;
     
 #if DEBUG
@@ -1461,21 +1474,21 @@ read_buildfile(const char *filename, project_t *parent)
     }
         
     log::zero_message_counts();
-    root = xmlDocGetRootElement(doc);
+    root = (xml_node_t *)xmlDocGetRootElement(doc);
 
     if (root == 0)
     {
     	parse_node_error(0, "No elements in buildfile\n");
 	xmlFreeDoc(doc);
-	cantXmlNodeInfoClear();
+	xml_node_t::info_clear();
 	return 0;
     }
     
-    if (strcmp(cantXmlNodeGetName(root), (parent == 0 ? "globals" : "project")))
+    if (strcmp(root->get_name(), (parent == 0 ? "globals" : "project")))
     {
-    	log_error_unexpected_element(root);
+    	root->error_unexpected_element();
 	xmlFreeDoc(doc);
-	cantXmlNodeInfoClear();
+	xml_node_t::info_clear();
 	return 0;
     }
 
@@ -1490,12 +1503,12 @@ read_buildfile(const char *filename, project_t *parent)
 	if (proj != 0)
 	    project_delete(proj);
 	xmlFreeDoc(doc);
-	cantXmlNodeInfoClear();
+	xml_node_t::info_clear();
 	return 0;
     }
 	
     xmlFreeDoc(doc);
-    cantXmlNodeInfoClear();
+    xml_node_t::info_clear();
     
     return proj;
 }

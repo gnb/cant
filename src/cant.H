@@ -107,11 +107,11 @@ void dump_project(project_t *proj);
 #endif
 
 /* buildfile.c */
-extern gboolean parse_condition(condition_t *cond, xmlNode *node);
-extern taglist_t *parse_taglist(project_t *proj, xmlNode *node);
-extern fileset_t *parse_fileset(project_t *, xmlNode *, const char *dirprop);	/* for e.g. <delete> */
-mapper_t *parse_mapper(project_t *proj, xmlNode *node);
-extern task_t *parse_task(project_t *, xmlNode *);	/* for recursives e.g. <condition> */
+extern gboolean parse_condition(condition_t *cond, xml_node_t *node);
+extern taglist_t *parse_taglist(project_t *proj, xml_node_t *node);
+extern fileset_t *parse_fileset(project_t *, xml_node_t *, const char *dirprop);	/* for e.g. <delete> */
+mapper_t *parse_mapper(project_t *proj, xml_node_t *node);
+extern task_t *parse_task(project_t *, xml_node_t *);	/* for recursives e.g. <condition> */
 extern project_t *read_buildfile(const char *filename, project_t *parent);
 
 /*project.c */

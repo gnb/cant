@@ -19,7 +19,7 @@
 
 #include "cant.H"
 
-CVSID("$Id: task_copy.C,v 1.5 2002-04-12 13:07:24 gnb Exp $");
+CVSID("$Id: task_copy.C,v 1.6 2002-04-12 14:28:21 gnb Exp $");
 
 class copy_task_t : public task_t
 {
@@ -129,7 +129,7 @@ set_includeEmptyDirs(const char *name, const char *value)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 gboolean
-add_fileset(xmlNode *node)
+add_fileset(xml_node_t *node)
 {
     fileset_t *fs;
 
@@ -141,7 +141,7 @@ add_fileset(xmlNode *node)
 }
 
 gboolean
-add_mapper(xmlNode *node)
+add_mapper(xml_node_t *node)
 {
     if (mapper_ != 0)
     {

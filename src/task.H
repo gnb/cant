@@ -60,19 +60,19 @@ struct task_attr_t
 struct task_child_t
 {
     char *name;
-    gboolean (task_t::*adder)(xmlNode *);
+    gboolean (task_t::*adder)(xml_node_t *);
     unsigned flags;
 };
 #define TASK_CHILD(scope, name, flags) \
     { \
     	g_string(name), \
-	(gboolean (task_t::*)(xmlNode *)) &scope ## _task_t::add_ ## name, \
+	(gboolean (task_t::*)(xml_node_t *)) &scope ## _task_t::add_ ## name, \
 	flags \
     }
 #define TASK_GENERIC_CHILD(scope, name, flags) \
     { \
     	"*", \
-	(gboolean (task_t::*)(xmlNode *)) &scope ## _task_t::add_ ## name, \
+	(gboolean (task_t::*)(xml_node_t *)) &scope ## _task_t::add_ ## name, \
 	flags \
     }
 
