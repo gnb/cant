@@ -1,6 +1,6 @@
 /*
  * CANT - A C implementation of the Apache/Tomcat ANT build system
- * Copyright (c) 2001 Greg Banks
+ * Copyright (c) 2001 Greg Banks <gnb@alphalink.com.au>
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
 #include "cant.h"
 #include <dirent.h>
 
-CVSID("$Id: fileset.c,v 1.6 2001-11-08 05:39:53 gnb Exp $");
+CVSID("$Id: fileset.c,v 1.7 2001-11-13 04:08:05 gnb Exp $");
 
 typedef enum { FS_IN, FS_EX, FS_UNKNOWN } fs_result_t;
 

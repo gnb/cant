@@ -1,6 +1,6 @@
 #
 # CANT - A C implementation of the Apache/Tomcat ANT build system
-# Copyright (c) 2001 Greg Banks
+# Copyright (c) 2001 Greg Banks <gnb@alphalink.com.au>
 # 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 # 
-# $Id: Makefile.am,v 1.2 2001-11-13 03:46:27 gnb Exp $
+# $Id: Makefile.am,v 1.3 2001-11-13 04:07:55 gnb Exp $
 #
 
 SUBDIRS=	src

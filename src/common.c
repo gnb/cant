@@ -1,6 +1,6 @@
 /*
  * CANT - A C implementation of the Apache/Tomcat ANT build system
- * Copyright (c) 2001 Greg Banks
+ * Copyright (c) 2001 Greg Banks <gnb@alphalink.com.au>
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
 
 #include "common.h"
 
-CVSID("$Id: common.c,v 1.1 2001-11-06 09:29:06 gnb Exp $");
+CVSID("$Id: common.c,v 1.2 2001-11-13 04:08:05 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
