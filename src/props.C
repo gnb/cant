@@ -22,44 +22,15 @@
 #include "filename.H"
 #include "hashtable.H"
 
-struct props_s
-{
-    props_t *parent;	    /* inherits values from here */
-    hashtable_t<char*, char> *values;
-};
-
-CVSID("$Id: props.C,v 1.2 2002-03-29 16:12:31 gnb Exp $");
+CVSID("$Id: props.C,v 1.3 2002-04-06 11:22:12 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-props_t *
-props_new(props_t *parent)
+props_t::props_t(props_t *parent)
 {
-    props_t *props;
-    
-    props = new(props_t);
-
-    props->parent = parent;
-    props->values = new hashtable_t<char *, char>;
-    
-    return props;
+    parent_ = parent;
+    values_ = new hashtable_t<char *, char>;
 }
-
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
-
-static void
-_props_copy_one(char *key, char *value, void *userdata)
-{
-    props_set((props_t *)userdata, key, value);
-}
-
-void
-props_copy_contents(props_t *props, const props_t *orig)
-{
-    orig->values->foreach(_props_copy_one, (void *)props);
-}
-
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static gboolean
 _props_delete_one_value(char *key, char *value, void *userdata)
@@ -69,23 +40,36 @@ _props_delete_one_value(char *key, char *value, void *userdata)
     return TRUE;    /* so remove me already */
 }
 
-void
-props_delete(props_t *props)
+props_t::~props_t()
 {
-    props->values->foreach_remove(_props_delete_one_value, 0);
-    g_free(props);
+    values_->foreach_remove(_props_delete_one_value, 0);
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+static void
+_props_copy_one(char *key, char *value, void *userdata)
+{
+    ((props_t *)userdata)->set(key, value);
+}
+
+void
+props_t::copy_contents(const props_t *orig)
+{
+    orig->values_->foreach(_props_copy_one, this);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 const char *
-props_get(const props_t *props, const char *name)
+props_t::get(const char *name) const
 {
+    const props_t *props;
     const char *value;
     
-    for ( ; props != 0 ; props = props->parent)
+    for (props = this ; props != 0 ; props = props->parent_)
     {
-    	if ((value = props->values->lookup((char *)name)) != 0)
+    	if ((value = props->values_->lookup((char *)name)) != 0)
 	    return value;
     }
     return 0;
@@ -94,7 +78,7 @@ props_get(const props_t *props, const char *name)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 void
-props_setm(props_t *props, const char *name, char *value)
+props_t::setm(const char *name, char *value)
 {
     char *okey = 0, *ovalue = 0;
     
@@ -102,24 +86,24 @@ props_setm(props_t *props, const char *name, char *value)
     
     if (value == 0)
     {
-	props->values->remove((char *)name);
+	values_->remove((char *)name);
 	return;
     }
     
-    if (props->values->lookup_extended((char *)name, &okey, &ovalue))
+    if (values_->lookup_extended((char *)name, &okey, &ovalue))
     {
     	/* remove the old value */
-	props->values->remove(okey);
+	values_->remove(okey);
 	g_free(okey);
 	g_free(ovalue);
     }
-    props->values->insert(g_strdup(name), value);
+    values_->insert(g_strdup(name), value);
 }
 
 void
-props_set(props_t *props, const char *name, const char *value)
+props_t::set(const char *name, const char *value)
 {
-    props_setm(props, name, (value == 0 ? 0 : g_strdup(value)));
+    setm(name, (value == 0 ? 0 : g_strdup(value)));
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -135,12 +119,12 @@ _props_consolidate_one(char *key, char *value, void *userdata)
 }
 
 void
-props_apply(
-    const props_t *props,
+props_t::apply(
     void (*func)(const char *name, const char *value, void *userdata),
-    void *userdata)
+    void *userdata) const
 {
     hashtable_t<char *, char> *consolidated;
+    const props_t *props;
     
     /*
      * Have to build a consolidated hash table to avoid
@@ -150,8 +134,8 @@ props_apply(
      */
     consolidated = new hashtable_t<char *, char>;
 
-    for ( ; props != 0 ; props = props->parent)
-	props->values->foreach(_props_consolidate_one, consolidated);
+    for (props = this ; props != 0 ; props = props->parent_)
+	props->values_->foreach(_props_consolidate_one, consolidated);
     
     consolidated->foreach(
     	    	    (void (*)(char*, char*, void*))func,
@@ -161,12 +145,11 @@ props_apply(
 }
 
 void
-props_apply_local(
-    const props_t *props,
+props_t::apply_local(
     void (*func)(const char *name, const char *value, void *userdata),
-    void *userdata)
+    void *userdata) const
 {
-    props->values->foreach(
+    values_->foreach(
     	    	    (void (*)(char*, char*, void*))func,
 		    userdata);
 }
@@ -180,12 +163,11 @@ props_apply_local(
 
 #define MAXDEPTH 100
 
-static void
-_props_expand_1(
-    const props_t *props,
+void
+props_t::expand_1(
     estring *rep,
     const char *str,
-    int depth)
+    int depth) const
 {
     estring name;
     const char *value;
@@ -199,14 +181,14 @@ _props_expand_1(
 	{
 	    if (*str == endname)
 	    {
-	    	value = props_get(props, name.data);
+	    	value = get(name.data);
 		if (value != 0)
 		{
 		    if (depth == MAXDEPTH)
 		    	fprintf(stderr, "Property loop detected while expanding \"%s\"\n",
 			    	    	    name.data);
 		    else
-		    	_props_expand_1(props, rep, value, depth+1);
+		    	expand_1(rep, value, depth+1);
 		}
 	    	estring_truncate(&name);
 	    	endname = '\0';
@@ -234,7 +216,7 @@ _props_expand_1(
 }
 
 char *
-props_expand(const props_t *props, const char *str)
+props_t::expand(const char *str) const
 {
     estring rep;
     
@@ -243,10 +225,10 @@ props_expand(const props_t *props, const char *str)
 	
     estring_init(&rep);
     
-    _props_expand_1(props, &rep, str, 0);
+    expand_1(&rep, str, 0);
     
 #if DEBUG
-    fprintf(stderr, "props_expand: \"%s\" -> \"%s\"\n", str, rep.data);
+    fprintf(stderr, "props_t::expand: \"%s\" -> \"%s\"\n", str, rep.data);
 #endif
         
     return rep.data;
@@ -255,7 +237,7 @@ props_expand(const props_t *props, const char *str)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 gboolean
-props_read_shellfile(props_t *props, const char *filename)
+props_t::read_shellfile(const char *filename)
 {
     FILE *fp;
     estring name;
@@ -270,7 +252,7 @@ props_read_shellfile(props_t *props, const char *filename)
     	return FALSE;
     
 #if DEBUG
-    fprintf(stderr, "props_read_shellfile: \"%s\"\n", filename);
+    fprintf(stderr, "props_t::read_shellfile: \"%s\"\n", filename);
 #endif
 
     estring_init(&name);
@@ -313,10 +295,10 @@ props_read_shellfile(props_t *props, const char *filename)
 	    	if (name.length > 0)
 		{
 #if DEBUG
-		    fprintf(stderr, "props_read_shellfile: \"%s\" -> \"%s\"\n",
+		    fprintf(stderr, "props_t::read_shellfile: \"%s\" -> \"%s\"\n",
 		    	    	     name.data, value.data);
 #endif
-	    	    props_set(props, name.data, value.data);
+	    	    set(name.data, value.data);
 		}
 		estring_truncate(&name);
 		estring_truncate(&value);
@@ -332,10 +314,10 @@ props_read_shellfile(props_t *props, const char *filename)
     if (ret && state == VALUE && name.length > 0)
     {
 #if DEBUG
-	fprintf(stderr, "props_read_shellfile: \"%s\" -> \"%s\"\n",
+	fprintf(stderr, "props_t::read_shellfile: \"%s\" -> \"%s\"\n",
 		    	 name.data, value.data);
 #endif
-    	props_set(props, name.data, value.data);
+    	set(name.data, value.data);
     }
     
     estring_free(&name);
