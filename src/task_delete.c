@@ -31,7 +31,7 @@ typedef struct
     gboolean result:1;
 } delete_private_t;
 
-CVSID("$Id: task_delete.c,v 1.7 2001-11-16 03:34:19 gnb Exp $");
+CVSID("$Id: task_delete.c,v 1.8 2001-11-16 05:52:17 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -185,6 +185,9 @@ delete_execute(task_t *task)
     GList *iter;
     
     dp->result = TRUE;
+    
+    if (!dp->verbose)
+    	logf("\n");
     
     if (dp->file != 0)
     {
