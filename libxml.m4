@@ -1,6 +1,6 @@
 # Configure paths for libxml
-# By Greg Banks <gnb@alphalink.com.au>
-# Copied and changed from gtk.m4, which bore the message:
+# Copyright (c) 2001 Greg Banks <gnb@alphalink.com.au>
+# Derived from gtk.m4, which bore the message:
 # Owen Taylor     97-11-3
 
 dnl AM_PATH_LIBXML([MINIMUM-VERSION, [ACTION-IF-FOUND [, ACTION-IF-NOT-FOUND ]]])
@@ -24,7 +24,7 @@ AC_ARG_WITH(libxml-exec-prefix,[  --with-libxml-exec-prefix=PFX Exec prefix wher
   if test x$libxml_config_prefix != x ; then
      libxml_config_args="$libxml_config_args --prefix=$libxml_config_prefix"
      if test x${LIBXML_CONFIG+set} != xset ; then
-        LIBXML_CONFIG=$gtk_config_prefix/bin/xml-config
+        LIBXML_CONFIG=$libxml_config_prefix/bin/xml-config
      fi
   fi
 
