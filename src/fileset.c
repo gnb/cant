@@ -20,7 +20,7 @@
 #include "cant.h"
 #include <dirent.h>
 
-CVSID("$Id: fileset.c,v 1.5 2001-11-08 04:13:35 gnb Exp $");
+CVSID("$Id: fileset.c,v 1.6 2001-11-08 05:39:53 gnb Exp $");
 
 typedef enum { FS_IN, FS_EX, FS_UNKNOWN } fs_result_t;
 
@@ -40,7 +40,7 @@ fs_spec_new(
     fss->flags = flags;
     
     if (pattern != 0)
-    	pattern_init(&fss->pattern, pattern, case_sens);
+    	pattern_init(&fss->pattern, pattern, (case_sens ? PAT_CASE : 0));
     
     strassign(fss->filename, filename);
     

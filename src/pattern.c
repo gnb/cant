@@ -17,17 +17,19 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "cant.h"
+#include "pattern.h"
+#include "estring.h"
 
-CVSID("$Id: pattern.c,v 1.3 2001-11-06 09:29:06 gnb Exp $");
+CVSID("$Id: pattern.c,v 1.4 2001-11-08 05:39:53 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 void
-pattern_init(pattern_t *pat, const char *pattern, gboolean case_sens)
+pattern_init(pattern_t *pat, const char *pattern, unsigned flags)
 {
     const char *p = pattern;
     estring restr;
+    unsigned reflags;
     
 #if DEBUG
     strassign(pat->pattern, pattern);
@@ -40,14 +42,14 @@ pattern_init(pattern_t *pat, const char *pattern, gboolean case_sens)
     {
     	if (p[0] == '*' && p[1] == '*')
 	{
-	    estring_append_string(&restr, ".*");
+	    estring_append_string(&restr, "\\(.*\\)");
 	    p++;
 	}
 	else if (*p == '*')
-	    estring_append_string(&restr, "[^/]*");
+	    estring_append_string(&restr, "\\([^/]*\\)");
 	else if (*p == '?')
-	    estring_append_string(&restr, "[^/]");
-	else if (strchr(".[]", *p) != 0)
+	    estring_append_string(&restr, "\\([^/]\\)");
+	else if (strchr(".^$\\", *p) != 0)
 	{
 	    estring_append_char(&restr, '\\');
 	    estring_append_char(&restr, *p);
@@ -62,29 +64,36 @@ pattern_init(pattern_t *pat, const char *pattern, gboolean case_sens)
     fprintf(stderr, "pattern_init: \"%s\" -> \"%s\"\n",
     	    	    	pattern, restr.data);
 #endif
-    regcomp(&pat->regex, restr.data, (case_sens ? 0 : REG_ICASE)|REG_NOSUB);
+    reflags = 0;
+    if (!(flags & PAT_CASE)) reflags |= REG_ICASE;
+    if (!(flags & PAT_GROUPS)) reflags |= REG_NOSUB;
+    regcomp(&pat->regex, restr.data, reflags);
     estring_free(&restr);
 }
 
 void
 pattern_free(pattern_t *pat)
 {
+    int i;
+    
 #if DEBUG
     strdelete(pat->pattern);
 #endif
+    for (i = 0 ; i < _PAT_NGROUPS ; i++)
+	strdelete(pat->groups[i]);
     regfree(&pat->regex);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 pattern_t *
-pattern_new(const char *pattern, gboolean case_sens)
+pattern_new(const char *pattern, unsigned flags)
 {
     pattern_t *pat;
     
     pat = new(pattern_t);
     
-    pattern_init(pat, pattern, case_sens);
+    pattern_init(pat, pattern, flags);
     
     return pat;
 }
@@ -101,19 +110,78 @@ pattern_delete(pattern_t *pat)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 gboolean
-pattern_match(const pattern_t *pat, const char *filename)
+pattern_match(pattern_t *pat, const char *filename)
 {
     gboolean ret;
+    int i;
+    regmatch_t matches[_PAT_NGROUPS];
     
+    for (i = 0 ; i < _PAT_NGROUPS ; i++)
+	strdelete(pat->groups[i]);
+
+    memset(matches, 0xff, sizeof(matches));
     ret = (regexec(&pat->regex, filename,
-    	    	    /*nmatch*/0, /*pmatch*/0, /*eflags*/0) == 0);
+    	    	    _PAT_NGROUPS, matches, /*eflags*/0) == 0);
 #if DEBUG
     fprintf(stderr, "pattern_match: pattern=\"%s\" filename=\"%s\" -> %s\n",
     	    pat->pattern, filename, (ret ? "true" : "false"));
 #endif
 
+    if (ret)
+    {
+	for (i = 0 ; i < _PAT_NGROUPS && matches[i].rm_so >= 0 ; i++)
+	{
+	    pat->groups[i] = g_strndup(
+	    	    	    	    filename+matches[i].rm_so,
+				    matches[i].rm_eo-matches[i].rm_so);
+#if DEBUG
+	    fprintf(stderr, "               \\%d=\"%s\" [%d,%d]\n",
+	    	    	    	i, pat->groups[i],
+				matches[i].rm_so, matches[i].rm_eo);
+#endif				    
+	}
+    }
+
     return ret;
 }
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+const char *
+pattern_group(const pattern_t *pat, unsigned int /*0-9*/i)
+{
+    return (i >= _PAT_NGROUPS ? 0 : pat->groups[i]);
+}
+
+char *
+pattern_replace(const pattern_t *pat, const char *replace)
+{
+    const char *rep = replace;
+    estring e;
+    
+    if (rep == 0)
+    	return 0;
+	
+    estring_init(&e);
+    
+    while (*rep)
+    {
+    	if (rep[0] == '\\' && isdigit(rep[1]))
+	{
+	    estring_append_string(&e, pat->groups[rep[1]-'0']);
+	    rep += 2;
+	}
+	else
+	    estring_append_char(&e, *rep++);
+    }
+    
+#if DEBUG
+    fprintf(stderr, "pattern_replace: \"%s\" -> \"%s\"\n",
+    	    replace, e.data);
+#endif
+    return e.data;
+}
+
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 /*END*/

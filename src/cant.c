@@ -20,7 +20,7 @@
 #define _DEFINE_GLOBALS 1
 #include "cant.h"
 
-CVSID("$Id: cant.c,v 1.5 2001-11-08 04:13:35 gnb Exp $");
+CVSID("$Id: cant.c,v 1.6 2001-11-08 05:39:53 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -29,6 +29,30 @@ static props_t *command_defines;   /* -Dfoo=bar on the commandline */
 static GList *command_targets;     /* targets specified on the commandline */
 static char *buildfile = "build.xml";
 
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+#define PATTERN_TEST 0
+#if PATTERN_TEST
+
+static void
+test1(pattern_t *pat, const char *filename, const char *rep)
+{
+    if (pattern_match(pat, filename))
+    	g_free(pattern_replace(pat, rep));
+}
+
+static void
+hack_pattern_test(void)
+{
+    pattern_t *pat;
+    
+    pat = pattern_new("**/*.c", PAT_GROUPS);
+    
+    test1(pat, "foo/bar/baz.c", "X\\1Y\\2Z");
+    
+    pattern_delete(pat);
+}
+
+#endif
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 void
@@ -361,6 +385,10 @@ main(int argc, char **argv)
     
 #if 0 /*DEBUG*/
     dump_project_properties(proj);
+#endif
+
+#if PATTERN_TEST
+    hack_pattern_test();
 #endif
 
     project_delete(proj);

@@ -24,6 +24,7 @@
 #include "estring.h"
 #include "props.h"
 #include "strarray.h"
+#include "pattern.h"
 #include <regex.h>
 #include "xml.h"
 
@@ -40,7 +41,6 @@ typedef struct task_child_s    	task_child_t;
 typedef struct task_ops_s    	task_ops_t;
 typedef struct xtask_arg_s    	xtask_arg_t;
 typedef struct xtask_ops_s    	xtask_ops_t;
-typedef struct pattern_s    	pattern_t;
 typedef struct fileset_s    	fileset_t;
 typedef struct fs_spec_s    	fs_spec_t;
 
@@ -150,14 +150,6 @@ struct xtask_ops_s
     props_t *property_map;	/* maps attributes to local property *name*s */
     
     gboolean foreach:1;
-};
-
-struct pattern_s
-{
-    regex_t regex;
-#if DEBUG
-    char *pattern;
-#endif
 };
 
 struct fileset_s
@@ -301,13 +293,6 @@ void fileset_set_default_excludes(fileset_t *, gboolean b);
 void fileset_set_case_sensitive(fileset_t *, gboolean b);
 int fileset_apply(fileset_t *, file_apply_proc_t, void *userdata);
 GList *fileset_gather(fileset_t *);
-
-/* pattern.c */
-void pattern_init(pattern_t *, const char *s, gboolean case_sens);
-void pattern_free(pattern_t *);
-pattern_t *pattern_new(const char *s, gboolean case_sens);
-void pattern_delete(pattern_t *);
-gboolean pattern_match(const pattern_t *, const char *filename);
 
 /* log.c */    
 void logf(const char *fmt, ...);
