@@ -17,9 +17,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "cant.h"
+#include "log.h"
 
-CVSID("$Id: log.c,v 1.4 2001-11-13 04:08:05 gnb Exp $");
+CVSID("$Id: log.c,v 1.5 2001-11-14 06:30:26 gnb Exp $");
 
 static GList *log_context_stack;
 

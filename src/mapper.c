@@ -17,9 +17,10 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "cant.h"
+#include "mapper.h"
+#include "log.h"
 
-CVSID("$Id: mapper.c,v 1.2 2001-11-13 04:08:05 gnb Exp $");
+CVSID("$Id: mapper.c,v 1.3 2001-11-14 06:30:26 gnb Exp $");
 
 static GHashTable *mapper_ops_all;
 
@@ -84,9 +85,8 @@ mapper_ops_register(mapper_ops_t *ops)
     	mapper_ops_all = g_hash_table_new(g_str_hash, g_str_equal);
     else if (g_hash_table_lookup(mapper_ops_all, ops->name) != 0)
     {
-    	fprintf(stderr,
-	    	"%s: mapper operations \"%s\" already registered, ignoring new definition\n",
-	    	argv0, ops->name);
+    	logf("mapper operations \"%s\" already registered, ignoring new definition\n",
+	    	ops->name);
     	return;
     }
     

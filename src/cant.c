@@ -21,7 +21,7 @@
 #include "cant.h"
 #include "job.h"
 
-CVSID("$Id: cant.c,v 1.9 2001-11-13 04:08:05 gnb Exp $");
+CVSID("$Id: cant.c,v 1.10 2001-11-14 06:30:26 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -30,6 +30,9 @@ static props_t *command_defines;   /* -Dfoo=bar on the commandline */
 static GList *command_targets;     /* targets specified on the commandline */
 static char *buildfile = "build.xml";
 static unsigned parallelism = 1;
+static char *globals_file = PKGDATADIR "/globals.xml";
+
+static project_t *project_globals;
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 #define PATTERN_TEST 0
@@ -294,6 +297,29 @@ add_commandline_define(const char *pair)
 }
 
 static void
+set_build_file(char *arg)
+{
+    if (arg == 0 || *arg == '\0')
+	usagef(1, "Expecting filename argument for --build-file");
+    buildfile = arg;
+}
+
+static void
+set_globals_file(char *arg)
+{
+    if (arg == 0 || *arg == '\0')
+	usagef(1, "Expecting filename argument for --globals-file");
+    globals_file = arg;
+}
+
+static void
+set_parallelism(const char *arg)
+{
+    if (arg == 0 || *arg == '\0' || (parallelism = atoi(arg)) < 1)
+	parallelism = 1;
+}
+
+static void
 parse_args(int argc, char **argv)
 {
     int i;
@@ -308,10 +334,18 @@ parse_args(int argc, char **argv)
 	    {
 	    	find_flag = TRUE;
 	    }
-	    else if (!strcmp(argv[i], "-buildfile"))
+	    else if (!strcmp(argv[i], "-buildfile") ||
+	    	     !strcmp(argv[i], "--build-file"))
 	    {
-	    	if ((buildfile = argv[++i]) == 0)
-		    usagef(1, "no argument for -buildfile\n");
+	    	set_build_file(argv[++i]);
+	    }
+	    else if (!strncmp(argv[i], "--build-file=", 13))
+	    {
+	    	set_build_file(argv[i]+13);
+	    }
+	    else if (!strcmp(argv[i], "-f"))
+	    {
+	    	set_build_file(argv[++i]);
 	    }
 	    else if (!strncmp(argv[i], "-D", 2))
 	    {
@@ -319,10 +353,21 @@ parse_args(int argc, char **argv)
 	    }
 	    else if (!strncmp(argv[i], "-j", 2))
 	    {
-	    	if ((parallelism = atoi(argv[i]+2)) < 1)
-		    parallelism = 1;
+	    	set_parallelism(argv[i]+2);
 	    }
-	    else if (!strcmp(argv[i], "-help"))
+	    else if (!strncmp(argv[i], "--jobs=", 7))
+	    {
+	    	set_parallelism(argv[i]+7);
+	    }
+	    else if (!strncmp(argv[i], "--globals-file=", 15))
+	    {
+    	    	set_globals_file(argv[i]+15);
+	    }
+	    else if (!strcmp(argv[i], "--globals-file"))
+	    {
+	    	set_globals_file(argv[++i]);
+	    }
+	    else if (!strcmp(argv[i], "--help"))
 	    {
 	    	usage(0);
 	    }
@@ -344,6 +389,7 @@ parse_args(int argc, char **argv)
 #if DEBUG
     fprintf(stderr, "parse_args: find_flag = %d\n", find_flag);
     fprintf(stderr, "parse_args: buildfile = \"%s\"\n", buildfile);
+    fprintf(stderr, "parse_args: globals file = \"%s\"\n", globals_file);
     {
     	GList *iter;
 	fprintf(stderr, "parse_args: command_targets =");
@@ -398,8 +444,11 @@ dump_one_target(gpointer key, gpointer value, gpointer userdata)
 static void
 dump_project_properties(project_t *proj)
 {
+    fprintf(stderr, "    FIXED_PROPERTIES {\n");
+    props_apply_local(proj->fixed_properties, dump_one_property, "        ");
+    fprintf(stderr, "    }\n");
     fprintf(stderr, "    PROPERTIES {\n");
-    props_apply(proj->fixed_properties, dump_one_property, "        ");
+    props_apply_local(proj->properties, dump_one_property, "        ");
     fprintf(stderr, "    }\n");
 }
 
@@ -432,16 +481,21 @@ main(int argc, char **argv)
     if (!job_init(parallelism))
     	return 1;
 
+    project_globals = read_buildfile(globals_file, /*parent*/0);
+    if (project_globals == 0)
+    	fatal("Can't read globals file \"%s\"\n", globals_file);
+
     if (find_flag && !find_buildfile())
     	fatal("Can't find buildfile \"%s\" in any parent directory\n", buildfile);
 
-    if ((proj = read_buildfile(buildfile)) == 0)
+    if ((proj = read_buildfile(buildfile, project_globals)) == 0)
     	fatal("Can't read buildfile \"%s\"\n", buildfile);
 
     if (command_defines != 0)
 	project_override_properties(proj, command_defines);
     	
 #if DEBUG
+    dump_project(project_globals);
     dump_project(proj);
 #endif
     

@@ -17,10 +17,12 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "cant.h"
+#include "fileset.h"
+#include "estring.h"
+#include "log.h"
 #include <dirent.h>
 
-CVSID("$Id: fileset.c,v 1.7 2001-11-13 04:08:05 gnb Exp $");
+CVSID("$Id: fileset.c,v 1.8 2001-11-14 06:30:26 gnb Exp $");
 
 typedef enum { FS_IN, FS_EX, FS_UNKNOWN } fs_result_t;
 
@@ -160,13 +162,13 @@ fs_spec_match(fileset_t *fs, fs_spec_t *fss, const char *filename)
 {
     if (fss->flags & FS_IFCOND)
     {    
-    	if (project_get_property(fs->project, fss->condition) == 0)
+    	if (props_get(fs->props, fss->condition) == 0)
 	    return FS_UNKNOWN;
     }
 
     if (fss->flags & FS_UNLESSCOND)
     {
-    	if (project_get_property(fs->project, fss->condition) != 0)
+    	if (props_get(fs->props, fss->condition) != 0)
 	    return FS_UNKNOWN;
     }
     
@@ -186,13 +188,13 @@ fs_spec_match(fileset_t *fs, fs_spec_t *fss, const char *filename)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 fileset_t *
-fileset_new(project_t *proj)
+fileset_new(props_t *props)
 {
     fileset_t *fs;
     
     fs = new(fileset_t);
 
-    fs->project = proj;
+    fs->props = props;
     
     return fs;
 }
@@ -365,7 +367,7 @@ fileset_apply(
 	fss->flags &= ~FS_FILEREAD;
     }
     
-    expdir = project_expand(fs->project, fs->directory);
+    expdir = props_expand(fs->props, fs->directory);
 
     ret = fileset_apply_1(fs, expdir, func, userdata);
     

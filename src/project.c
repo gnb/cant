@@ -19,23 +19,26 @@
 
 #include "cant.h"
 
-CVSID("$Id: project.c,v 1.5 2001-11-13 04:08:05 gnb Exp $");
+CVSID("$Id: project.c,v 1.6 2001-11-14 06:30:26 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 project_t *
-project_new(void)
+project_new(project_t *parent)
 {
     project_t *proj;
     
     proj = new(project_t);
     
+    proj->parent = parent;
+    
     proj->targets = g_hash_table_new(g_str_hash, g_str_equal);	
     proj->filesets = g_hash_table_new(g_str_hash, g_str_equal);	
-
-    proj->properties = props_new(0);	/* TODO: inherit from system props */
-    proj->fixed_properties = props_new(proj->properties);
+    proj->tscope = tscope_new((parent == 0 ? tscope_builtins : parent->tscope));
     
+    proj->properties = props_new((parent == 0 ? 0 : parent->properties));
+    proj->fixed_properties = props_new(proj->properties);
+
     props_set(proj->fixed_properties, "ant.version", VERSION);
     	
     return proj;
@@ -65,6 +68,7 @@ project_delete(project_t *proj)
 	
     g_hash_table_foreach_remove(proj->targets, project_delete_one_target, 0);
     g_hash_table_destroy(proj->targets);
+    tscope_delete(proj->tscope);
     
     g_hash_table_foreach_remove(proj->filesets, project_delete_one_fileset, 0);
     g_hash_table_destroy(proj->filesets);

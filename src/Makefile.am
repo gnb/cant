@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 # 
-# $Id: Makefile.am,v 1.9 2001-11-13 04:08:05 gnb Exp $
+# $Id: Makefile.am,v 1.10 2001-11-14 06:30:26 gnb Exp $
 #
 
 bin_PROGRAMS=	cant
@@ -36,21 +36,26 @@ MAPPER_SOURCES=	\
 		mapper_regexp.c \
 		mapper_null.c
 
-cant_SOURCES=	common.h cant.h \
-		cant.c buildfile.c \
-		project.c target.c task.c xtask.c \
+cant_SOURCES=	common.h thread.h cant.h \
+		cant.c buildfile.c project.c target.c task.c \
+		xtask.h xtask.c \
 		props.h props.c \
 		estring.h estring.c \
-		log.c filename.h filename.c \
-		fileset.c mapper.c pattern.h pattern.c \
+		log.h log.c \
+		filename.h filename.c \
+		fileset.h fileset.c \
+		mapper.h mapper.c \
+		pattern.h pattern.c \
 		xml.h xml.c \
 		common.c process.c \
 		strarray.h strarray.c \
-		thread.h queue.h queue.c job.h job.c \
+		queue.h queue.c \
+		job.h job.c \
 		$(TASK_SOURCES) \
 		$(MAPPER_SOURCES)
 INCLUDES=	$(GLIB_CFLAGS) $(LIBXML_CFLAGS) $(THREADS_CFLAGS)
 cant_LDADD=	$(GLIB_LIBS) $(LIBXML_LIBS) $(THREADS_LIBS)
+CPPFLAGS=	-DPKGDATADIR="\"$(pkgdatadir)\""
 
 task.o: builtin-tasks.h
 
@@ -68,3 +73,5 @@ builtin-mappers.h: $(MAPPER_SOURCES)
 	done
 
 CLEANFILES=	builtin-tasks.h builtin-mappers.h
+
+pkgdata_DATA=	globals.xml

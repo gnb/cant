@@ -18,9 +18,10 @@
  */
 
 #include "cant.h"
+#include "xtask.h"
 #include <parser.h>
 
-CVSID("$Id: buildfile.c,v 1.8 2001-11-13 04:08:05 gnb Exp $");
+CVSID("$Id: buildfile.c,v 1.9 2001-11-14 06:30:26 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -285,7 +286,7 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
     }    
 
     /* TODO: handle duplicate registrations cleanly */
-    task_ops_register((task_ops_t *)xops);
+    tscope_register(proj->tscope, (task_ops_t *)xops);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -337,7 +338,7 @@ parse_fileset(project_t *proj, xmlNode *node, const char *dirprop)
     	return 0;
     }
 
-    fs = fileset_new(proj);
+    fs = fileset_new(project_get_props(proj));
     fileset_set_directory(fs, buf);
     xmlFree(buf);
 
@@ -551,7 +552,7 @@ parse_task(project_t *proj, xmlNode *node)
     fprintf(stderr, "parse_task: parsing task \"%s\"\n", node->name);
 #endif
 
-    if ((ops = task_ops_find(node->name)) == 0)
+    if ((ops = tscope_find(proj->tscope, node->name)) == 0)
     {
     	parse_error("Unknown task \"%s\"\n", node->name);
 	
@@ -742,32 +743,42 @@ check_one_target(gpointer key, gpointer value, gpointer userdata)
 }
 
 static project_t *
-parse_project(xmlNode *node)
+parse_project(xmlNode *node, project_t *parent)
 {
     project_t *proj;
-    xmlAttr *attr;
     xmlNode *child;
+    gboolean globals = (parent == 0);
    
-    proj = project_new();
+    proj = project_new(parent);
     
-    for (attr = node->properties ; attr != 0 ; attr = attr->next)
+    if (globals)
     {
-    	char *value = cantXmlAttrValue(attr);
-	
-    	if (!strcmp(attr->name, "name"))
-	    project_set_name(proj, value);
-    	else if (!strcmp(attr->name, "default"))
-	    project_set_default_target(proj, value);
-    	else if (!strcmp(attr->name, "basedir"))
-	    project_set_basedir(proj, value);
-	else
-	    parse_error("Unknown attribute \"%s\" on \"project\"\n", attr->name);
-
-    	xmlFree(value);
+    	project_set_name(proj, "globals");
+	project_set_basedir(proj, ".");
     }
-    
-    if (proj->default_target == 0)
-    	parse_error("Required attribute \"default\" missing from \"project\"\n");
+    else
+    {
+	xmlAttr *attr;
+	
+	for (attr = node->properties ; attr != 0 ; attr = attr->next)
+	{
+    	    char *value = cantXmlAttrValue(attr);
+
+    	    if (!strcmp(attr->name, "name"))
+		project_set_name(proj, value);
+    	    else if (!strcmp(attr->name, "default"))
+		project_set_default_target(proj, value);
+    	    else if (!strcmp(attr->name, "basedir"))
+		project_set_basedir(proj, value);
+	    else
+		parse_error("Unknown attribute \"%s\" on \"%s\"\n", attr->name, node->name);
+
+    	    xmlFree(value);
+	}
+	if (proj->default_target == 0)
+    	    parse_error("Required attribute \"default\" missing from \"project\"\n");
+    }
+        
 
     for (child = node->childs ; child != 0 ; child = child->next)
     {
@@ -782,15 +793,16 @@ parse_project(xmlNode *node)
 	    parse_project_fileset(proj, child);
     	else if (!strcmp(child->name, "xtaskdef"))
 	    parse_xtaskdef(proj, child);
-	else if (!strcmp(child->name, "target"))
+	else if (!globals && !strcmp(child->name, "target"))
 	    parse_target(proj, child);
 	else
 	    /* TODO: fileset */
 	    /* TODO: patternset */
 	    parse_error("Element \"%s\" unexpected at this point.\n", child->name);
     }
-    
-    g_hash_table_foreach(proj->targets, check_one_target, proj);
+
+    if (!globals)    
+	g_hash_table_foreach(proj->targets, check_one_target, proj);
     
     return proj;
 }
@@ -798,39 +810,45 @@ parse_project(xmlNode *node)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 project_t *
-read_buildfile(const char *filename)
+read_buildfile(const char *filename, project_t *parent)
 {
     xmlDoc *doc;
-    xmlNode *node;
+    xmlNode *root;
     project_t *proj;
+
+#if DEBUG
+    fprintf(stderr, "Reading file \"%s\"\n", filename);
+#endif
 
     if ((doc = xmlParseFile(filename)) == 0)
     {
     	/* TODO: print error message */
-	fprintf(stderr, "Failed to load file \"%s\"\n", filename);
+	logf("Failed to load file \"%s\"\n", filename);
 	return 0;
     }
         
     num_errs = 0;
-    for (node = doc->root ; node != 0 ; node = node->next)
+    root = xmlDocGetRootElement(doc);
+
+    if (strcmp(root->name, (parent == 0 ? "globals" : "project")))
     {
-    	if (node->type != XML_ELEMENT_NODE)
-	    continue;
-	    
-	if (!strcmp(node->name, "project"))
-	{
-	    proj = parse_project(node);
-	    if (proj != 0)
-	    	project_set_filename(proj, filename);
-	    break;
-	}
-	else
-	    parse_error("Element \"%s\" unexpected at this point.\n",
-		    	    node->name);
+	parse_error("Element \"%s\" unexpected at this point.\n",
+		    	root->name);
+	xmlFreeDoc(doc);
+	return 0;
     }
+
+    proj = parse_project(root, parent);
+    if (proj != 0)
+	project_set_filename(proj, filename);
     
     if (num_errs > 0)
-    	fprintf(stderr, "%s: found %d errors\n", filename, num_errs);
+    {
+    	logf("%s: found %d errors\n", filename, num_errs);
+	project_delete(proj);
+	xmlFreeDoc(doc);
+	return 0;
+    }
 	
     xmlFreeDoc(doc);
     

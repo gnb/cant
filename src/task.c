@@ -19,9 +19,9 @@
 
 #include "cant.h"
 
-CVSID("$Id: task.c,v 1.7 2001-11-13 04:08:05 gnb Exp $");
+CVSID("$Id: task.c,v 1.8 2001-11-14 06:30:26 gnb Exp $");
 
-static GHashTable *task_ops_all;
+task_scope_t *tscope_builtins;
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -160,22 +160,44 @@ task_ops_attributes_apply(
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-void
-task_ops_register(task_ops_t *ops)
+task_scope_t *
+tscope_new(task_scope_t *parent)
 {
-    if (task_ops_all == 0)
-    	task_ops_all = g_hash_table_new(g_str_hash, g_str_equal);
-    else if (g_hash_table_lookup(task_ops_all, ops->name) != 0)
+    task_scope_t *ts;
+    
+    ts = new(task_scope_t);
+
+    ts->parent = parent;
+    ts->taskdefs = g_hash_table_new(g_str_hash, g_str_equal);
+    
+    return ts;
+}
+
+/* TODO: have some refcounting scheme to ensure that we can 
+ *       delete task_ops_t's whose time has come without
+ *       trying to delete the static builtin ones.  Currently
+ *       we just leak 'em all.
+ */
+void
+tscope_delete(task_scope_t *ts)
+{
+    g_hash_table_destroy(ts->taskdefs);
+    g_free(ts);
+}
+
+gboolean
+tscope_register(task_scope_t *ts, task_ops_t *ops)
+{
+    if (g_hash_table_lookup(ts->taskdefs, ops->name) != 0)
     {
-    	fprintf(stderr,
-	    	"%s: Task operations \"%s\" already registered, ignoring new definition\n",
-	    	argv0, ops->name);
-    	return;
+    	logf("Task operations \"%s\" already registered, ignoring new definition\n",
+	    	ops->name);
+    	return FALSE;
     }
     
-    g_hash_table_insert(task_ops_all, ops->name, ops);
+    g_hash_table_insert(ts->taskdefs, ops->name, ops);
 #if DEBUG
-    fprintf(stderr, "task_ops_register: registering \"%s\"\n", ops->name);
+    fprintf(stderr, "tscope_register: registering \"%s\"\n", ops->name);
 #endif
 
     if (ops->attrs != 0)
@@ -194,23 +216,30 @@ task_ops_register(task_ops_t *ops)
 	for (tc = ops->children ; tc->name != 0 ; tc++)
     	    g_hash_table_insert(ops->children_hashed, tc->name, tc);
     }
-    
 
     if (ops->init != 0)
     	(*ops->init)();
+	
+    return TRUE;
 }
 
 void
-task_ops_unregister(task_ops_t *ops)
+tscope_unregister(task_scope_t *ts, task_ops_t *ops)
 {
-    if (task_ops_all != 0)
-	g_hash_table_remove(task_ops_all, ops->name);
+    g_hash_table_remove(ts->taskdefs, ops->name);
 }
 
 task_ops_t *
-task_ops_find(const char *name)
+tscope_find(task_scope_t *ts, const char *name)
 {
-    return (task_ops_t *)g_hash_table_lookup(task_ops_all, name);
+    for ( ; ts != 0 ; ts = ts->parent)
+    {
+    	task_ops_t *ops;
+	
+	if ((ops = (task_ops_t *)g_hash_table_lookup(ts->taskdefs, name)) != 0)
+	    return ops;
+    }
+    return 0;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -222,7 +251,9 @@ task_ops_find(const char *name)
 void
 task_initialise_builtins(void)
 {
-#define TASKOPS(t)  task_ops_register(&t);
+    tscope_builtins = tscope_new(0);
+    
+#define TASKOPS(t)  tscope_register(tscope_builtins, &t);
 #include "builtin-tasks.h"
 #undef TASKOPS
 }

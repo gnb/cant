@@ -26,7 +26,10 @@
 #include "strarray.h"
 #include "pattern.h"
 #include "filename.h"
+#include "fileset.h"
+#include "mapper.h"
 #include "xml.h"
+#include "log.h"
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 /*
@@ -39,12 +42,7 @@ typedef struct task_s    	task_t;
 typedef struct task_attr_s    	task_attr_t;
 typedef struct task_child_s    	task_child_t;
 typedef struct task_ops_s    	task_ops_t;
-typedef struct xtask_arg_s    	xtask_arg_t;
-typedef struct xtask_ops_s    	xtask_ops_t;
-typedef struct fileset_s    	fileset_t;
-typedef struct fs_spec_s    	fs_spec_t;
-typedef struct mapper_s     	mapper_t;
-typedef struct mapper_ops_s 	mapper_ops_t;
+typedef struct task_scope_s 	task_scope_t;
 
 
 struct project_s
@@ -54,8 +52,10 @@ struct project_s
     char *filename;
     char *default_target;
     char *basedir;
+    project_t *parent;	    	/* inherits tscope, props etc */
     GHashTable *targets;
     GHashTable *filesets;   	/* <fileset>s in project scope */
+    task_scope_t *tscope;   	/* scope for taskdefs */
     props_t *fixed_properties;	/* e.g. "basedir" which can't be overridden */
     props_t *properties;    	/* mutable properties from <property> element */
 };
@@ -127,93 +127,11 @@ struct task_ops_s
     GHashTable *children_hashed;    /* task_child_t's hashed on name */
 };
 
-#define XT_ARG	    	    1
-#define XT_FILESET  	    2
-#define XT_ENV	    	    3
-#define XT_FILES    	    4
-#define _XT_TYPE_MASK	    0xf
-#define XT_WHITESPACE	    (1<<4)  	/* escape whitespace in `arg' */
-#define XT_IFCOND	    (1<<5)  	/* `if' condition specified */
-#define XT_UNLESSCOND	    (1<<6)  	/* `unless' condition specified */
-
-struct xtask_arg_s
+struct task_scope_s
 {
-    unsigned flags;
-    
-    union
-    {
-	char *arg;	    	/* for XT_ARG */
-	fileset_t *fileset;     /* for XT_FILESET */
-    } data;
-    
-    char *condition;
+    task_scope_t *parent;
+    GHashTable *taskdefs;
 };
-
-struct xtask_ops_s
-{
-    task_ops_t task_ops;
-    
-    char *executable;
-    char *logmessage;
-    GList *args;    	    	/* list of xtask_arg_t */
-    props_t *property_map;	/* maps attributes to local property *name*s */
-    GList *mappers;     	/* list of mapper_t: args to files */
-    GList *dep_mappers;     	/* list of mapper_t: depfiles to targfiles */
-    char *dep_target;
-    
-    gboolean foreach:1;
-};
-
-struct fileset_s
-{
-    char *id;
-    project_t *project;
-    
-    char *directory;
-    
-    GList *specs;   	    /* list of fs_spec_t */
-
-    gboolean default_excludes:1;
-    gboolean case_sensitive:1;
-};
-
-
-#define FS_INCLUDE  	(1<<0)
-#define FS_FILE  	(1<<1)
-#define FS_IFCOND  	(1<<2)
-#define FS_UNLESSCOND  	(1<<3)
-#define FS_FILEREAD  	(1<<4)
-
-struct fs_spec_s
-{
-    unsigned flags;
-    
-    char *filename;
-    GList *specs;   	/* list of specs from file */
-    
-    pattern_t pattern;
-    
-    char *condition;
-};
-
-
-
-struct mapper_s
-{
-    mapper_ops_t *ops;
-    char *from;
-    char *to;
-    void *private;
-};
-
-struct mapper_ops_s
-{
-    char *name;
-    void (*new)(mapper_t *);
-    char *(*map)(mapper_t *, const char *filename);
-    void (*delete)(mapper_t *);
-};
-
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 /*
@@ -244,10 +162,10 @@ void parse_error(const char *fmt, ...);
 extern fileset_t *parse_fileset(project_t *, xmlNode *, const char *dirprop);	/* for e.g. <delete> */
 mapper_t *parse_mapper(project_t *proj, xmlNode *node);
 extern task_t *parse_task(project_t *, xmlNode *);	/* for recursives e.g. <condition> */
-extern project_t *read_buildfile(const char *filename);
+extern project_t *read_buildfile(const char *filename, project_t *parent);
 
 /*project.c */
-project_t *project_new(void);
+project_t *project_new(project_t *parent);
 void project_delete(project_t *);
 void project_set_name(project_t *, const char *name);
 void project_set_description(project_t *, const char *description);
@@ -261,8 +179,9 @@ const char *project_get_property(project_t *, const char *name);
 void project_set_property(project_t *, const char *name, const char *value);
 void project_add_fileset(project_t *, fileset_t *);
 fileset_t *project_find_fileset(project_t *, const char *id);
+#define project_get_props(proj)     ((proj)->fixed_properties)
 #define project_expand(proj, str) \
-    props_expand((proj)->fixed_properties, (str))
+    props_expand(project_get_props((proj)), (str))
 
 /* target.c */
 target_t *target_new(void);
@@ -284,60 +203,20 @@ void task_ops_attributes_apply(task_ops_t *ops,
     void (*function)(const task_attr_t *ta, void *userdata), void *userdata);
 /* no task should ever need to call this */
 void task_ops_add_attribute(task_ops_t *, const task_attr_t *ta);
-void task_ops_register(task_ops_t *);
-void task_ops_unregister(task_ops_t *);
-task_ops_t *task_ops_find(const char *name);
 gboolean task_execute(task_t *);
 void task_initialise_builtins(void);
 
+/* a task_scope_t is a stackable scope for task_ops_t definitions */
+extern task_scope_t *tscope_builtins;
+task_scope_t *tscope_new(task_scope_t *parent);
+void tscope_delete(task_scope_t *);
+gboolean tscope_register(task_scope_t *, task_ops_t *ops);
+void tscope_unregister(task_scope_t *, task_ops_t *ops);
+task_ops_t *tscope_find(task_scope_t *, const char *name);
+
+
 #define task_expand(task, str) \
     project_expand((task)->project, (str))
-
-/* xtask.c */
-xtask_ops_t *xtask_ops_new(const char *name);
-void xtask_ops_delete(xtask_ops_t *xops);
-void xtask_arg_set_if_condition(xtask_arg_t *xa, const char *prop);
-void xtask_arg_set_unless_condition(xtask_arg_t *xa, const char *prop);
-xtask_arg_t *xtask_ops_add_line(xtask_ops_t *xops, const char *s);
-xtask_arg_t *xtask_ops_add_value(xtask_ops_t *xops, const char *s);
-xtask_arg_t *xtask_ops_add_fileset(xtask_ops_t *xops, fileset_t *fs);
-xtask_arg_t *xtask_ops_add_files(xtask_ops_t *xops);
-void xtask_ops_add_attribute(xtask_ops_t *xops, const char *attr,
-    const char *prop, gboolean required);
-
-
-/* fileset.c */
-void fs_spec_set_if_condition(fs_spec_t *fss, const char *prop);
-void fs_spec_set_unless_condition(fs_spec_t *fss, const char *prop);
-
-fileset_t *fileset_new(project_t *);
-void fileset_delete(fileset_t *);
-void fileset_set_id(fileset_t *, const char *id);
-void fileset_set_directory(fileset_t *, const char *dir);
-fs_spec_t *fileset_add_include(fileset_t *, const char *s);
-fs_spec_t *fileset_add_include_file(fileset_t *, const char *s);
-fs_spec_t *fileset_add_exclude(fileset_t *, const char *s);
-fs_spec_t *fileset_add_exclude_file(fileset_t *, const char *s);
-void fileset_set_default_excludes(fileset_t *, gboolean b);
-void fileset_set_case_sensitive(fileset_t *, gboolean b);
-int fileset_apply(fileset_t *, file_apply_proc_t, void *userdata);
-GList *fileset_gather(fileset_t *);
-
-/* mapper.c */
-mapper_t *mapper_new(const char *name, const char *from, const char *to);
-void mapper_delete(mapper_t *);
-char *mapper_map(mapper_t *, const char *filename);
-void mapper_ops_register(mapper_ops_t *ops);
-void mapper_ops_unregister(mapper_ops_t *ops);
-void mapper_initialise_builtins(void);
-
-
-/* log.c */    
-void logf(const char *fmt, ...);
-void logv(const char *fmt, va_list a);
-void logperror(const char *filename);
-void log_push_context(const char *name);
-void log_pop_context(void);
 
 /* process.c */
 gboolean process_run(strarray_t *command, strarray_t *env);

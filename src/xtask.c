@@ -17,10 +17,10 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "cant.h"
+#include "xtask.h"
 #include "job.h"
 
-CVSID("$Id: xtask.c,v 1.8 2001-11-13 04:08:06 gnb Exp $");
+CVSID("$Id: xtask.c,v 1.9 2001-11-14 06:30:26 gnb Exp $");
 
 typedef struct
 {
@@ -37,7 +37,7 @@ xtask_new(task_t *task)
     
     task->private = xp = new(xtask_private_t);
 
-    xp->properties = props_new(task->project->fixed_properties);    
+    xp->properties = props_new(project_get_props(task->project));
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
