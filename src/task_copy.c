@@ -32,7 +32,7 @@ typedef struct
     gboolean result:1;
 } copy_private_t;
 
-CVSID("$Id: task_copy.c,v 1.2 2001-11-06 09:10:30 gnb Exp $");
+CVSID("$Id: task_copy.c,v 1.3 2001-11-06 09:29:06 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -45,10 +45,7 @@ copy_parse(task_t *task, xmlNode *node)
     copy_private_t *dp;
     fileset_t *fs;
     
-    dp = g_new(copy_private_t, 1);
-    if (dp == 0)
-    	fatal("No memory\n");
-    memset(dp, 0, sizeof(*dp));
+    dp = new(copy_private_t);
     task->private = dp;
     
     dp->file = xml2g(xmlGetProp(node, "file"));

@@ -26,7 +26,7 @@ struct props_s
     GHashTable *values;
 };
 
-CVSID("$Id: props.c,v 1.2 2001-11-06 09:10:30 gnb Exp $");
+CVSID("$Id: props.c,v 1.3 2001-11-06 09:29:06 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -35,10 +35,8 @@ props_new(props_t *parent)
 {
     props_t *props;
     
-    props = g_new(props_t, 1);
-    if (props == 0)
-    	fatal("No memory\n");
-    
+    props = new(props_t);
+
     props->parent = parent;
     props->values = g_hash_table_new(g_str_hash, g_str_equal);
     

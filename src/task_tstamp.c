@@ -20,7 +20,7 @@
 #include "cant.h"
 #include <time.h>
 
-CVSID("$Id: task_tstamp.c,v 1.2 2001-11-06 09:10:30 gnb Exp $");
+CVSID("$Id: task_tstamp.c,v 1.3 2001-11-06 09:29:06 gnb Exp $");
 
 typedef struct
 {
@@ -43,11 +43,7 @@ tstamp_format_new(void)
 {
     tstamp_format_t *fmt;
     
-    fmt = g_new(tstamp_format_t, 1);
-    if (fmt == 0)
-    	fatal("No memory\n");
-	
-    memset(fmt, 0, sizeof(*fmt));
+    fmt = new(tstamp_format_t);
     
     return fmt;
 }

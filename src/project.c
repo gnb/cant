@@ -19,7 +19,7 @@
 
 #include "cant.h"
 
-CVSID("$Id: project.c,v 1.2 2001-11-06 09:10:30 gnb Exp $");
+CVSID("$Id: project.c,v 1.3 2001-11-06 09:29:06 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -28,11 +28,7 @@ project_new(void)
 {
     project_t *proj;
     
-    proj = g_new(project_t, 1);
-    if (proj == 0)
-    	fatal("No memory\n");
-
-    memset(proj, 0, sizeof(*proj));
+    proj = new(project_t);
     
     proj->targets = g_hash_table_new(g_str_hash, g_str_equal);	
     proj->filesets = g_hash_table_new(g_str_hash, g_str_equal);	

@@ -19,7 +19,7 @@
 
 #include "cant.h"
 
-CVSID("$Id: target.c,v 1.2 2001-11-06 09:10:30 gnb Exp $");
+CVSID("$Id: target.c,v 1.3 2001-11-06 09:29:06 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -28,11 +28,7 @@ target_new(void)
 {
     target_t *targ;
     
-    targ = g_new(target_t, 1);
-    if (targ == 0)
-    	fatal("No memory\n");
-
-    memset(targ, 0, sizeof(*targ));
+    targ = new(target_t);
     
     return targ;
 }

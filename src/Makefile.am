@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 # 
-# $Id: Makefile.am,v 1.2 2001-11-06 09:03:23 gnb Exp $
+# $Id: Makefile.am,v 1.3 2001-11-06 09:29:06 gnb Exp $
 #
 
 bin_PROGRAMS=	cant
@@ -36,6 +36,7 @@ cant_SOURCES=	common.h cant.h \
 		log.c filename.c \
 		fileset.c pattern.c \
 		xml.h xml.c \
+		common.c \
 		$(TASK_SOURCES)
 INCLUDES=	$(GLIB_CFLAGS) $(LIBXML_CFLAGS)
 cant_LDADD=	$(GLIB_LIBS) $(LIBXML_LIBS)

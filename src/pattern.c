@@ -19,7 +19,7 @@
 
 #include "cant.h"
 
-CVSID("$Id: pattern.c,v 1.2 2001-11-06 09:10:30 gnb Exp $");
+CVSID("$Id: pattern.c,v 1.3 2001-11-06 09:29:06 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -82,11 +82,7 @@ pattern_new(const char *pattern, gboolean case_sens)
 {
     pattern_t *pat;
     
-    pat = g_new(pattern_t, 1);
-    if (pat == 0)
-    	fatal("No memory\n");
-
-    memset(pat, 0, sizeof(*pat));
+    pat = new(pattern_t);
     
     pattern_init(pat, pattern, case_sens);
     

@@ -20,7 +20,7 @@
 #include "cant.h"
 #include <dirent.h>
 
-CVSID("$Id: fileset.c,v 1.2 2001-11-06 09:10:30 gnb Exp $");
+CVSID("$Id: fileset.c,v 1.3 2001-11-06 09:29:06 gnb Exp $");
 
 typedef enum { FS_IN, FS_EX, FS_UNKNOWN } fs_result_t;
 
@@ -35,11 +35,7 @@ fs_spec_new(
 {
     fs_spec_t *fss;
     
-    fss = g_new(fs_spec_t, 1);
-    if (fss == 0)
-    	fatal("No memory\n");
-	
-    memset(fss, 0, sizeof(*fss));
+    fss = new(fs_spec_t);
     
     fss->flags = flags;
     
@@ -194,11 +190,8 @@ fileset_new(project_t *proj)
 {
     fileset_t *fs;
     
-    fs = g_new(fileset_t, 1);
-    if (fs == 0)
-    	fatal("No memory\n");
+    fs = new(fileset_t);
 
-    memset(fs, 0, sizeof(*fs));
     fs->project = proj;
     
     return fs;

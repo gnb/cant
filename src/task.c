@@ -19,7 +19,7 @@
 
 #include "cant.h"
 
-CVSID("$Id: task.c,v 1.2 2001-11-06 09:10:30 gnb Exp $");
+CVSID("$Id: task.c,v 1.3 2001-11-06 09:29:06 gnb Exp $");
 
 static GHashTable *task_ops_all;
 
@@ -30,11 +30,7 @@ task_new(void)
 {
     task_t *task;
     
-    task = g_new(task_t, 1);
-    if (task == 0)
-    	fatal("No memory\n");
-
-    memset(task, 0, sizeof(*task));
+    task = new(task_t);
     
     task->attributes = props_new(0);
     
