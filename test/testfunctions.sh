@@ -1,7 +1,7 @@
 #
 # Common functions for CANT test harness
 #
-# $Id: testfunctions.sh,v 1.2 2002-02-11 06:29:10 gnb Exp $
+# $Id: testfunctions.sh,v 1.3 2002-03-29 11:14:01 gnb Exp $
 #
 
 CANT="../../src/cant"
@@ -148,7 +148,7 @@ check_file_exists ()
 check_file_notexists ()
 {
     vmessage "Checking that file $1 doesn't exist"
-    test -f "$1" && failed
+    test -f "$1" && failed || return 0
 }
 
 check_file_executable ()
