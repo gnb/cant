@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: cvs2changelog,v 1.1 2001-11-16 12:23:48 gnb Exp $
+# $Id: cvs2changelog,v 1.2 2001-11-16 12:53:58 gnb Exp $
 #
 # Shell script to build a change log for a new release
 # from CVS logs. The change log will still need some
@@ -227,7 +227,7 @@ gatherChanges ()
 {
     DATE=`get_rev_date $REV2`
     echo "$DATE  $ME <$EMAIL>"
-    echo "	* release $REV2"
+    echo "	* Release $REV2"
     if [ -z "$FILES" ]; then
     	FILES="-l "`getDirs`
     fi
