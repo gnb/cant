@@ -31,7 +31,7 @@ typedef struct
     gboolean result:1;
 } delete_private_t;
 
-CVSID("$Id: task_delete.c,v 1.4 2001-11-08 04:13:35 gnb Exp $");
+CVSID("$Id: task_delete.c,v 1.5 2001-11-10 03:17:24 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -53,62 +53,71 @@ delete_new(task_t *task)
 
 static void delete_delete(task_t *);
     
-static void
+static gboolean
 delete_set_file(task_t *task, const char *name, const char *value)
 {
     delete_private_t *dp = (delete_private_t *)task->private;
 
     strassign(dp->file, value);
+    return TRUE;
 }
 
-static void
+static gboolean
 delete_set_dir(task_t *task, const char *name, const char *value)
 {
     delete_private_t *dp = (delete_private_t *)task->private;
 
     strassign(dp->directory, value);
+    return TRUE;
 }
     
-static void
+static gboolean
 delete_set_verbose(task_t *task, const char *name, const char *value)
 {
     delete_private_t *dp = (delete_private_t *)task->private;
 
     boolassign(dp->verbose, value);
+    return TRUE;
 }
 
-static void
+static gboolean
 delete_set_quiet(task_t *task, const char *name, const char *value)
 {
     delete_private_t *dp = (delete_private_t *)task->private;
 
     boolassign(dp->quiet, value);
+    return TRUE;
 }
 
-static void
+static gboolean
 delete_set_failonerror(task_t *task, const char *name, const char *value)
 {
     delete_private_t *dp = (delete_private_t *)task->private;
 
     boolassign(dp->fail_on_error, value);
+    return TRUE;
 }
 
-static void
+static gboolean
 delete_set_includeEmptyDirs(task_t *task, const char *name, const char *value)
 {
     delete_private_t *dp = (delete_private_t *)task->private;
 
     boolassign(dp->include_empty_dirs, value);
+    return TRUE;
 }
 
-static void
+static gboolean
 delete_add_fileset(task_t *task, xmlNode *node)
 {
     delete_private_t *dp = (delete_private_t *)task->private;
     fileset_t *fs;
 
-    if ((fs = parse_fileset(task->project, node, "dir")) != 0)
-	dp->filesets = g_list_append(dp->filesets, fs);
+    if ((fs = parse_fileset(task->project, node, "dir")) == 0)
+    	return FALSE;
+	
+    dp->filesets = g_list_append(dp->filesets, fs);
+    return TRUE;
 }
 
 static gboolean

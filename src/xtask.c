@@ -19,7 +19,7 @@
 
 #include "cant.h"
 
-CVSID("$Id: xtask.c,v 1.4 2001-11-08 04:13:35 gnb Exp $");
+CVSID("$Id: xtask.c,v 1.5 2001-11-10 03:17:24 gnb Exp $");
 
 typedef struct
 {
@@ -41,15 +41,17 @@ xtask_new(task_t *task)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-void
+static gboolean
 xtask_generic_setter(task_t *task, const char *name, const char *value)
 {
     xtask_private_t *xp = (xtask_private_t *)task->private;
     xtask_ops_t *xops = (xtask_ops_t *)task->ops;
     const char *propname;
     
-    if ((propname = props_get(xops->property_map, name)) != 0)
-    	props_set(xp->properties, propname, value);
+    if ((propname = props_get(xops->property_map, name)) == 0)
+    	return FALSE;
+    props_set(xp->properties, propname, value);
+    return TRUE;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

@@ -20,7 +20,7 @@
 #include "pattern.h"
 #include "estring.h"
 
-CVSID("$Id: pattern.c,v 1.4 2001-11-08 05:39:53 gnb Exp $");
+CVSID("$Id: pattern.c,v 1.5 2001-11-10 03:17:24 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -29,42 +29,50 @@ pattern_init(pattern_t *pat, const char *pattern, unsigned flags)
 {
     const char *p = pattern;
     estring restr;
-    unsigned reflags;
+    unsigned reflags = 0;
     
 #if DEBUG
     strassign(pat->pattern, pattern);
 #endif
 
     estring_init(&restr);
-    estring_append_char(&restr, '^');
     
-    for ( ; *p ; p++)
+    if (flags & PAT_REGEXP)
     {
-    	if (p[0] == '*' && p[1] == '*')
-	{
-	    estring_append_string(&restr, "\\(.*\\)");
-	    p++;
-	}
-	else if (*p == '*')
-	    estring_append_string(&restr, "\\([^/]*\\)");
-	else if (*p == '?')
-	    estring_append_string(&restr, "\\([^/]\\)");
-	else if (strchr(".^$\\", *p) != 0)
-	{
-	    estring_append_char(&restr, '\\');
-	    estring_append_char(&restr, *p);
-	}
-	else
-	    estring_append_char(&restr, *p);
+    	estring_append_string(&restr, pattern);
+	reflags |= REG_EXTENDED;
     }
-    
-    estring_append_char(&restr, '$');
-    
+    else
+    {
+	estring_append_char(&restr, '^');
+
+	for ( ; *p ; p++)
+	{
+    	    if (p[0] == '*' && p[1] == '*')
+	    {
+		estring_append_string(&restr, "\\(.*\\)");
+		p++;
+	    }
+	    else if (*p == '*')
+		estring_append_string(&restr, "\\([^/]*\\)");
+	    else if (*p == '?')
+		estring_append_string(&restr, "\\([^/]\\)");
+	    else if (strchr(".^$\\", *p) != 0)
+	    {
+		estring_append_char(&restr, '\\');
+		estring_append_char(&restr, *p);
+	    }
+	    else
+		estring_append_char(&restr, *p);
+	}
+
+	estring_append_char(&restr, '$');
+    }
+        
 #if DEBUG
     fprintf(stderr, "pattern_init: \"%s\" -> \"%s\"\n",
     	    	    	pattern, restr.data);
 #endif
-    reflags = 0;
     if (!(flags & PAT_CASE)) reflags |= REG_ICASE;
     if (!(flags & PAT_GROUPS)) reflags |= REG_NOSUB;
     regcomp(&pat->regex, restr.data, reflags);

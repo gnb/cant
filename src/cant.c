@@ -20,7 +20,7 @@
 #define _DEFINE_GLOBALS 1
 #include "cant.h"
 
-CVSID("$Id: cant.c,v 1.6 2001-11-08 05:39:53 gnb Exp $");
+CVSID("$Id: cant.c,v 1.7 2001-11-10 03:17:24 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -34,22 +34,72 @@ static char *buildfile = "build.xml";
 #if PATTERN_TEST
 
 static void
-test1(pattern_t *pat, const char *filename, const char *rep)
+test1(
+    const char *pattern,
+    unsigned flags,
+    const char *filename,
+    const char *rep)
 {
-    if (pattern_match(pat, filename))
+    pattern_t *pat;
+
+    pat = pattern_new(pattern, flags);
+
+    if (pattern_match(pat, filename) && rep != 0)
     	g_free(pattern_replace(pat, rep));
+
+    pattern_delete(pat);
 }
 
 static void
 hack_pattern_test(void)
 {
-    pattern_t *pat;
+    test1("**/*.c", PAT_GROUPS, "foo/bar/baz.c", "X\\1Y\\2Z");
+    test1("^([a-f][n-q]+)/.*/([^/]*\\.c)$", PAT_GROUPS|PAT_REGEXP, "foo/bar/baz.c", "X\\1Y\\2Z");
+}
+
+#endif
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+#define MAPPER_TEST 0
+#if MAPPER_TEST
+
+static void
+test1(
+    const char *name,
+    const char *from,
+    const char *to)
+{
+    mapper_t *ma;
+    const char **p;
+    static const char *samples[] =
+    {
+    	"A.java",
+	"foo/bar/B.java", 
+	"C.properties",
+	"Classes/dir/dir2/A.properties",
+	0
+    };
+
+    fprintf(stderr, "================\n");
+    ma = mapper_new(name, from, to);
+
+    for (p = samples ; *p ; p++)
+    	g_free(mapper_map(ma, *p));
     
-    pat = pattern_new("**/*.c", PAT_GROUPS);
-    
-    test1(pat, "foo/bar/baz.c", "X\\1Y\\2Z");
-    
-    pattern_delete(pat);
+    mapper_delete(ma);
+}
+
+static void
+hack_mapper_test(void)
+{
+    test1("identity", 0, 0);
+    test1("flatten", 0, 0);
+    test1("merge", 0, "archive.tar");
+    test1("glob", "*.java", "*.java.bak");
+    test1("glob", "C*ies", "Q*y");
+    test1("regexp", "^(.*)\\.java$", "\\1.java.bak");
+    test1("regexp", "^(.*)/([^/]+)/([^/]*)$", "\\1/\\2/\\2-\\3");
+    test1("regexp", "^(.*)\\.(.*)$", "\\2.\\1");
+    test1("null", 0, 0);
 }
 
 #endif
@@ -367,6 +417,7 @@ main(int argc, char **argv)
     parse_args(argc, argv);
     
     task_initialise_builtins();
+    mapper_initialise_builtins();
 
     if (find_flag && !find_buildfile())
     	fatal("Can't find buildfile \"%s\" in any parent directory\n", buildfile);
@@ -389,6 +440,9 @@ main(int argc, char **argv)
 
 #if PATTERN_TEST
     hack_pattern_test();
+#endif
+#if MAPPER_TEST
+    hack_mapper_test();
 #endif
 
     project_delete(proj);

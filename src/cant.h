@@ -43,6 +43,9 @@ typedef struct xtask_arg_s    	xtask_arg_t;
 typedef struct xtask_ops_s    	xtask_ops_t;
 typedef struct fileset_s    	fileset_t;
 typedef struct fs_spec_s    	fs_spec_t;
+typedef struct mapper_s     	mapper_t;
+typedef struct mapper_ops_s 	mapper_ops_t;
+
 
 struct project_s
 {
@@ -87,12 +90,10 @@ struct task_s
 
 #define TT_REQUIRED 	(1<<0)
 
-typedef void (*task_setter_proc_t)(task_t *task, const char *name, const char *value);
-
 struct task_attr_s
 {
     char *name;
-    task_setter_proc_t setter;
+    gboolean (*setter)(task_t *task, const char *name, const char *value);
     unsigned flags;
 };
 #define TASK_ATTR(scope, name, flags) \
@@ -101,7 +102,7 @@ struct task_attr_s
 struct task_child_s
 {
     char *name;
-    void (*adder)(task_t *task, xmlNode *);
+    gboolean (*adder)(task_t *task, xmlNode *);
     unsigned flags;
 };
 #define TASK_CHILD(scope, name, flags) \
@@ -188,6 +189,24 @@ struct fs_spec_s
 
 typedef gboolean (*file_apply_proc_t)(const char *filename, void *userdata);
 
+
+struct mapper_s
+{
+    mapper_ops_t *ops;
+    char *from;
+    char *to;
+    void *private;
+};
+
+struct mapper_ops_s
+{
+    char *name;
+    void (*new)(mapper_t *);
+    char *(*map)(mapper_t *, const char *filename);
+    void (*delete)(mapper_t *);
+};
+
+
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 /*
  * Globals
@@ -215,6 +234,7 @@ void fatal(const char *fmt, ...);
 /* buildfile.c */
 void parse_error(const char *fmt, ...);
 extern fileset_t *parse_fileset(project_t *, xmlNode *, const char *dirprop);	/* for e.g. <delete> */
+mapper_t *parse_mapper(project_t *proj, xmlNode *node);
 extern task_t *parse_task(project_t *, xmlNode *);	/* for recursives e.g. <condition> */
 extern project_t *read_buildfile(const char *filename);
 
@@ -294,6 +314,15 @@ void fileset_set_case_sensitive(fileset_t *, gboolean b);
 int fileset_apply(fileset_t *, file_apply_proc_t, void *userdata);
 GList *fileset_gather(fileset_t *);
 
+/* mapper.c */
+mapper_t *mapper_new(const char *name, const char *from, const char *to);
+void mapper_delete(mapper_t *);
+char *mapper_map(mapper_t *, const char *filename);
+void mapper_ops_register(mapper_ops_t *ops);
+void mapper_ops_unregister(mapper_ops_t *ops);
+void mapper_initialise_builtins(void);
+
+
 /* log.c */    
 void logf(const char *fmt, ...);
 void logv(const char *fmt, va_list a);
@@ -302,6 +331,10 @@ void log_push_context(const char *name);
 void log_pop_context(void);
 
 /* filename.c */
+const char *file_basename_c(const char *filename);
+char *file_dirname(const char *filename);
+mode_t file_mode(const char *filename);
+FILE *file_open_mode(const char *filename, const char *rw, mode_t mode);
 char *file_make_absolute(const char *filename);
 int file_build_tree(const char *dirname, mode_t mode);	/* make sequence of directories */
 mode_t file_mode_from_string(const char *str, mode_t base, mode_t deflt);

@@ -20,7 +20,7 @@
 #include "cant.h"
 #include <time.h>
 
-CVSID("$Id: task_tstamp.c,v 1.4 2001-11-08 04:13:35 gnb Exp $");
+CVSID("$Id: task_tstamp.c,v 1.5 2001-11-10 03:17:24 gnb Exp $");
 
 typedef struct
 {
@@ -248,16 +248,20 @@ tstamp_format_parse(task_t *task, xmlNode *node)
     return fmt;
 }
 
-static void
+static gboolean
 tstamp_add_format(task_t *task, xmlNode *node)
 {
     GList *fmt_list = (GList *)task->private;
     tstamp_format_t *fmt;
     
-    if ((fmt = tstamp_format_parse(task, node)) != 0)
-	fmt_list = g_list_append(fmt_list, fmt);
+    if ((fmt = tstamp_format_parse(task, node)) == 0)
+    	return FALSE;
+    
+    fmt_list = g_list_append(fmt_list, fmt);
 
     task->private = fmt_list;
+    
+    return FALSE;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -324,7 +328,7 @@ task_ops_t tstamp_ops =
     tstamp_execute,
     tstamp_delete,
     /*attrs*/0,
-    /*children*/tstamp_children,
+    tstamp_children,
     /*is_fileset*/FALSE,
     /*fileset_dir_name*/0
 };

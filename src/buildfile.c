@@ -20,7 +20,7 @@
 #include "cant.h"
 #include <parser.h>
 
-CVSID("$Id: buildfile.c,v 1.4 2001-11-08 04:13:35 gnb Exp $");
+CVSID("$Id: buildfile.c,v 1.5 2001-11-10 03:17:24 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -416,6 +416,39 @@ parse_path(project_t *proj, xmlNode *node)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
+mapper_t *
+parse_mapper(project_t *proj, xmlNode *node)
+{
+    char *name;
+    char *from;
+    char *to;
+    
+    if ((name = xmlGetProp(node, "name")) == 0)
+    {
+    	parse_error("Required attribute \"%s\" missing\n", "name");
+    	return 0;
+    }
+
+    if ((from = xmlGetProp(node, "from")) == 0)
+    {
+    	parse_error("Required attribute \"%s\" missing\n", "from");
+	xmlFree(name);
+    	return 0;
+    }
+
+    if ((to = xmlGetProp(node, "to")) == 0)
+    {
+    	parse_error("Required attribute \"%s\" missing\n", "to");
+	xmlFree(name);
+	xmlFree(from);
+    	return 0;
+    }
+    
+    return mapper_new(name, from, to);
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
 static void
 check_one_attribute(const task_attr_t *ta, void *userdata)
 {
@@ -495,7 +528,11 @@ parse_task(project_t *proj, xmlNode *node)
 	    ;	/* parse_fileset will get it later */
 	else
 	{
-	    task_set_attribute(task, attr->name, value);
+	    if (!task_set_attribute(task, attr->name, value))
+	    {
+	    	task_delete(task);
+	    	return 0;
+	    }
 	    /* TODO: whinge about superfluous attributes */
 	}
     	xmlFree(value);
@@ -520,8 +557,11 @@ parse_task(project_t *proj, xmlNode *node)
 	/* TODO: handle character data */
 	
 	tc = (task_child_t *)g_hash_table_lookup(ops->children_hashed, child->name);
-	if (tc != 0)
-	    (*tc->adder)(task, child);
+	if (tc != 0 && !(*tc->adder)(task, child))
+	{
+	    task_delete(task);
+	    return 0;
+	}
 	/* TODO: whinge about superfluous children */
     }
     

@@ -2,4 +2,5 @@ cant
 Makefile.in
 Makefile
 .deps
-builtins.h
+builtin-tasks.h
+builtin-mappers.h

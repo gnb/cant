@@ -19,7 +19,7 @@
 
 #include "cant.h"
 
-CVSID("$Id: task_mkdir.c,v 1.3 2001-11-08 04:13:35 gnb Exp $");
+CVSID("$Id: task_mkdir.c,v 1.4 2001-11-10 03:17:24 gnb Exp $");
 
 typedef struct
 {
@@ -37,20 +37,22 @@ mkdir_new(task_t *task)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void
+static gboolean
 mkdir_set_dir(task_t *task, const char *name, const char *value)
 {
     mkdir_private_t *mp = (mkdir_private_t *)task->private;
     
     strassign(mp->directory, value);
+    return TRUE;
 }
 
-static void
+static gboolean
 mkdir_set_mode(task_t *task, const char *name, const char *value)
 {
     mkdir_private_t *mp = (mkdir_private_t *)task->private;
     
     strassign(mp->mode, value);
+    return TRUE;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

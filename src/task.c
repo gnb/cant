@@ -19,7 +19,7 @@
 
 #include "cant.h"
 
-CVSID("$Id: task.c,v 1.5 2001-11-08 04:13:35 gnb Exp $");
+CVSID("$Id: task.c,v 1.6 2001-11-10 03:17:24 gnb Exp $");
 
 static GHashTable *task_ops_all;
 
@@ -78,10 +78,12 @@ task_set_attribute(task_t *task, const char *name, const char *value)
 	ta = (task_attr_t *)g_hash_table_lookup(task->ops->attrs_hashed, name);
 
     if (ta == 0)
-    	return FALSE;	
+    {
+    	fprintf(stderr, "Unknown attribute \"%s\"\n", name);
+    	return TRUE;	/* just ignore unknown attributes */
+    }
 
-    (*ta->setter)(task, name, value);
-    return TRUE;
+    return (*ta->setter)(task, name, value);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -214,14 +216,14 @@ task_ops_find(const char *name)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 #define TASKOPS(t)  	extern task_ops_t t;
-#include "builtins.h"
+#include "builtin-tasks.h"
 #undef TASKOPS
 
 void
 task_initialise_builtins(void)
 {
 #define TASKOPS(t)  task_ops_register(&t);
-#include "builtins.h"
+#include "builtin-tasks.h"
 #undef TASKOPS
 }
 

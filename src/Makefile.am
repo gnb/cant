@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 # 
-# $Id: Makefile.am,v 1.6 2001-11-08 05:39:53 gnb Exp $
+# $Id: Makefile.am,v 1.7 2001-11-10 03:17:24 gnb Exp $
 #
 
 bin_PROGRAMS=	cant
@@ -28,26 +28,42 @@ TASK_SOURCES=	\
 		task_enumerate.c \
 		task_copy.c
 
+MAPPER_SOURCES=	\
+		mapper_identity.c \
+		mapper_flatten.c \
+		mapper_merge.c \
+		mapper_glob.c \
+		mapper_regexp.c \
+		mapper_null.c
+
 cant_SOURCES=	common.h cant.h \
 		cant.c buildfile.c \
 		project.c target.c task.c xtask.c \
 		props.h props.c \
 		estring.h estring.c \
 		log.c filename.c \
-		fileset.c pattern.h pattern.c \
+		fileset.c mapper.c pattern.h pattern.c \
 		xml.h xml.c \
 		common.c process.c \
 		strarray.h strarray.c \
-		$(TASK_SOURCES)
+		$(TASK_SOURCES) \
+		$(MAPPER_SOURCES)
 INCLUDES=	$(GLIB_CFLAGS) $(LIBXML_CFLAGS)
 cant_LDADD=	$(GLIB_LIBS) $(LIBXML_LIBS)
 
-task.o: builtins.h
+task.o: builtin-tasks.h
 
-builtins.h: $(TASK_SOURCES)
+builtin-tasks.h: $(TASK_SOURCES)
 	$(RM) $@
 	for file in $(TASK_SOURCES) ; do \
 	    sed -n -e 's|^task_ops_t[ 	][ 	]*\([a-z_][a-z_]*\).*$$|TASKOPS(\1)|p' < $$file >> $@ ;\
 	done
 
-CLEANFILES=	builtins.h
+mapper.o: builtin-mappers.h
+builtin-mappers.h: $(MAPPER_SOURCES)
+	$(RM) $@
+	for file in $(MAPPER_SOURCES) ; do \
+	    sed -n -e 's|^mapper_ops_t[ 	][ 	]*\([a-z_][a-z_]*\).*$$|MAPPEROPS(\1)|p' < $$file >> $@ ;\
+	done
+
+CLEANFILES=	builtin-tasks.h builtin-mappers.h

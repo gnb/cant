@@ -20,12 +20,74 @@
 #include "cant.h"
 #include <sys/stat.h>
 #include <dirent.h>
+#include <fcntl.h>
 
-CVSID("$Id: filename.c,v 1.2 2001-11-06 09:10:30 gnb Exp $");
+CVSID("$Id: filename.c,v 1.3 2001-11-10 03:17:24 gnb Exp $");
 
 #ifndef __set_errno
 #define __set_errno(v)	 errno = (v)
 #endif
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+char *
+file_dirname(const char *filename)
+{
+    const char *base;
+    
+    if ((base = file_basename_c(filename)) == filename)
+    	return g_strdup(".");
+    return g_strndup(filename, (base - filename - 1));
+}
+
+const char *
+file_basename_c(const char *filename)
+{
+    const char *base;
+    
+    return ((base = strrchr(filename, '/')) == 0 ? filename : ++base);
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+mode_t
+file_mode(const char *filename)
+{
+    struct stat sb;
+    
+    if (stat(filename, &sb) < 0)
+    	return -1;
+	
+    return (sb.st_mode & (S_IRWXU|S_IRWXG|S_IRWXO));
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+FILE *
+file_open_mode(const char *filename, const char *rw, mode_t mode)
+{
+    int fd;
+    FILE *fp;
+    int flags;
+    
+    if (rw[0] == 'r')
+    	flags = O_RDONLY;
+    else
+    	flags = O_WRONLY|O_CREAT;
+    
+    if ((fd = open(filename, flags, mode)) < 0)
+	return 0;
+    
+    if ((fp = fdopen(fd, rw)) == 0)
+    {
+    	int e = errno;
+	close(fd);
+	__set_errno(e);
+	return 0;
+    }
+    
+    return fp;
+}
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 

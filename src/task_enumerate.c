@@ -19,7 +19,7 @@
 
 #include "cant.h"
 
-CVSID("$Id: task_enumerate.c,v 1.3 2001-11-08 04:13:35 gnb Exp $");
+CVSID("$Id: task_enumerate.c,v 1.4 2001-11-10 03:17:24 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -31,16 +31,18 @@ enumerate_new(task_t *task)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void
+static gboolean
 enumerate_add_fileset(task_t *task, xmlNode *node)
 {
     GList **listp = (GList **)&task->private;
     fileset_t *fs;
     
-    if ((fs = parse_fileset(task->project, node, "dir")) != 0)
-	*listp = g_list_append(*listp, fs);
+    if ((fs = parse_fileset(task->project, node, "dir")) == 0)
+    	return FALSE;
 
-    /* TODO: proper failure semantics */
+    *listp = g_list_append(*listp, fs);
+
+    return FALSE;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

@@ -30,6 +30,7 @@ typedef struct pattern_s    	pattern_t;
 /* Values for `flags' for pattern_init() */
 #define PAT_CASE    	    (1<<0)  	/* case sensitive */
 #define PAT_GROUPS  	    (1<<1)  	/* cater for groups, replace */
+#define PAT_REGEXP  	    (1<<2)  	/* raw regexp, not wildcards */
 
 #define _PAT_NGROUPS	    10
 
