@@ -1,0 +1,57 @@
+
+define(NAVLINK,
+<TR>
+  <TD ALIGN="CENTER">
+    <B><FONT SIZE="+1">`ifelse($1,HTMLFILE,$2,<A HREF="$1">$2</A>)'</FONT></B><BR>
+  </TD>
+</TR>
+)
+
+
+<TABLE BORDER=0 CELLSPACING=0 CELLPADDING=0>
+  <TR>
+    <TD WIDTH=21 BACKGROUND="borderl.gif">&nbsp;</TD>
+    <TD>
+      <TABLE WIDTH="100%" BORDER=0 BACKGROUND="" BGCOLOR="#ffffff" CELLSPACING=0 CELLPADDING=4>
+	<TR>
+	  <TD>&nbsp</TD>
+	</TR>
+	
+	NAVLINK(index.html,Features)
+	NAVLINK(download.html,Download)
+	NAVLINK(changelog.html,Change Log)
+	
+	<TR>
+	  <TD>&nbsp</TD>
+	</TR>
+	
+	<TR>
+	  <TD>
+	    Watch for new<BR>releases on:<BR>
+	    <A HREF="http://www.freshmeat.net/"><IMG WIDTH=90 HEIGHT=36 SRC="fm.mini.jpg" ALT="freshmeat" BORDER=0></A>
+	  </TD>
+	</TR>
+
+	<TR>
+	  <TD>
+	    <A HREF="http://www.gimp.org/"><IMG WIDTH=90 HEIGHT=36 BORDER=0 SRC="gimp.gif" ALT="[gimp]"></A>
+	  </TD>
+	</TR>
+
+	<TR>
+	  <TD>
+	    <A HREF="http://validator.w3.org/check/referer"><IMG WIDTH=88 HEIGHT=31 BORDER=0 SRC="valid-html40.gif" ALT="Valid HTML 4.0"></A>
+	  </TD>
+	</TR>
+
+	<TR>
+	  <TD>&nbsp</TD>
+	</TR>
+	
+      </TABLE>
+    </TD>
+    <TD WIDTH=21 BACKGROUND="borderr.gif">&nbsp;</TD>
+  </TR>
+</TABLE>
+
+

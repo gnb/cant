@@ -1,0 +1,46 @@
+#!/usr/bin/awk -f
+#
+# $Id: changes2html,v 1.1 2001-11-13 10:23:23 gnb Exp $
+#
+# Awk script to convert a GNU ChangeLog into HTML for the Web page
+#
+BEGIN {
+    # \1=date \2=name \3@\4=email
+    header_re = "([A-Z][a-z][a-z] [A-Z][a-z][a-z] [ 0-9][0-9] [0-2][0-9]:[0-5][0-9]:[0-5][0-9] [12][0-9][0-9][0-9]) +([^<]+) +<([^@>]+)@([^@>]+)>";
+    in_para = 0;
+}
+function end_para () {
+    if (in_para)
+    {
+	print "</p>";
+	in_para = 0;
+    }
+}
+function start_para () {
+    print "<p>";
+    in_para = 1;
+}
+/^[A-Z]/ {
+    # Header lines
+    end_para();
+    print gensub(header_re, "<p><b>\\1 \\2</a></b></p>", "g");
+    next;
+}
+/^[ \t]*$/ {
+    # ignore empty lines
+    next;
+}
+/^[ \t]+\*[ \t]+/ {
+    # first line of record.
+    end_para();
+    start_para();
+    print gensub("^[ \t]+\\*[ \t]+", "", "g");
+    next;
+}
+{
+    # subsequent line of record
+    print gensub("^[ \t]*", "", "g");
+}
+END {
+    end_para();
+}

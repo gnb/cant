@@ -1,0 +1,14 @@
+define(TITLE,CANT Change Log)dnl
+include(_common.m4)dnl
+BEGINHEAD
+include(_styles.html)
+ENDHEAD
+BEGINBODY
+
+<P>
+This listing is also available as the file ChangeLog in the source tarball.
+</P>
+
+include(_changelist.html)
+
+ENDBODY

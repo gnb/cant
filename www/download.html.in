@@ -1,0 +1,37 @@
+define(TITLE,CANT Download)dnl
+include(_common.m4)dnl
+BEGINHEAD
+include(_styles.html)
+ENDHEAD
+BEGINBODY
+
+include(version.m4)
+define(COUNTER_START_DATE,`13 Nov 2001')
+
+<P>
+The latest version available is <B>LATEST_VERSION</B>.
+</P>
+
+<P>
+Due to space limitations I am unable to provide downloads of any older
+versions on this website; EMAILME(contact me)
+if you really need an older version.
+</P>
+
+BEGINDOWNLOAD
+DOWNLOAD(source tarball,cant-LATEST_VERSION.tar.gz)
+ENDDOWNLOAD
+
+ifelse(ENABLE_COUNT,1,`
+<P>
+<BR>
+<BR>
+<BR>
+<BR>
+You are the
+<img src="http://www.alphalink.com.au/~gnb/Count.cgi?ft=0&dd=D&md=7&comma=T&df=cant.dat" alt="Counter" border=0 align=absmiddle>
+<SUP>th</SUP> person to visit this page since COUNTER_START_DATE.
+</P>
+')
+
+ENDBODY

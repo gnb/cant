@@ -1,0 +1,52 @@
+define(TITLE,CANT Features)dnl
+include(_common.m4)dnl
+BEGINHEAD
+include(_styles.html)
+ENDHEAD
+BEGINBODY
+
+
+<P>
+CANT is a C implementation of the Apache/Jakarta project's
+ANT build tool, which uses a modern-style XML file format to build
+Java projects.  Unlike ANT, CANT is written in C and intended
+for building C programs.  CANT is intended to be a replacement
+for GNU <I>make</I> and GNU <I>automake</I>.
+</P>
+
+<P>
+Currently, CANT is in a very early stage of development.  You
+probably can't yet do useful work with CANT.
+</P>
+
+<P>
+CANT's features include:
+</P>
+
+<UL>
+  <LI>XML file `format', easy to read and write.  No tab weirdness!
+  <LI>Extension through construction of commandlines from XML.
+  <LI>Compiler commands are run directly, not through a shell, which
+      is both faster and less liable to cause metacharacter weirdness.
+  <LI>Parallel execution of commands, controlled by the <B>-j</B> option.
+</UL>
+
+<P>
+CANT is written on Mandrake Linux 7.1 on i386 and requires the following,
+which should be available on any modern Linux distro:
+<UL>
+  <LI>GNOME <I>libxml</I> library
+  <LI>GNOME <I>glib</I> library
+  <LI>POSIX <I>&lt;regex.h&gt;</I>
+  <LI>optional: POSIX threads library and <I>&lt;semaphore.h&gt;</I>.
+  <LI>to build CANT itself: GNU <I>make</I>.
+  <LI>only if you want to help develop CANT: GNU <I>automake</I>.
+</UL>
+
+<P>
+If you port CANT to a new platform, please EMAILME(mail me) the
+patches (unified diff `format' preferred). I will try to incorporate them
+into the next release.
+</P>
+
+ENDBODY
