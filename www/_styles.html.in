@@ -27,6 +27,7 @@ TD.navlink {
 PRE { font: FONTSIZE1 FIXEDFAMILY; }
 PRE.example {
   font: FONTSIZE1 FIXEDFAMILY;
+  color: FORECOLOR;
   background-color: HILITECOLOR;
   border-style: solid;
   border-color: BACKCOLOR;
@@ -36,6 +37,7 @@ PRE.example {
 }
 PRE.source {
   font: FONTSIZE1 FIXEDFAMILY;
+  color: FORECOLOR;
   background-color: HILITECOLOR;
   border-style: solid;
   border-color: BACKCOLOR;

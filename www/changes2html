@@ -1,6 +1,6 @@
 #!/usr/bin/awk -f
 #
-# $Id: changes2html,v 1.1 2001-11-13 10:23:23 gnb Exp $
+# $Id: changes2html,v 1.2 2001-11-16 11:23:09 gnb Exp $
 #
 # Awk script to convert a GNU ChangeLog into HTML for the Web page
 #
@@ -23,7 +23,7 @@ function start_para () {
 /^[A-Z]/ {
     # Header lines
     end_para();
-    print gensub(header_re, "<p><b>\\1 \\2</a></b></p>", "g");
+    print gensub(header_re, "<p><b>\\1 \\2</b></p>", "g");
     next;
 }
 /^[ \t]*$/ {

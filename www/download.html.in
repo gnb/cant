@@ -29,7 +29,7 @@ ifelse(ENABLE_COUNT,1,`
 <BR>
 <BR>
 You are the
-<img src="http://www.alphalink.com.au/~gnb/Count.cgi?ft=0&dd=D&md=7&comma=T&df=cant.dat" alt="Counter" border=0 align=absmiddle>
+<img src="http://www.alphalink.com.au/~gnb/Count.cgi?ft=0&amp;dd=D&amp;md=7&amp;comma=T&amp;df=cant.dat" alt="Counter" border=0 align=middle>
 <SUP>th</SUP> person to visit this page since COUNTER_START_DATE.
 </P>
 ')
