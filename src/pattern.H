@@ -21,6 +21,7 @@
 #define _pattern_h_ 1
 
 #include "common.H"
+#include "string_var.H"
 #include <regex.h>
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -35,9 +36,9 @@
 class pattern_t
 {
 private:
-    char *pattern_;
+    string_var pattern_;
     regex_t regex_;
-    char *groups_[_PAT_NGROUPS];
+    string_var groups_[_PAT_NGROUPS];
 
 public:
     pattern_t();

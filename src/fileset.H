@@ -28,6 +28,7 @@
 #include "strarray.H"
 #include "list.H"
 #include "mapper.H"
+#include "string_var.H"
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
  
@@ -48,16 +49,16 @@ public:
 	~spec_t();
 
 	unsigned flags_;
-	char *filename_;
+	string_var filename_;
 	pattern_t pattern_;
 	condition_t condition_;
     };
 
 private:
-    char *id_;
+    string_var id_;
     unsigned int refcount_;
 
-    char *directory_;
+    string_var directory_;
     
     list_t<spec_t> specs_;
 

@@ -19,7 +19,7 @@
 
 #include "cant.H"
 
-CVSID("$Id: mapper_glob.C,v 1.6 2002-04-12 13:07:24 gnb Exp $");
+CVSID("$Id: mapper_glob.C,v 1.7 2002-04-13 12:30:42 gnb Exp $");
 
 class mapper_glob_t : public mapper_t
 {
@@ -57,7 +57,7 @@ init()
     }
     if (nstar != 1 || nother != 0)
     {
-    	log::errorf("Bad \"from\" expression \"%s\"\n", from_);
+    	log::errorf("Bad \"from\" expression \"%s\"\n", from_.data());
     	return FALSE;
     }
     if (!pattern_.set_pattern(from_, PAT_GROUPS))
@@ -81,11 +81,10 @@ init()
     }
     if (nstar != 1 || nother != 0)
     {
-    	log::errorf("Bad \"to\" expression \"%s\"\n", to_);
+    	log::errorf("Bad \"to\" expression \"%s\"\n", to_.data());
     	return FALSE;
     }
     /* might as well stash this in `to', it has no other use */
-    g_free(to_);
     to_ = replace.take();
     
     return TRUE;

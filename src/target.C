@@ -20,7 +20,7 @@
 #include "cant.H"
 #include "job.H"
 
-CVSID("$Id: target.C,v 1.9 2002-04-13 03:18:40 gnb Exp $");
+CVSID("$Id: target.C,v 1.10 2002-04-13 12:30:42 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -31,8 +31,6 @@ target_t::target_t()
 target_t::~target_t()
 {
     tasks_.delete_all();
-    strdelete(name_);
-    strdelete(description_);
     depends_.remove_all();
 }
 
@@ -41,13 +39,13 @@ target_t::~target_t()
 void
 target_t::set_name(const char *s)
 {
-    strassign(name_, s);
+    name_ = s;
 }
 
 void
 target_t::set_description(const char *s)
 {
-    strassign(description_, s);
+    description_ = s;
 }
 
 void
@@ -134,8 +132,8 @@ target_t::dump() const
     char *cond_desc;
     
     fprintf(stderr, "    TARGET {\n");
-    fprintf(stderr, "        NAME=\"%s\"\n", name_);
-    fprintf(stderr, "        DESCRIPTION=\"%s\"\n", description_);
+    fprintf(stderr, "        NAME=\"%s\"\n", name());
+    fprintf(stderr, "        DESCRIPTION=\"%s\"\n", description());
     fprintf(stderr, "        FLAGS=\"%08x\"\n", flags_);
     cond_desc = condition_.describe();
     fprintf(stderr, "        CONDITION=%s\n", cond_desc);
@@ -144,7 +142,7 @@ target_t::dump() const
     for (diter = depends_.first() ; diter != 0 ; ++diter)
     {
     	target_t *dep = *diter;
-	fprintf(stderr, "            \"%s\"\n", dep->name_);
+	fprintf(stderr, "            \"%s\"\n", dep->name());
     }
     fprintf(stderr, "        }\n");
     for (titer = tasks_.first() ; titer != 0 ; ++titer)

@@ -20,15 +20,15 @@
 #include "cant.H"
 #include <time.h>
 
-CVSID("$Id: task_cant.C,v 1.5 2002-04-13 03:18:40 gnb Exp $");
+CVSID("$Id: task_cant.C,v 1.6 2002-04-13 12:30:42 gnb Exp $");
 
 class cant_task_t : public task_t
 {
 private:
-    char *buildfile_;
-    char *dir_;
-    char *target_;
-    char *output_;
+    string_var buildfile_;
+    string_var dir_;
+    string_var target_;
+    string_var output_;
     gboolean inherit_all_;
 
 public:
@@ -43,10 +43,6 @@ cant_task_t(task_class_t *tclass, project_t *proj)
 
 ~cant_task_t()
 {
-    strdelete(buildfile_);
-    strdelete(dir_);
-    strdelete(target_);
-    strdelete(output_);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -54,28 +50,28 @@ cant_task_t(task_class_t *tclass, project_t *proj)
 gboolean
 set_buildfile(const char *name, const char *value)
 {
-    strassign(buildfile_, value);
+    buildfile_ = value;
     return TRUE;
 }
 
 gboolean
 set_dir(const char *name, const char *value)
 {
-    strassign(dir_, value);
+    dir_ = value;
     return TRUE;
 }
 
 gboolean
 set_target(const char *name, const char *value)
 {
-    strassign(target_, value);
+    target_ = value;
     return TRUE;
 }
 
 gboolean
 set_output(const char *name, const char *value)
 {
-    strassign(output_, value);
+    output_ = value;
     return TRUE;
 }
 
@@ -95,33 +91,26 @@ gboolean
 exec()
 {
     project_t *proj;
-    char *buildfile_e;
-    char *dir_e;
-    char *target_e;
+    string_var buildfile_e;
+    string_var dir_e;
+    string_var target_e;
     gboolean ret;
 
     dir_e = expand(dir_);
-    strnullnorm(dir_e);
-    if (dir_e == 0)
-    	dir_e = g_strdup(".");
+    if (dir_e.is_null())
+    	dir_e = ".";
 
     buildfile_e = expand(buildfile_);
-    strnullnorm(buildfile_e);
-    if (buildfile_e == 0)
+    if (buildfile_e.is_null())
 	buildfile_e = g_strconcat(dir_e, "/build.xml", 0);
-    buildfile_e = file_normalise_m(buildfile_e, 0);
+    buildfile_e = file_normalise(buildfile_e, 0);
 	
     proj = read_buildfile(buildfile_e, (inherit_all_ ? project_ : 0));
     if (proj == 0)
-    {
-    	g_free(dir_e);
-	g_free(buildfile_e);
 	return FALSE;
-    }
 
     // TODO: double check that _PATHUP etc are right 
     proj->set_basedir(dir_e);
-    g_free(dir_e);
     
 #if DEBUG
     proj->dump();
@@ -135,22 +124,19 @@ exec()
      * TODO: is the default target taken from the right project?
      */
     target_e = expand(target_);
-    strnullnorm(target_e);
-    if (target_e == 0)
-    	target_e = g_strdup(project_->default_target());
+    if (target_e.is_null())
+    	target_e = project_->default_target();
 
     /*
      * Now actually execute the target in the sub-project.
      */
     if (verbose)
-	log::infof("buildfile %s\n", buildfile_e);
+	log::infof("buildfile %s\n", buildfile_e.data());
     
     file_push_dir(proj->basedir());
     ret = proj->execute_target_by_name(target_e);
     file_pop_dir();
     
-    g_free(target_e);
-    g_free(buildfile_e);
     delete proj;
     
     return ret;

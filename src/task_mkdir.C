@@ -19,13 +19,13 @@
 
 #include "cant.H"
 
-CVSID("$Id: task_mkdir.C,v 1.3 2002-04-12 13:07:24 gnb Exp $");
+CVSID("$Id: task_mkdir.C,v 1.4 2002-04-13 12:30:42 gnb Exp $");
 
 class mkdir_task_t : public task_t
 {
 private:
-    char *directory_;
-    char *mode_;
+    string_var directory_;
+    string_var mode_;
 
 public:
 
@@ -38,8 +38,6 @@ mkdir_task_t(task_class_t *tclass, project_t *proj)
 
 ~mkdir_task_t()
 {
-    strdelete(directory_);
-    strdelete(mode_);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -47,14 +45,14 @@ mkdir_task_t(task_class_t *tclass, project_t *proj)
 gboolean
 set_dir(const char *name, const char *value)
 {
-    strassign(directory_, value);
+    directory_ = value;
     return TRUE;
 }
 
 gboolean
 set_mode(const char *name, const char *value)
 {
-    strassign(mode_, value);
+    mode_ = value;
     return TRUE;
 }
 
@@ -63,18 +61,13 @@ set_mode(const char *name, const char *value)
 gboolean
 exec()
 {
-    char *dir;
-    char *modestr;
+    string_var dir;
+    string_var modestr;
     mode_t mode;
     gboolean ret = TRUE;
     
     dir = expand(directory_);
-    if (dir != 0 && *dir == '\0')
-    {
-    	g_free(dir);
-	dir = 0;
-    }
-    if (dir == 0)
+    if (dir.is_null())
     	return TRUE;	/* empty directory -> trivially succeed ??? */
     
     modestr = expand(mode_);
@@ -83,17 +76,13 @@ exec()
     
     /* TODO: canonicalise */
     /* TODO: use project's basedir */
-    log::infof("%s\n", dir);
+    log::infof("%s\n", dir.data());
     
     if (file_build_tree(dir, mode) < 0)
     {
     	perror(dir);
     	ret = FALSE;
     }
-    
-    g_free(dir);
-    if (modestr != 0)
-	g_free(modestr);
     
     return ret;
 }

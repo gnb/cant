@@ -24,6 +24,7 @@
 #include "filename.H"
 #include "pattern.H"
 #include "list.H"
+#include "string_var.H"
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
  
@@ -35,7 +36,7 @@
 class globber_t
 {
 private:
-    char *basedir_;
+    string_var basedir_;
     list_t<char> filenames_;
     list_t<char> pending_;
     gboolean case_sensitive_;

@@ -19,12 +19,12 @@
 
 #include "cant.H"
 
-CVSID("$Id: task_changedir.C,v 1.4 2002-04-13 09:26:06 gnb Exp $");
+CVSID("$Id: task_changedir.C,v 1.5 2002-04-13 12:30:42 gnb Exp $");
 
 class changedir_task_t : public task_t
 {
 private:
-    char *dir_;
+    string_var dir_;
     
 public:
 
@@ -37,7 +37,6 @@ changedir_task_t(task_class_t *tclass, project_t *proj)
 
 ~changedir_task_t()
 {
-    strdelete(dir_);
 }
     
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -45,7 +44,7 @@ changedir_task_t(task_class_t *tclass, project_t *proj)
 gboolean
 set_dir(const char *name, const char *value)
 {
-    strassign(dir_, value);
+    dir_ = value;
     return TRUE;
 }
 
@@ -54,12 +53,11 @@ set_dir(const char *name, const char *value)
 gboolean
 exec()
 {
-    char *dir_e;
+    string_var dir_e;
     gboolean ret = TRUE;
 
     dir_e = expand(dir_);
-    strnullnorm(dir_e);
-    if (dir_e == 0)
+    if (dir_e.is_null())
     {
     	log::errorf("No directory for <changedir>\n");
     	return FALSE;
@@ -68,12 +66,11 @@ exec()
     if (file_is_directory(dir_e) < 0)
     {
     	log::perror(dir_e);
-	g_free(dir_e);
 	return FALSE;
     }
         
     if (verbose)
-	log::infof("%s\n", dir_e);
+	log::infof("%s\n", dir_e.data());
     
     file_push_dir(dir_e);
 
@@ -82,7 +79,6 @@ exec()
     
     file_pop_dir();
 
-    g_free(dir_e);
     return ret;
 }
 

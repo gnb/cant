@@ -30,7 +30,7 @@ public:
     xtask_class_t(const char *name);
     ~xtask_class_t();
 
-    const char *name() const;    
+    const char *name() const;
     task_t *create_task(project_t *);
 
     enum arg_type_t
@@ -70,14 +70,14 @@ public:
     arg_t *add_tagexpand(tagexp_t *te);
     
 private:
-    char *name_;
-    char *executable_;
-    char *logmessage_;
+    string_var name_;
+    string_var executable_;
+    string_var logmessage_;
     list_t<arg_t> args_;
     props_t *property_map_;	/* maps attributes to local property *name*s */
     list_t<mapper_t> mappers_;	/* list of mapper_t: args to files */
     list_t<mapper_t> dep_mappers_; /* list of mapper_t: depfiles to targfiles */
-    char *dep_target_;
+    string_var dep_target_;
     
     gboolean foreach_:1;
 
@@ -85,10 +85,10 @@ private:
 
 public:
 
-    void set_executable(const char *s) { strassign(executable_, s); }
-    void set_logmessage(const char *s) { strassign(logmessage_, s); }
+    void set_executable(const char *s) { executable_ = s; }
+    void set_logmessage(const char *s) { logmessage_ = s; }
     void set_foreach(gboolean b) { foreach_ = b; }
-    void set_dep_target(const char *s) { strassign(dep_target_, s); }
+    void set_dep_target(const char *s) { dep_target_ = s; }
 
     void add_attribute(const char *attr, const char *prop, gboolean required);
     void add_child(const char *name);

@@ -24,6 +24,7 @@
 #include "condition.H"
 #include "list.H"
 #include "task.H"
+#include "string_var.H"
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -40,8 +41,8 @@ private:
     	T_DEPENDED_ON	    =(1<<1)  	/* referenced in at least one `depends' attribute */
     };
     
-    char *name_;
-    char *description_;
+    string_var name_;
+    string_var description_;
     project_t *project_;
     unsigned flags_;
     list_t<target_t> depends_;

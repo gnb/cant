@@ -23,6 +23,7 @@
 #include "common.H"
 #include "pattern.H"
 #include "props.H"
+#include "string_var.H"
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
  
@@ -38,7 +39,7 @@ private:
     };
 
     unsigned int flags_;
-    char *property_; 	    	    	/* name of property, "if" or "unless" */
+    string_var property_; 	    	/* name of property, "if" or "unless" */
     pattern_t pattern_;	    	    	/* pattern, "matches" or "matchesregex" */
 
     void set_property(unsigned int flags, const char *property);

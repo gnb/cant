@@ -79,9 +79,9 @@ struct task_child_t
 class task_t
 {
 protected:  
-    char *id_;
-    char *name_;
-    char *description_;
+    string_var id_;
+    string_var name_;
+    string_var description_;
 
     // TODO: move to derived composite_task_t
     list_t<task_t> subtasks_;
@@ -103,13 +103,13 @@ public:
     virtual gboolean post_parse();	    	    /* post-parsing check */
 
     const char *id() const { return id_; }
-    void set_id(const char *s) { strassign(id_, s); }
+    void set_id(const char *s) { id_ = s; }
 
     const char *name() const { return name_; }    
-    void set_name(const char *s) { strassign(name_, s); }
+    void set_name(const char *s) { name_ = s; }
     
     const char *description() const { return description_; }    
-    void set_description(const char *s) { strassign(description_, s); }
+    void set_description(const char *s) { description_ = s; }
 
     fileset_t *fileset() const { return fileset_; }
     void set_fileset(fileset_t *fs);

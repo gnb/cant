@@ -22,7 +22,7 @@
 #include "filename.H"
 #include "tok.H"
 
-CVSID("$Id: project.C,v 1.12 2002-04-13 03:18:40 gnb Exp $");
+CVSID("$Id: project.C,v 1.13 2002-04-13 12:30:42 gnb Exp $");
 
 project_t *project_t::globals_;
 
@@ -86,9 +86,6 @@ project_delete_one_tl_def(const char *key, tl_def_t *value, void *userdata)
 
 project_t::~project_t()
 {
-    strdelete(name_);
-    strdelete(description_);
-    
     targets_->foreach_remove(project_delete_one_target, 0);
     delete targets_;
     delete tscope_;
@@ -114,20 +111,20 @@ project_t::~project_t()
 void
 project_t::set_name(const char *s)
 {
-    strassign(name_, s);
+    name_ = s;
     fixed_properties_->set("ant.project.name", name_);
 }
 
 void
 project_t::set_description(const char *s)
 {
-    strassign(description_, s);
+    description_ = s;
 }
 
 void
 project_t::set_default_target(const char *s)
 {
-    strassign(default_target_, s);
+    default_target_ = s;
 }
 
 /*
@@ -160,14 +157,9 @@ void
 project_t::set_basedir(const char *s)
 {
     if (parent_ != 0)
-    {
-	strdelete(basedir_);
-	basedir_ = file_normalise(s, parent_->basedir_);
-    }
+    	basedir_ = file_normalise(s, parent_->basedir_);
     else
-    {
-    	strassign(basedir_, s);
-    }
+    	basedir_ = s;
     fixed_properties_->set("basedir", basedir_);
     update_magic_paths();
 }
@@ -175,7 +167,7 @@ project_t::set_basedir(const char *s)
 void
 project_t::set_filename(const char *s)
 {
-    strassign(filename_, s);
+    filename_ = s;
     fixed_properties_->setm("ant.file", file_normalise(filename_, 0));
 }
 
@@ -437,10 +429,10 @@ void
 project_t::dump() const
 {
     fprintf(stderr, "PROJECT {\n");
-    fprintf(stderr, "    NAME=\"%s\"\n", name_);
-    fprintf(stderr, "    DESCRIPTION=\"%s\"\n", description_);
-    fprintf(stderr, "    DEFAULT=\"%s\"\n", default_target_);
-    fprintf(stderr, "    BASEDIR=\"%s\"\n", basedir_);
+    fprintf(stderr, "    NAME=\"%s\"\n", name());
+    fprintf(stderr, "    DESCRIPTION=\"%s\"\n", description());
+    fprintf(stderr, "    DEFAULT=\"%s\"\n", default_target());
+    fprintf(stderr, "    BASEDIR=\"%s\"\n", basedir());
     targets_->foreach(dump_one_target, 0);
     taglists_->foreach(dump_one_taglist, 0);
     filesets_->foreach(dump_one_fileset, 0);

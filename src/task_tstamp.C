@@ -20,19 +20,19 @@
 #include "cant.H"
 #include <time.h>
 
-CVSID("$Id: task_tstamp.C,v 1.7 2002-04-13 09:26:06 gnb Exp $");
+CVSID("$Id: task_tstamp.C,v 1.8 2002-04-13 12:30:42 gnb Exp $");
 
 class tstamp_format_t
 {
 private:
-    char *property_;
-    char *cpattern_;   /* parsed into strptime() format */
+    string_var property_;
+    string_var cpattern_;   /* parsed into strptime() format */
     unsigned long offset_;
     enum
     {
     	OU_MILLI, OU_SECOND, OU_MINUTE, OU_HOUR, OU_DAY, OU_WEEK, OU_MONTH, OU_YEAR
     } offset_units_;
-    char *locale_;
+    string_var locale_;
         
 public:
     tstamp_format_t();
@@ -54,9 +54,6 @@ tstamp_format_t::tstamp_format_t()
 
 tstamp_format_t::~tstamp_format_t()
 {
-    strdelete(property_);
-    strdelete(cpattern_);
-    strdelete(locale_);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -64,7 +61,7 @@ tstamp_format_t::~tstamp_format_t()
 void
 tstamp_format_t::set_property(const char *property)
 {
-    strassign(property_, property);
+    property_ = property;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -118,8 +115,6 @@ tstamp_format_t::set_pattern(const char *pattern)
     	    	    	pattern, cpattern.data());
 #endif
 
-    if (cpattern_ != 0)
-    	g_free(cpattern_);
     cpattern_ = cpattern.take();
 
     return TRUE;
@@ -146,7 +141,7 @@ tstamp_format_t::execute(project_t *proj, struct tm *tm)
     char buf[256];
     
     strftime(buf, sizeof(buf), cpattern_, tm);
-    log::infof("%s=\"%s\"\n", property_, buf);
+    log::infof("%s=\"%s\"\n", property_.data(), buf);
     proj->set_property(property_, buf);
 }
 
@@ -178,11 +173,11 @@ gboolean
 tstamp_task_t::add_format(xml_node_t *node)
 {
     tstamp_format_t *fmt;
-    char *property;
-    char *offset_str;
-    char *unit_str;
-    char *pattern;
-    char *locale;
+    string_var property;
+    string_var offset_str;
+    string_var unit_str;
+    string_var pattern;
+    string_var locale;
     gboolean ok;
 
     /*
@@ -196,7 +191,6 @@ tstamp_task_t::add_format(xml_node_t *node)
     }
     fmt = new tstamp_format_t;
     fmt->set_property(property);
-    g_free(property);
 
     /*
      * pattern
@@ -211,24 +205,16 @@ tstamp_task_t::add_format(xml_node_t *node)
     if (!fmt->set_pattern(pattern))
     {
     	log::errorf("Bad format in \"pattern\"\n");
-	g_free(pattern);
 	delete fmt;
 	return FALSE;
     }
-    g_free(pattern);
     
     /*
      * offset, unit
      */
     offset_str = node->get_attribute("offset");
     unit_str = node->get_attribute("unit");
-    ok = TRUE;
-    ok = fmt->set_offset(offset_str, unit_str);
-    if (offset_str != 0)
-    	g_free(offset_str);
-    if (unit_str != 0)
-    	g_free(unit_str);
-    if (!ok)
+    if (!fmt->set_offset(offset_str, unit_str))
     {
     	log::errorf("Bad format in \"offset\" or \"unit\"\n");
 	delete fmt;

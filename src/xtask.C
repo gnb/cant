@@ -20,7 +20,7 @@
 #include "xtask.H"
 #include "job.H"
 
-CVSID("$Id: xtask.C,v 1.13 2002-04-13 09:25:26 gnb Exp $");
+CVSID("$Id: xtask.C,v 1.14 2002-04-13 12:30:42 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -34,7 +34,7 @@ xtask_t::xtask_t(task_class_t *tclass, project_t *proj)
 xtask_t::~xtask_t()
 {
 #if DEBUG
-    fprintf(stderr, "~xtask_t: deleting \"%s\"\n", name_);
+    fprintf(stderr, "~xtask_t: deleting \"%s\"\n", name());
 #endif
 
     taglists_.apply_remove(unref);
@@ -78,7 +78,7 @@ xtask_t::build_command(strarray_t *command)
 {
     xtask_class_t *xtclass = (xtask_class_t *)tclass_;     /* downcast */
     list_iterator_t<xtask_class_t::arg_t> iter;
-    char *exp;
+    string_var exp;
 
     if (xtclass->executable_ != 0)
     	command->appendm(properties_->expand(xtclass->executable_));
@@ -95,24 +95,21 @@ xtask_t::build_command(strarray_t *command)
 	case xtask_class_t::XT_VALUE:	    /* <arg value=""> child */
 	    /* TODO: <arg arglistref=""> child */
 	    exp = properties_->expand(xa->data.arg);
-	    strnullnorm(exp);
-	    if (exp != 0)
-		command->appendm(exp);
+	    if (!exp.is_null())
+		command->appendm(exp.take());
 	    break;
 
 	case xtask_class_t::XT_LINE:	    /* <arg line=""> child */
 	    exp = properties_->expand(xa->data.arg);
-	    strnullnorm(exp);
-	    if (exp != 0)
-	    	command->split_tom(exp, /*sep*/0);
+	    if (!exp.is_null())
+	    	command->split_tom(exp.take(), /*sep*/0);
 	    break;
 	    /* TODO: <env> child */
 	
 	case xtask_class_t::XT_FILE:	    /* <arg file=""> child */
 	    exp = properties_->expand(xa->data.arg);
-	    strnullnorm(exp);
-	    if (exp != 0)
-	    	command->appendm(file_normalise_m(exp, project_->basedir()));
+	    if (!exp.is_null())
+	    	command->appendm(file_normalise_m(exp.take(), project_->basedir()));
 	    break;
 	    
 	case xtask_class_t::XT_FILESET:    /* <fileset> child */
@@ -153,7 +150,7 @@ xtask_t::execute_command()
     log_message_t *logmsg = 0;
     strarray_t *command;
     strarray_t *depfiles;
-    char *targfile = 0;
+    string_var targfile;
     
        
     /* try to build dependency information for the command */
@@ -186,8 +183,7 @@ xtask_t::execute_command()
     	}
     }
 
-    strnullnorm(targfile);
-    if (targfile != 0)
+    if (!targfile.is_null())
 	properties_->set("targfile", targfile);
 
 
@@ -196,7 +192,6 @@ xtask_t::execute_command()
     
     if (!build_command(command))
     {
-    	strdelete(targfile);
     	delete command;
     	delete depfiles;
 	return FALSE;
@@ -226,7 +221,6 @@ xtask_t::execute_command()
 	    job->add_depend(depfiles->nth(i));
     }
 
-    strdelete(targfile);
     delete depfiles;
 
     return result_;    /* keep going unless failure */
@@ -248,7 +242,7 @@ xtask_t::exec()
     xtask_class_t *xtclass = (xtask_class_t *)tclass_; /* downcast */
     
 #if DEBUG
-    fprintf(stderr, "xtask_execute: executing \"%s\"\n", name_);
+    fprintf(stderr, "xtask_execute: executing \"%s\"\n", name());
 #endif
 
     /* default result */
@@ -311,7 +305,7 @@ xtask_class_t::arg_t::~arg_t()
 
 xtask_class_t::xtask_class_t(const char *name)
 {
-    strassign(name_, name);
+    name_ = name;
     property_map_ = new props_t(0);
 }
 
@@ -320,12 +314,6 @@ xtask_class_t::~xtask_class_t()
     args_.delete_all();
     mappers_.delete_all();
     dep_mappers_.delete_all();
-    
-    strdelete(name_);
-    strdelete(executable_);
-    strdelete(logmessage_);
-    strdelete(dep_target_);
-    
     delete property_map_;
 }
 

@@ -27,17 +27,18 @@
 #include "task.H"
 #include "taglist.H"
 #include "target.H"
+#include "string_var.H"
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 class project_t
 {
 private:
-    char *name_;
-    char *description_;
-    char *filename_;
-    char *default_target_;
-    char *basedir_;
+    string_var name_;
+    string_var description_;
+    string_var filename_;
+    string_var default_target_;
+    string_var basedir_;
     project_t *parent_;	    	/* inherits tscope, props etc */
     
     hashtable_t<const char*, target_t> *targets_;

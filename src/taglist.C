@@ -20,7 +20,7 @@
 #include "cant.H"
 #include "tok.H"
 
-CVSID("$Id: taglist.C,v 1.10 2002-04-13 03:18:40 gnb Exp $");
+CVSID("$Id: taglist.C,v 1.11 2002-04-13 12:30:42 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -29,21 +29,20 @@ tl_def_t::tag_t::tag_t(
     availability_t name_avail,
     availability_t value_avail)
 {
-    strassign(name_, name);
+    name_ = name;
     name_avail_ = name_avail;
     value_avail_ = value_avail;
 }
 
 tl_def_t::tag_t::~tag_t()
 {
-    strdelete(name_);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 tl_def_t::tl_def_t(const char *name_space)
 {
-    strassign(name_space_, name_space);
+    name_space_ = name_space;
     tags_ = new hashtable_t<const char *, tag_t>;
 }
 
@@ -58,7 +57,6 @@ tl_def_t::~tl_def_t()
 {
     tags_->foreach_remove(remove_one_tag, 0);
     delete tags_;
-    strdelete(name_space_);
 }
 
 tl_def_t::tag_t *
@@ -85,7 +83,7 @@ tl_def_t::find_tag(const char *name) const
 
 tagexp_t::tagexp_t(const char *name_space)
 {
-    strassign(name_space_, name_space);
+    name_space_ = name_space;
     expansions_ = new hashtable_t<char *, strarray_t>;
 }
 
@@ -99,7 +97,6 @@ remove_one_expansion(char *key, strarray_t *value, void *userdata)
 
 tagexp_t::~tagexp_t()
 {
-    strdelete(name_space_);
     if (default_expansions_ != 0)
 	delete default_expansions_;
     expansions_->foreach_remove(remove_one_expansion, 0);
@@ -147,17 +144,14 @@ taglist_t::item_t::item_t(
     taglist_t::item_type_t type,
     const char *value)
 {
-    strassign(tag_, tag);
-    strassign(name_, name);
+    tag_ = tag;
+    name_ = name;
     type_ = type;
-    strassign(value_, value);
+    value_ = value;
 }
 
 taglist_t::item_t::~item_t()
 {
-    strdelete(tag_);
-    strdelete(name_);
-    strdelete(value_);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -165,14 +159,12 @@ taglist_t::item_t::~item_t()
 taglist_t::taglist_t(const char *name_space)
 {
     refcount_ = 1;
-    strassign(name_space_, name_space);
+    name_space_ = name_space;
 }
 
 taglist_t::~taglist_t()
 {
     items_.delete_all();
-    strdelete(name_space_);
-    strdelete(id_);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -201,7 +193,7 @@ unref(taglist_t *tl)
 void
 taglist_t::set_id(const char *s)
 {
-    strassign(id_, s);
+    id_ = s;
 }
 
 taglist_t::item_t *
@@ -287,13 +279,13 @@ taglist_t::gather(
     if (strcmp(name_space_, te->name_space()))
     {
     	log::errorf("namespace mismatch in taglist_t::gather, taglist=%s::%s tagexpand=%s::\n",
-	    	name_space_, id_, te->name_space());
+	    	name_space(), id(), te->name_space());
 	return;
     }
 
 #if DEBUG
     fprintf(stderr, "taglist_t::gather: gathering %s::%s {\n",
-    	    	name_space_, id_);
+    	    	name_space(), id());
 #endif
 
     /*
@@ -317,7 +309,9 @@ taglist_t::gather(
 
 #if DEBUG
 	fprintf(stderr, "taglist_t::gather:     tag=\"%s\" name=\"%s\" value=\"%s\"\n",
-	    	    	    tlitem->tag_, tlitem->name_, tlitem->value_);
+	    	    	    tlitem->tag_.data(),
+			    tlitem->name_.data(),
+			    tlitem->value_.data());
 #endif
 
 	localprops->set("name", tlitem->name_);
@@ -395,18 +389,18 @@ taglist_t::dump() const
     list_iterator_t<item_t> iter;
     
     fprintf(stderr, "    TAGLIST {\n");
-    fprintf(stderr, "        NAMESPACE=\"%s\"\n", name_space_);
-    fprintf(stderr, "        ID=\"%s\"\n", id_);
+    fprintf(stderr, "        NAMESPACE=\"%s\"\n", name_space());
+    fprintf(stderr, "        ID=\"%s\"\n", id());
 
     for (iter = first_item() ; iter != 0 ; ++iter)
     {
     	item_t *tlitem = *iter;
 	
 	fprintf(stderr, "        TL_SPEC {\n");
-	fprintf(stderr, "            TAG=\"%s\"\n", tlitem->tag_);
-	fprintf(stderr, "            NAME=\"%s\"\n", tlitem->name_);
+	fprintf(stderr, "            TAG=\"%s\"\n", tlitem->tag_.data());
+	fprintf(stderr, "            NAME=\"%s\"\n", tlitem->name_.data());
 	fprintf(stderr, "            TYPE=%d\n", tlitem->type_);
-	fprintf(stderr, "            VALUE=\"%s\"\n", tlitem->value_);
+	fprintf(stderr, "            VALUE=\"%s\"\n", tlitem->value_.data());
 	fprintf(stderr, "        }\n");
     }
         

@@ -21,7 +21,7 @@
 #include "estring.H"
 #include "log.H"
 
-CVSID("$Id: pattern.C,v 1.5 2002-04-12 13:07:24 gnb Exp $");
+CVSID("$Id: pattern.C,v 1.6 2002-04-13 12:30:42 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -32,11 +32,12 @@ pattern_t::pattern_t()
 
 pattern_t::~pattern_t()
 {
+#if 0
     int i;
-    
-    strdelete(pattern_);
+
     for (i = 0 ; i < _PAT_NGROUPS ; i++)
-	strdelete(groups_[i]);
+	groups_[i] = 0;
+#endif
     regfree(&regex_);
 }
 
@@ -50,19 +51,19 @@ pattern_t::set_pattern(const char *pattern, unsigned flags)
     unsigned reflags = 0;
     int errcode;
 
-    if (pattern_ != 0)
+    if (pattern_.data() != 0)
     {
     	int i;
-    	strdelete(pattern_);
+    	pattern_ = (char*)0;
 	for (i = 0 ; i < _PAT_NGROUPS ; i++)
-	    strdelete(groups_[i]);
+	    groups_[i] = (char*)0;
     	regfree(&regex_);
     }
     
     if (pattern == 0)
 	return TRUE;
         
-    strassign(pattern_, pattern);
+    pattern_ = pattern;
 
     if (flags & PAT_REGEXP)
     {
@@ -115,7 +116,6 @@ pattern_t::set_pattern(const char *pattern, unsigned flags)
 	regerror(errcode, &regex_, errbuf, sizeof(errbuf));
     	log::errorf("\"%s\": %s\n", pattern, errbuf);
     }
-    memset(&groups_, 0, sizeof(groups_));
     return (errcode == 0);
 }
 
@@ -153,7 +153,7 @@ pattern_t::match(const char *filename)
     regmatch_t matches[_PAT_NGROUPS];
     
     for (i = 0 ; i < _PAT_NGROUPS ; i++)
-	strdelete(groups_[i]);
+	groups_[i] = (char*)0;
 
     memset(matches, 0xff, sizeof(matches));
     ret = (regexec(&regex_, filename,
@@ -172,7 +172,7 @@ pattern_t::match(const char *filename)
 				    matches[i].rm_eo-matches[i].rm_so);
 #if DEBUG
 	    fprintf(stderr, "               \\%d=\"%s\" [%d,%d]\n",
-	    	    	    	i, groups_[i],
+	    	    	    	i, groups_[i].data(),
 				matches[i].rm_so, matches[i].rm_eo);
 #endif				    
 	}

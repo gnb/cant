@@ -24,6 +24,7 @@
 #include "strarray.H"
 #include "list.H"
 #include "log.H"
+#include "string_var.H"
 
 class job_op_t
 {
@@ -47,7 +48,7 @@ private:
     strarray_t *command_;
     strarray_t *env_;
     log_message_t *logmessage_;
-    char *directory_;
+    string_var directory_;
 
     gboolean execute();
     char *describe() const;
@@ -73,7 +74,7 @@ private:
 	NUM_STATES
     };
     
-    char *name_;
+    string_var name_;
     unsigned int serial_;    	/* for preserving order */
     state_t state_;
     list_t<job_t> depends_up_;	    	/* job_t's that depend on me */
@@ -111,6 +112,7 @@ private:
     ~job_t();
     
 public:
+    const char *name() const { return name_; }
 
     /* call this once at start of programs to start worker threads */
     static gboolean init(unsigned int num_workers);

@@ -25,14 +25,14 @@
 #include "globber.H"
 #include <dirent.h>
 
-CVSID("$Id: fileset.C,v 1.10 2002-04-13 03:18:40 gnb Exp $");
+CVSID("$Id: fileset.C,v 1.11 2002-04-13 12:30:42 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 fileset_t::fileset_t()
 {
     refcount_ = 1;
-    directory_ = g_strdup(".");
+    directory_ = ".";
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -40,8 +40,6 @@ fileset_t::fileset_t()
 fileset_t::~fileset_t()
 {
     specs_.delete_all();
-    strdelete(id_);
-    strdelete(directory_);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -70,13 +68,13 @@ unref(fileset_t *fs)
 void
 fileset_t::set_id(const char *s)
 {
-    strassign(id_, s);
+    id_ = s;
 }
 
 void
 fileset_t::set_directory(const char *dir)
 {
-    strassign(directory_, dir);
+    directory_ = dir;
 }
 
 void
@@ -109,7 +107,7 @@ fileset_t::spec_add(
     	fss->pattern_.set_pattern(pattern,
 	    	    	(case_sensitive_ ? PAT_CASE : 0));
     
-    strassign(fss->filename_, filename);
+    fss->filename_ = filename;
 
     specs_.append(fss);
         
@@ -118,7 +116,6 @@ fileset_t::spec_add(
 
 fileset_t::spec_t::~spec_t()
 {
-    strdelete(filename_);
 }
 
 fileset_t::spec_t *
@@ -253,9 +250,9 @@ fileset_t::dump() const
     char *cond_desc;
     
     fprintf(stderr, "    FILESET {\n");
-    fprintf(stderr, "        ID=\"%s\"\n", id_);
+    fprintf(stderr, "        ID=\"%s\"\n", id_.data());
     fprintf(stderr, "        REFCOUNT=%d\n", refcount_);
-    fprintf(stderr, "        DIRECTORY=\"%s\"\n", directory_);
+    fprintf(stderr, "        DIRECTORY=\"%s\"\n", directory_.data());
     fprintf(stderr, "        DEFAULT_EXCLUDES=%s\n", boolstr(default_excludes_));
     fprintf(stderr, "        CASE_SENSITIVE=%s\n", boolstr(case_sensitive_));
 
@@ -265,7 +262,7 @@ fileset_t::dump() const
 	
 	fprintf(stderr, "        FS_SPEC {\n");
 	fprintf(stderr, "            FLAGS=%d\n", fss->flags_);
-	fprintf(stderr, "            FILENAME=\"%s\"\n", fss->filename_);
+	fprintf(stderr, "            FILENAME=\"%s\"\n", fss->filename_.data());
 	fprintf(stderr, "            PATTERN=\"%s\"\n", fss->pattern_.get_pattern());
 	cond_desc = fss->condition_.describe();
 	fprintf(stderr, "            CONDITION=%s\n", cond_desc);

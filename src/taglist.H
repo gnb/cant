@@ -24,6 +24,7 @@
 #include "strarray.H"
 #include "hashtable.H"
 #include "list.H"
+#include "string_var.H"
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -57,16 +58,16 @@ public:
 	       item_type_t type, const char *value);
     	~item_t();
 	
-	char *tag_;
-	char *name_;
+	string_var tag_;
+	string_var name_;
 	item_type_t type_;
-	char *value_;
+	string_var value_;
 	condition_t condition_;
     };
 
 private:
-    char *name_space_;	    /* e.g. "library" -- fixed at creation */
-    char *id_;     	    /* must be fixed before attachment to project */
+    string_var name_space_; /* e.g. "library" -- fixed at creation */
+    string_var id_; 	    /* must be fixed before attachment to project */
     int refcount_;
     list_t<item_t> items_;
 
@@ -115,7 +116,7 @@ void unref(taglist_t *);
 class tagexp_t
 {
 private:
-    char *name_space_;
+    string_var name_space_;
     /* TODO: gboolean follow_depends:1; */
     /* TODO: gboolean reverse_order:1; */
     strarray_t *default_expansions_;
@@ -146,13 +147,13 @@ public:
     	tag_t(const char *name, availability_t name_avail, availability_t value_avail);
     	~tag_t();
 		
-	char *name_;
+	string_var name_;
 	availability_t name_avail_;
 	availability_t value_avail_;
     };
 
 private:
-    char *name_space_;
+    string_var name_space_;
     hashtable_t<const char *, tag_t> *tags_;
     /* TODO: list_t<something> *depends */
     

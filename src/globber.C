@@ -22,20 +22,19 @@
 #include "log.H"
 #include <dirent.h>
 
-CVSID("$Id: globber.C,v 1.2 2002-04-12 13:07:24 gnb Exp $");
+CVSID("$Id: globber.C,v 1.3 2002-04-13 12:30:42 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 globber_t::globber_t(const char *basedir, gboolean case_sensitive)
 {
     memset(this, 0, sizeof(*this));
-    strassign(basedir_, basedir);
+    basedir_ = basedir;
     case_sensitive_ = case_sensitive;
 }
 
 globber_t::~globber_t()
 {
-    strdelete(basedir_);
     filenames_.apply_remove(strfree);
 }
 

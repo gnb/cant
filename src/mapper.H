@@ -22,6 +22,7 @@
 
 #include "common.H"
 #include "hashtable.H"
+#include "string_var.H"
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
  
@@ -34,8 +35,8 @@ private:
     static hashtable_t<char*, mapper_creator_t> *creators;
 
 protected:    
-    char *from_;
-    char *to_;
+    string_var from_;
+    string_var to_;
 
     mapper_t();
 

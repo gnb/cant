@@ -19,13 +19,13 @@
 
 #include "cant.H"
 
-CVSID("$Id: task_echo.C,v 1.3 2002-04-12 13:07:24 gnb Exp $");
+CVSID("$Id: task_echo.C,v 1.4 2002-04-13 12:30:42 gnb Exp $");
 
 class echo_task_t : public task_t
 {
 private:
-    char *message_;
-    char *file_;
+    string_var message_;
+    string_var file_;
     gboolean append_:1;
     gboolean newline_:1;
     
@@ -43,8 +43,6 @@ echo_task_t(task_class_t *tclass, project_t *proj)
 
 ~echo_task_t()
 {
-    strdelete(message_);
-    strdelete(file_);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -52,14 +50,14 @@ echo_task_t(task_class_t *tclass, project_t *proj)
 gboolean
 set_message(const char *name, const char *value)
 {
-    strassign(message_, value);
+    message_ = value;
     return TRUE;
 }
 
 gboolean
 set_file(const char *name, const char *value)
 {
-    strassign(file_, value);
+    file_ = value;
     return TRUE;
 }
     
@@ -82,7 +80,7 @@ set_newline(const char *name, const char *value)
 gboolean
 set_content(const char *content)
 {
-    strassign(message_, content);
+    message_ = content;
     return TRUE;
 }
 
@@ -105,21 +103,18 @@ post_parse()
 gboolean
 exec()
 {
-    char *expmsg;
-    char *expfile;
+    string_var expmsg;
+    string_var expfile;
     FILE *fp = stdout;
 
     expfile = expand(file_);
-    strnullnorm(expfile);
-    
-    if (expfile != 0)
+    if (!expfile.is_null())
     {
     	if ((fp = fopen(expfile, (append_ ? "a" : "w"))) == 0)
 	{
 	    log::perror(expfile);
 	    return FALSE;
 	}
-	g_free(expfile);
     }
 
     expmsg = expand(message_);
@@ -128,7 +123,6 @@ exec()
 	fputs(expmsg, fp);
 	if (newline_)
     	    fputc('\n', fp);
-	g_free(expmsg);
     }
 
     if (fp != stdout)

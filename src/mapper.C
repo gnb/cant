@@ -21,7 +21,7 @@
 #include "log.H"
 #include "hashtable.H"
 
-CVSID("$Id: mapper.C,v 1.4 2002-04-12 13:07:24 gnb Exp $");
+CVSID("$Id: mapper.C,v 1.5 2002-04-13 12:30:42 gnb Exp $");
 
 hashtable_t<char*, mapper_creator_t> *mapper_t::creators;
 
@@ -33,8 +33,6 @@ mapper_t::mapper_t()
 
 mapper_t::~mapper_t()
 {
-    strdelete(from_);
-    strdelete(to_);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -54,8 +52,8 @@ mapper_t::create(const char *name, const char *from, const char *to)
 
     ma =  (*creator)();
     
-    strassign(ma->from_, from);
-    strassign(ma->to_, to);
+    ma->from_ = from;
+    ma->to_ = to;
     
     if (!ma->init())
     {

@@ -22,7 +22,7 @@
 #include "estring.H"
 #endif
 
-CVSID("$Id: condition.C,v 1.6 2002-04-07 08:28:51 gnb Exp $");
+CVSID("$Id: condition.C,v 1.7 2002-04-13 12:30:42 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -34,7 +34,6 @@ condition_t::condition_t()
 
 condition_t::~condition_t()
 {
-    strdelete(property_);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -42,7 +41,7 @@ condition_t::~condition_t()
 void
 condition_t::set_property(unsigned int flags, const char *property)
 {
-    strassign(property_, property);
+    property_ = property;
     flags_ = (flags_ & ~(COND_IF|COND_UNLESS)) | flags;
 }
 
@@ -142,9 +141,9 @@ condition_t::describe() const
     e.append_string("{ ");
     
     if (flags_ & COND_IF)
-    	e.append_printf("if=\"%s\"", property_);
+    	e.append_printf("if=\"%s\"", property_.data());
     else if (flags_ & COND_UNLESS)
-    	e.append_printf("unless=\"%s\"", property_);
+    	e.append_printf("unless=\"%s\"", property_.data());
 
     if (flags_ & COND_MATCHES)
     	e.append_printf(" matches=\"%s\"", pattern_.get_pattern());

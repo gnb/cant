@@ -27,7 +27,7 @@
 #include "queue.H"
 #endif
 
-CVSID("$Id: job.C,v 1.8 2002-04-12 13:07:24 gnb Exp $");
+CVSID("$Id: job.C,v 1.9 2002-04-13 12:30:42 gnb Exp $");
 
 
 extern int process_run(strarray_t *command, strarray_t *env, const char *dir);
@@ -78,7 +78,7 @@ command_job_op_t::command_job_op_t(
     command_ = command;
     env_ = env;
     logmessage_ = logmsg;
-    directory_ = g_strdup(file_top_dir());
+    directory_ = file_top_dir();
 }
 
 command_job_op_t::~command_job_op_t()
@@ -87,7 +87,6 @@ command_job_op_t::~command_job_op_t()
 	delete command_;
     if (env_ != 0)
 	delete env_;
-    strdelete(directory_);
 	
     if (logmessage_ != 0)
 	delete logmessage_;
@@ -111,7 +110,7 @@ command_job_op_t::describe() const
 
 job_t::job_t(const char *name)
 {
-    strassign(name_, name);
+    name_ = name;
     state_ = UNKNOWN;
     state_count_[UNKNOWN]++;
     
@@ -123,7 +122,6 @@ job_t::~job_t()
     if (op_ != 0)
     	delete op_;
 
-    strdelete(name_);
     state_count_[state_]--;
     
     depends_up_.remove_all();
@@ -184,7 +182,7 @@ job_t::add(const char *name, job_op_t *op)
     {
     	char *str = job->describe();
     	fprintf(stderr, "job_add: serial=%u name=\"%s\" description=\"%s\"\n",
-	    	    job->serial_, job->name_, str);
+	    	    job->serial_, job->name(), str);
 	g_free(str);
     }
 #endif
@@ -267,7 +265,7 @@ job_t::set_state(job_t::state_t newstate)
     
 #if DEBUG
     fprintf(stderr, "Main: job \"%s\" becomes %s\n",
-    	    	    name_, state_name(state_));
+    	    	    name(), state_name(state_));
 #endif
 
     /* propagate the state change up the dependency graph */
@@ -297,7 +295,7 @@ job_t::initialise_one(const char *key, job_t *job, void *userdata)
     {
     	if (job->op_ == 0 && file_exists(job->name_) < 0)
 	{
-	    log::errorf("No rule to make \"%s\"\n", job->name_);
+	    log::errorf("No rule to make \"%s\"\n", job->name());
 	    job->set_state(FAILED);
 	}
 	else
@@ -319,14 +317,14 @@ job_t::dump() const
     fprintf(stderr, "    job 0x%08lx {\n\tserial = %u\n\tname = \"%s\"\n\tstate = %s\n\tdescription = \"%s\"\n\tdepends_down =",
     	       (unsigned long)this,
 	       serial_,
-	       name_,
+	       name(),
 	       state_name(state_),
 	       desc);
     for (iter = depends_down_.first() ; iter != 0 ; ++iter)
     {
     	job_t *down = *iter;
 	
-	fprintf(stderr, " \"%s\"", down->name_);
+	fprintf(stderr, " \"%s\"", down->name());
     }
     fprintf(stderr, "\n    }\n");
     g_free(desc);
@@ -370,11 +368,11 @@ job_t::worker_thread(void *arg)
 
     	/* run the job */
 #if DEBUG
-	fprintf(stderr, "Worker%d: starting job \"%s\"\n", threadno, job->name_);
+	fprintf(stderr, "Worker%d: starting job \"%s\"\n", threadno, job->name());
 #endif
 	job->result_ = job->op_->execute();
 #if DEBUG
-	fprintf(stderr, "Worker%d: finished job \"%s\"\n", threadno, job->name_);
+	fprintf(stderr, "Worker%d: finished job \"%s\"\n", threadno, job->name());
 #endif
 	
 	/* put the finished job on the queue back to the main thread */
@@ -387,7 +385,7 @@ job_t::finish_job(job_t *job)
 {
 #if DEBUG
     fprintf(stderr, "Main: received finished job \"%s\", %s\n",
-    	    	job->name_,
+    	    	job->name(),
 		(job->result_ ? "success" : "failure"));
 #endif
     job->set_state((job->result_ ? UPTODATE : FAILED));
@@ -468,7 +466,7 @@ job_t::scalar()
 	/* Perform the first runnable job */
 	job = runnable_jobs.head();
 #if DEBUG
-    	fprintf(stderr, "scalar: starting job \"%s\"\n", job->name_);
+    	fprintf(stderr, "scalar: starting job \"%s\"\n", job->name());
 #endif    
 	job->set_state(RUNNING);
 	job->result_ = job->op_->execute();

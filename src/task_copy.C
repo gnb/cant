@@ -19,14 +19,14 @@
 
 #include "cant.H"
 
-CVSID("$Id: task_copy.C,v 1.8 2002-04-13 09:26:06 gnb Exp $");
+CVSID("$Id: task_copy.C,v 1.9 2002-04-13 12:30:42 gnb Exp $");
 
 class copy_task_t : public task_t
 {
 private:
-    char *file_;
-    char *tofile_;
-    char *todir_;
+    string_var file_;
+    string_var tofile_;
+    string_var todir_;
     list_t<fileset_t> filesets_;
 //    list_t<filterset_t> filtersets_;
     mapper_t *mapper_;
@@ -37,7 +37,7 @@ private:
     gboolean include_empty_dirs_:1;
 
     gboolean result_:1;
-    char *exp_todir_;
+    string_var exp_todir_;
     unsigned ncopied_;
 
 public:
@@ -56,10 +56,6 @@ copy_task_t(task_class_t *tclass, project_t *proj)
 
 ~copy_task_t()
 {
-    strdelete(file_);
-    strdelete(tofile_);
-    strdelete(todir_);
-
     if (mapper_ != 0)
 	delete mapper_;
     
@@ -73,7 +69,7 @@ copy_task_t(task_class_t *tclass, project_t *proj)
 gboolean
 set_file(const char *name, const char *value)
 {
-    strassign(file_, value);
+    file_ = value;
     return TRUE;
 }
 
@@ -87,14 +83,14 @@ set_preservelastmodified(const char *name, const char *value)
 gboolean
 set_tofile(const char *name, const char *value)
 {
-    strassign(tofile_, value);
+    tofile_ = value;
     return TRUE;
 }
 
 gboolean
 set_todir(const char *name, const char *value)
 {
-    strassign(todir_, value);
+    todir_ = value;
     return TRUE;
 }
 
@@ -202,22 +198,17 @@ do_copy_file(const char *fromfile, const char *tofile)
 {
     FILE *fromfp, *tofp;
     mode_t mode;
-    char *todir;
+    string_var todir;
     int n;
     char buf[1024];
     
     todir = file_dirname(fromfile);
     if ((mode = file_mode(todir)) < 0)
     	mode = 0755;
-    g_free(todir);
     
     todir = file_dirname(tofile);
     if (file_build_tree(todir, mode) < 0)
-    {
-    	g_free(todir);
 	return FALSE;
-    }
-    g_free(todir);
     
     if ((fromfp = fopen(fromfile, "r")) == 0)
     {
@@ -249,7 +240,7 @@ copy_one(const char *filename, void *userdata)
 {
     copy_task_t *ct = (copy_task_t *)userdata;
     const char *fromfile;
-    char *tofile, *mappedfile;
+    string_var tofile, mappedfile;
     
     // TODO: WTF
         
@@ -266,16 +257,12 @@ copy_one(const char *filename, void *userdata)
     else
     {
 	ct->result_ = FALSE; 	/* failed */
-	g_free(tofile);
 	return FALSE;	    	/* stop iteration */
     }
     if ((mappedfile = ct->mapper_->map(tofile)) == 0)
-    {
-	g_free(tofile);
 	return TRUE;	    	/* keep going */
-    }
         
-    log::infof("%s -> %s\n", filename, mappedfile);
+    log::infof("%s -> %s\n", filename, mappedfile.data());
 	
     /* TODO: apply proj->basedir */
 
@@ -323,9 +310,8 @@ exec()
 
     if (file_ != 0)
     {
-    	char *expfile = expand(file_);
+    	string_var expfile = expand(file_);
     	copy_one(expfile, this);
-	g_free(expfile);
     }
 
     /* execute for <fileset> children */
@@ -333,7 +319,7 @@ exec()
     for (iter = filesets_.first() ; iter != 0 ; ++iter)
 	(*iter)->apply(project_->properties(), copy_one, this);
     
-    strdelete(exp_todir_);
+    exp_todir_ = (char*)0;
 
     return result_;
 }

@@ -19,13 +19,13 @@
 
 #include "cant.H"
 
-CVSID("$Id: task_delete.C,v 1.6 2002-04-13 02:30:18 gnb Exp $");
+CVSID("$Id: task_delete.C,v 1.7 2002-04-13 12:30:42 gnb Exp $");
 
 class delete_task_t : public task_t
 {
 private:
-    char *file_;
-    char *directory_;
+    string_var file_;
+    string_var directory_;
     list_t<fileset_t> filesets_;
     gboolean verbose_:1;
     gboolean quiet_:1;
@@ -49,28 +49,23 @@ delete_task_t(task_class_t *tclass, project_t *proj)
 
 ~delete_task_t()
 {
-    strdelete(file_);
-    strdelete(directory_);
-    
     /* delete filesets */
     filesets_.apply_remove(unref);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
-
-static void delete_delete(task_t *);
     
 gboolean
 set_file(const char *name, const char *value)
 {
-    strassign(file_, value);
+    file_ = value;
     return TRUE;
 }
 
 gboolean
 set_dir(const char *name, const char *value)
 {
-    strassign(directory_, value);
+    directory_ = value;
     return TRUE;
 }
     
@@ -173,7 +168,7 @@ delete_one(const char *filename/*unnormalised*/, void *userdata)
 gboolean
 exec()
 {
-    char *expfile;
+    string_var expfile;
     list_iterator_t<fileset_t> iter;
     
     result_ = TRUE;
@@ -185,13 +180,11 @@ exec()
     {
     	expfile = expand(file_);
     	delete_one(expfile, this);
-	g_free(expfile);
     }
     if (directory_ != 0)
     {
     	expfile = expand(directory_);
     	delete_one(expfile, this);
-	g_free(expfile);
     }
 
     /* execute for <fileset> children */

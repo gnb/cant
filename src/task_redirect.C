@@ -20,17 +20,91 @@
 #include "cant.H"
 #include <fcntl.h>
 
-CVSID("$Id: task_redirect.C,v 1.7 2002-04-13 09:26:06 gnb Exp $");
+CVSID("$Id: task_redirect.C,v 1.8 2002-04-13 12:30:42 gnb Exp $");
 
 static const char tmpfile_proto[] = "/tmp/cant-redirect-propXXXXXX";
+
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+class descriptor_var
+{
+private:
+    int fd_;
+    
+public:
+    descriptor_var()
+    {
+    	fd_ = -1;
+    }
+    ~descriptor_var()
+    {
+    	if (fd_ >= 0)
+	{
+	    close(fd_);
+	    fd_ = -1;
+	}
+    }
+    
+    operator int() const
+    {
+    	return fd_;
+    }
+    
+    descriptor_var &operator=(int fd)
+    {
+    	if (fd_ >= 0)
+	    close(fd_);
+	fd_ = fd;
+	return *this;
+    }
+    
+    int take()
+    {
+    	int d = fd_;
+	fd_ = -1;
+	return d;
+    }
+};
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+class filename_var
+{
+private:
+    string_var filename_;
+    
+public:
+    filename_var()
+    {
+    }
+    ~filename_var()
+    {
+    	if (filename_.data() != 0)
+	    unlink(filename_.data());
+    }
+    
+    filename_var &operator=(const char *s)
+    {
+    	filename_ = s;
+	return *this;
+    }
+    
+    operator char *()
+    {
+    	return (char *)filename_.data();
+    }
+};
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 class redirect_task_t : public task_t
 {
 private:
-    char *output_file_;
-    char *output_property_;
-    char *input_file_;
-    char *input_property_;
+    string_var output_file_;
+    string_var output_property_;
+    string_var input_file_;
+    string_var input_property_;
     gboolean collapse_whitespace_:1;
 
 public:
@@ -44,10 +118,6 @@ redirect_task_t(task_class_t *tclass, project_t *proj)
 
 ~redirect_task_t()
 {
-    strdelete(output_file_);
-    strdelete(output_property_);
-    strdelete(input_file_);
-    strdelete(input_property_);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -55,28 +125,28 @@ redirect_task_t(task_class_t *tclass, project_t *proj)
 gboolean
 set_output_file(const char *name, const char *value)
 {
-    strassign(output_file_, value);
+    output_file_ = value;
     return TRUE;
 }
 
 gboolean
 set_output_property(const char *name, const char *value)
 {
-    strassign(output_property_, value);
+    output_property_ = value;
     return TRUE;
 }
 
 gboolean
 set_input_file(const char *name, const char *value)
 {
-    strassign(input_file_, value);
+    input_file_ = value;
     return TRUE;
 }
 
 gboolean
 set_input_property(const char *name, const char *value)
 {
-    strassign(input_property_, value);
+    input_property_ = value;
     return TRUE;
 }
 
@@ -127,11 +197,11 @@ gboolean
 exec()
 {
     gboolean ret = TRUE;
-    int old_stdin = -1, old_stdout = -1;
-    int new_stdin = -1, new_stdout = -1;
-    char *new_stdin_tmp = 0, *new_stdout_tmp = 0;
-    char *exp;
-    char *output_property = 0;
+    descriptor_var old_stdin, old_stdout;
+    descriptor_var new_stdin, new_stdout;
+    filename_var new_stdin_tmp, new_stdout_tmp;
+    string_var exp;
+    string_var output_property;
     
     /*
      * Redirect output to a file.
@@ -139,80 +209,68 @@ exec()
      * TODO: append to the file.
      */
     exp = expand(output_file_);
-    strnullnorm(exp);
-    if (exp != 0)
+    if (!exp.is_null())
     {
     	/* TODO: provide an attribute to control the mode */
-	exp = file_normalise_m(exp, 0);
+	exp = file_normalise(exp, 0);
     	new_stdout = open(exp, O_RDWR|O_CREAT|O_TRUNC, 0600);
 	if (new_stdout < 0)
 	{
 	    log::perror(exp);
-	    ret = FALSE;
-	    goto cleanups;
+	    return FALSE;
 	}
-	g_free(exp);
     }
 
     /*
      * Redirect output to a property.
      */
     exp = expand(output_property_);
-    strnullnorm(exp);
-    if (exp != 0)
+    if (!exp.is_null())
     {
-	new_stdout_tmp = g_strdup(tmpfile_proto);
+	new_stdout_tmp = tmpfile_proto;
 	new_stdout = mkstemp(new_stdout_tmp);
 	if (new_stdout < 0)
 	{
 	    log::perror(exp);
-	    ret = FALSE;
-	    goto cleanups;
+	    return FALSE;
 	}
-	output_property = exp;
+	output_property = exp.take();
     }
 
     /*
      * Redirect input from a file.
      */
     exp = expand(input_file_);
-    strnullnorm(exp);
-    if (exp != 0)
+    if (!exp.is_null())
     {
-    	exp = file_normalise_m(exp, 0);
+    	exp = file_normalise(exp, 0);
     	new_stdin = open(exp, O_RDONLY, 0);
 	if (new_stdin < 0)
 	{
 	    log::perror(exp);
-	    ret = FALSE;
-	    goto cleanups;
+	    return FALSE;
 	}
-	g_free(exp);
     }
 
     /*
      * Redirect input from a property.
      */
     exp = expand(input_property_);
-    strnullnorm(exp);
-    if (exp != 0)
+    if (!exp.is_null())
     {
 	const char *val;
 	
-	new_stdin_tmp = g_strdup(tmpfile_proto);
+	new_stdin_tmp = tmpfile_proto;
 	new_stdin = mkstemp(new_stdin_tmp);
 	if (new_stdin < 0)
 	{
 	    log::perror(new_stdin_tmp);
-	    ret = FALSE;
-	    goto cleanups;
+	    return FALSE;
 	}
 
     	val = project_->get_property(exp);
 	write(new_stdin, val, strlen(val));
 	lseek(new_stdin, 0, SEEK_SET);
-	
-	g_free(exp);
     }
 
     /*
@@ -244,15 +302,11 @@ exec()
      * Switch the file descriptors back.
      */
     if (old_stdin >= 0)
-    {
     	dup2(old_stdin, FILENO_STDIN);
-	close(old_stdin);
-    }
     if (old_stdout >= 0)
     {
     	fflush(stdout);
     	dup2(old_stdout, FILENO_STDOUT);
-	close(old_stdout);
     }
     
     /*
@@ -266,7 +320,7 @@ exec()
 	FILE *fp;
 
 	lseek(new_stdout, 0, SEEK_SET);
-	fp = fdopen(new_stdout, "r");
+	fp = fdopen(new_stdout.take(), "r");
 	while ((c = fgetc(fp)) != EOF)
 	{
 	    if (collapse_whitespace_)
@@ -295,38 +349,9 @@ exec()
 	    }
 	}
 	fclose(fp);
-	new_stdout = -1;
 	project_->set_propertym(output_property, buf.take());
     }
-
-    /*
-     * Close the new files or pipes and unlink tmp files
-     */
-cleanups:    
-    if (new_stdin >= 0)
-	close(new_stdin);
     
-    if (new_stdin_tmp != 0)
-    {
-    	unlink(new_stdin_tmp);
-    	g_free(new_stdin_tmp);
-    }
-
-    if (new_stdout >= 0)
-	close(new_stdout);
-	
-    if (new_stdout_tmp != 0)
-    {
-    	unlink(new_stdout_tmp);
-    	g_free(new_stdout_tmp);
-    }
-
-    if (output_property != 0)
-    	g_free(output_property);
-
-    if (exp != 0)
-    	g_free(exp);
-
     return ret;
 }
 

@@ -22,6 +22,7 @@
 
 #include "common.H"
 #include "estring.H"
+#include "string_var.H"
 #include "props.H"
 #include "strarray.H"
 #include "pattern.H"

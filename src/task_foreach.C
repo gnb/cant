@@ -21,18 +21,18 @@
 #include "tok.H"
 #include <time.h>
 
-CVSID("$Id: task_foreach.C,v 1.8 2002-04-13 02:30:18 gnb Exp $");
+CVSID("$Id: task_foreach.C,v 1.9 2002-04-13 12:30:42 gnb Exp $");
 
 class foreach_task_t : public task_t
 {
 private:
-    char *variable_;
+    string_var variable_;
     /* TODO: whitespace-safe technique */
-    char *values_;
+    string_var values_;
     list_t<fileset_t> filesets_;
     /* TODO: support nested <property> tags */
 
-    char *variable_e_;
+    string_var variable_e_;
     gboolean failed_:1;
 
 public:
@@ -46,8 +46,6 @@ foreach_task_t(task_class_t *tclass, project_t *proj)
 
 ~foreach_task_t()
 {
-    strdelete(variable_);
-    strdelete(values_);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -55,14 +53,14 @@ foreach_task_t(task_class_t *tclass, project_t *proj)
 gboolean
 set_variable(const char *name, const char *value)
 {
-    strassign(variable_, value);
+    variable_ = value;
     return TRUE;
 }
 
 gboolean
 set_values(const char *name, const char *value)
 {
-    strassign(values_, value);
+    values_ = value;
     return TRUE;
 }
 
@@ -92,7 +90,7 @@ do_iteration(const char *val, void *userdata)
      */
     ft->project_->set_property(ft->variable_e_, val);
     if (verbose)
-	log::infof("%s = %s\n", ft->variable_e_, val);
+	log::infof("%s = %s\n", ft->variable_e_.data(), val);
 
     if (!ft->execute_subtasks())
     {
@@ -118,7 +116,7 @@ exec()
     for (iter = filesets_.first() ; !failed_ && iter != 0 ; ++iter)
 	(*iter)->apply(project_->properties(), do_iteration, this);
 
-    g_free(variable_e_);
+    variable_e_ = (char*)0;
 
     return !failed_;
 }
