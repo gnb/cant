@@ -19,7 +19,7 @@
 
 #include "cant.h"
 
-CVSID("$Id: task_enumerate.c,v 1.5 2001-11-13 04:08:05 gnb Exp $");
+CVSID("$Id: task_enumerate.c,v 1.6 2001-11-16 03:34:19 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -64,7 +64,8 @@ enumerate_execute(task_t *task)
     	fileset_t *fs = (fileset_t *)list->data;
 	
 	logf("-->\n");
-	fileset_apply(fs, enumerate_one_file, 0);
+	fileset_apply(fs, project_get_props(task->project),
+	    	      enumerate_one_file, 0);
 	logf("<--\n");
     }
     

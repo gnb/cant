@@ -25,6 +25,7 @@
 #include "props.h"
 #include "pattern.h"
 #include "condition.h"
+#include "strarray.h"
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
  
@@ -35,7 +36,6 @@ typedef struct fs_spec_s    	fs_spec_t;
 struct fileset_s
 {
     char *id;
-    props_t *props; 	/* scope for if/unless conditionals */
     
     char *directory;
     
@@ -48,23 +48,18 @@ struct fileset_s
 
 #define FS_INCLUDE  	(1<<0)
 #define FS_FILE  	(1<<1)
-#define FS_FILEREAD  	(1<<2)
 
 struct fs_spec_s
 {
     unsigned flags;
-    
     char *filename;
-    GList *specs;   	/* list of specs from file */
-    
     pattern_t pattern;
-    
     condition_t condition;
 };
 
 
 
-fileset_t *fileset_new(props_t *);
+fileset_t *fileset_new(void);
 void fileset_delete(fileset_t *);
 void fileset_set_id(fileset_t *, const char *id);
 void fileset_set_directory(fileset_t *, const char *dir);
@@ -74,8 +69,10 @@ fs_spec_t *fileset_add_exclude(fileset_t *, const char *s);
 fs_spec_t *fileset_add_exclude_file(fileset_t *, const char *s);
 void fileset_set_default_excludes(fileset_t *, gboolean b);
 void fileset_set_case_sensitive(fileset_t *, gboolean b);
-int fileset_apply(fileset_t *, file_apply_proc_t, void *userdata);
-GList *fileset_gather(fileset_t *);
+int fileset_apply(const fileset_t *, const props_t *props,
+    	    	  file_apply_proc_t, void *userdata);
+int fileset_gather_mapped(const fileset_t *, const props_t *props,
+    	    	    	  strarray_t *sa, GList *mappers/*may be 0*/);
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 #endif /* _fileset_h_ */

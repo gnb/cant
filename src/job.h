@@ -22,6 +22,7 @@
 
 #include "common.h"
 #include "strarray.h"
+#include "log.h"
 
 typedef struct job_s job_t;
 typedef struct job_ops_s job_ops_t;
@@ -35,13 +36,15 @@ struct job_ops_s
 
 gboolean job_init(unsigned int num_workers);
 job_t *job_add(const char *name, job_ops_t *ops, void *userdata);
-job_t *job_add_command(const char *name, strarray_t *command, strarray_t *env);
+job_t *job_add_command(const char *name, strarray_t *command, strarray_t *env,
+    	    	       logmsg_t *logmsg);
 void job_add_depend(job_t *job, const char *depname);
 gboolean job_pending(void);
 void job_clear(void);
 gboolean job_run(void);
 gboolean job_immediate(job_ops_t *ops, void *userdata);
-gboolean job_immediate_command(strarray_t *command, strarray_t *env);
+gboolean job_immediate_command(strarray_t *command, strarray_t *env,
+    	    	    	       logmsg_t *logmsg);
 
 
 #endif /* _cant_job_h_ */

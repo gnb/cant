@@ -19,10 +19,11 @@
 
 #include "fileset.h"
 #include "estring.h"
+#include "mapper.h"
 #include "log.h"
 #include <dirent.h>
 
-CVSID("$Id: fileset.c,v 1.9 2001-11-14 10:59:03 gnb Exp $");
+CVSID("$Id: fileset.c,v 1.10 2001-11-16 03:34:19 gnb Exp $");
 
 typedef enum { FS_IN, FS_EX, FS_UNKNOWN } fs_result_t;
 
@@ -53,13 +54,6 @@ fs_spec_new(
 static void
 fs_spec_delete(fs_spec_t *fss)
 {
-    /* delete child specs */
-    while (fss->specs != 0)
-    {
-    	fs_spec_delete((fs_spec_t *)fss->specs->data);
-	fss->specs = g_list_remove_link(fss->specs, fss->specs);
-    }
-    
     strdelete(fss->filename);
     pattern_free(&fss->pattern);
     condition_free(&fss->condition);
@@ -69,10 +63,14 @@ fs_spec_delete(fs_spec_t *fss)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static fs_result_t fs_spec_match(fileset_t *, fs_spec_t *, const char *);
+static fs_result_t fs_spec_match(const fileset_t *, const props_t *, fs_spec_t *, const char *);
 
 static fs_result_t
-fs_spec_list_match(fileset_t *fs, GList *list, const char *filename)
+fs_spec_list_match(
+    const fileset_t *fs,
+    const props_t *props,
+    GList *list,
+    const char *filename)
 {
     fs_result_t res = FS_UNKNOWN;
         
@@ -80,7 +78,7 @@ fs_spec_list_match(fileset_t *fs, GList *list, const char *filename)
     {
     	fs_spec_t *fss = (fs_spec_t *)list->data;
 	
-	switch (fs_spec_match(fs, fss, filename))
+	switch (fs_spec_match(fs, props, fss, filename))
 	{
 	case FS_IN:
 	    res = FS_IN;
@@ -96,27 +94,20 @@ fs_spec_list_match(fileset_t *fs, GList *list, const char *filename)
     return res;
 }
 
-static void
-fs_spec_file_read(fileset_t *fs, fs_spec_t *fss)
+/* returns a list of fs_spec_t* */
+static GList *
+fs_spec_file_read(const fileset_t *fs, fs_spec_t *fss)
 {
     fs_spec_t *child;
     FILE *fp;
+    GList *list = 0;
     char *x, buf[1024];
-    
-    /* delete any previous child specs */
-    while (fss->specs != 0)
-    {
-    	fs_spec_delete((fs_spec_t *)fss->specs->data);
-	fss->specs = g_list_remove_link(fss->specs, fss->specs);
-    }
-    
-    fss->flags |= FS_FILEREAD;
-    
+        
     /* read the file */
     if ((fp = fopen(fss->filename, "r")) == 0)
     {
-    	logperror(fss->filename);
-	return;
+    	log_perror(fss->filename);
+	return 0;
     }
     
     while (fgets(buf, sizeof(buf), fp) != 0)
@@ -129,24 +120,36 @@ fs_spec_file_read(fileset_t *fs, fs_spec_t *fss)
     	child = fs_spec_new(fss->flags & FS_INCLUDE,
 	    	    	    /*pattern*/buf, fs->case_sensitive,
 			    /*filename*/0);
-	fss->specs = g_list_append(fss->specs, child);
+	list = g_list_prepend(list, child);
     }
     
     fclose(fp);
+    
+    return g_list_reverse(list);
 }
 
 
 static fs_result_t
-fs_spec_match(fileset_t *fs, fs_spec_t *fss, const char *filename)
+fs_spec_match(
+    const fileset_t *fs,
+    const props_t *props,
+    fs_spec_t *fss,
+    const char *filename)
 {
-    if (!condition_evaluate(&fss->condition, fs->props))
+    if (!condition_evaluate(&fss->condition, props))
 	    return FS_UNKNOWN;
     
     if (fss->flags & FS_FILE)
     {
-    	if (!(fss->flags & FS_FILEREAD))
-	    fs_spec_file_read(fs, fss);
-    	return fs_spec_list_match(fs, fss->specs, filename);
+    	GList *list;
+	fs_result_t res;
+	
+	/* TODO: caching should be global on filename with mod time checking */
+	list = fs_spec_file_read(fs, fss);
+    	res = fs_spec_list_match(fs, props, list, filename);
+    	listdelete(list, fs_spec_t, fs_spec_delete);
+	
+	return res;
     }
     
     if (!pattern_match(&fss->pattern, filename))
@@ -158,14 +161,12 @@ fs_spec_match(fileset_t *fs, fs_spec_t *fss, const char *filename)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 fileset_t *
-fileset_new(props_t *props)
+fileset_new(void)
 {
     fileset_t *fs;
     
     fs = new(fileset_t);
 
-    fs->props = props;
-    
     return fs;
 }
 
@@ -266,7 +267,8 @@ fileset_set_case_sensitive(fileset_t *fs, gboolean b)
 
 static int
 fileset_apply_1(
-    fileset_t *fs,
+    const fileset_t *fs,
+    const props_t *props,
     const char *filename,
     file_apply_proc_t function,
     void *userdata)
@@ -297,13 +299,13 @@ fileset_apply_1(
 	
 	if (file_is_directory(child.data) == 0)
 	{
-	    if ((ret = fileset_apply_1(fs, child.data, function, userdata)) != 1)
+	    if ((ret = fileset_apply_1(fs, props, child.data, function, userdata)) != 1)
 	    	break;
 	}
 	else
 	{
 	    /* files */
-    	    if (fs_spec_list_match(fs, fs->specs, child.data) != FS_IN)
+    	    if (fs_spec_list_match(fs, props, fs->specs, child.data) != FS_IN)
 		continue;
 
 	    if (!(*function)(child.data, userdata))
@@ -321,25 +323,17 @@ fileset_apply_1(
 
 int
 fileset_apply(
-    fileset_t *fs,
+    const fileset_t *fs,
+    const props_t *props,
     file_apply_proc_t func,
     void *userdata)
 {
     char *expdir;
     int ret;
-    GList *iter;
 
-    /* invalidate previously read files */
-    for (iter = fs->specs ; iter != 0 ; iter = iter->next)
-    {
-    	fs_spec_t *fss = (fs_spec_t *)iter->data;
-	
-	fss->flags &= ~FS_FILEREAD;
-    }
-    
-    expdir = props_expand(fs->props, fs->directory);
+    expdir = props_expand(props, fs->directory);
 
-    ret = fileset_apply_1(fs, expdir, func, userdata);
+    ret = fileset_apply_1(fs, props, expdir, func, userdata);
     
     g_free(expdir);
     
@@ -348,23 +342,54 @@ fileset_apply(
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
+typedef struct
+{
+    GList *mappers;
+    strarray_t *strarray;
+} fs_gather_rec_t;
+
 static gboolean
 fileset_gather_one(const char *filename, void *userdata)
 {
-    GList **listp = (GList **)userdata;
+    fs_gather_rec_t *rec = (fs_gather_rec_t *)userdata;
+
+    if (rec->mappers == 0)
+    {
+	strarray_append(rec->strarray, filename);
+    }
+    else
+    {
+    	GList *iter;
+	char *mapped = 0;
+
+	for (iter = rec->mappers ; iter != 0 ; iter = iter->next)
+	{
+    	    mapper_t *ma = (mapper_t *)iter->data;
+
+	    if ((mapped = mapper_map(ma, filename)) != 0)
+		break;
+	}
+
+	if (mapped != 0)
+	    strarray_appendm(rec->strarray, mapped);
+    }
     
-    *listp = g_list_prepend(*listp, g_strdup(filename));
-    return TRUE;
+    return TRUE;   /* keep going */
 }
 
-GList *
-fileset_gather(fileset_t *fs)
+int
+fileset_gather_mapped(
+    const fileset_t *fs,
+    const props_t *props,
+    strarray_t *sa,
+    GList *mappers)
 {
-    GList *list = 0;
+    fs_gather_rec_t rec;
     
-    fileset_apply(fs, fileset_gather_one, &list);
+    rec.mappers = mappers;
+    rec.strarray = sa;
     
-    return g_list_reverse(list);
+    return fileset_apply(fs, props, fileset_gather_one, &rec);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

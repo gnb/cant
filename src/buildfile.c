@@ -21,7 +21,7 @@
 #include "xtask.h"
 #include <parser.h>
 
-CVSID("$Id: buildfile.c,v 1.10 2001-11-14 10:59:03 gnb Exp $");
+CVSID("$Id: buildfile.c,v 1.11 2001-11-16 03:34:19 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -385,7 +385,7 @@ parse_fileset(project_t *proj, xmlNode *node, const char *dirprop)
     	return 0;
     }
 
-    fs = fileset_new(project_get_props(proj));
+    fs = fileset_new();
     fileset_set_directory(fs, buf);
     xmlFree(buf);
 

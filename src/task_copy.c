@@ -38,7 +38,7 @@ typedef struct
     unsigned ncopied;
 } copy_private_t;
 
-CVSID("$Id: task_copy.c,v 1.6 2001-11-13 04:08:05 gnb Exp $");
+CVSID("$Id: task_copy.c,v 1.7 2001-11-16 03:34:19 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -247,7 +247,7 @@ do_copy_file(copy_private_t *cp, const char *fromfile, const char *tofile)
     
     if ((fromfp = fopen(fromfile, "r")) == 0)
     {
-    	logperror(fromfile);
+    	log_perror(fromfile);
 	return FALSE;
     }
 
@@ -255,7 +255,7 @@ do_copy_file(copy_private_t *cp, const char *fromfile, const char *tofile)
     	mode = 0644;	    /* should never happen */
     if ((tofp = file_open_mode(tofile, "w", mode)) == 0)
     {
-    	logperror(tofile);
+    	log_perror(tofile);
 	fclose(fromfp);
 	return FALSE;
     }
@@ -314,7 +314,7 @@ copy_copy_one(const char *filename, void *userdata)
 	
 	if (r < 0)
 	{
-	    logperror(filename);
+	    log_perror(filename);
 	}
 	else if (ncopied == cp->ncopied && cp->include_empty_dirs)
 	{
@@ -323,7 +323,7 @@ copy_copy_one(const char *filename, void *userdata)
 	    /* TODO: control uid,gid */
 	    if (file_build_tree(mappedfile, 0755))
 	    {
-		logperror(filename);
+		log_perror(filename);
 		cp->result = FALSE;
     	    }
 	}
@@ -361,7 +361,8 @@ copy_execute(task_t *task)
     {
     	fileset_t *fs = (fileset_t *)iter->data;
 	
-	fileset_apply(fs, copy_copy_one, task);
+	fileset_apply(fs, project_get_props(task->project),
+	    	      copy_copy_one, task);
     }
     
     strdelete(cp->exp_todir);

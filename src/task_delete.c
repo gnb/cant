@@ -31,7 +31,7 @@ typedef struct
     gboolean result:1;
 } delete_private_t;
 
-CVSID("$Id: task_delete.c,v 1.6 2001-11-13 04:08:05 gnb Exp $");
+CVSID("$Id: task_delete.c,v 1.7 2001-11-16 03:34:19 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -154,13 +154,13 @@ delete_delete_one(const char *filename, void *userdata)
 	
 	if (r < 0)
 	{
-	    logperror(filename);
+	    log_perror(filename);
 	}
 	else if (r == 1)
 	{
 	    if (dp->include_empty_dirs && rmdir(filename) < 0 && !dp->quiet)
 	    {
-		logperror(filename);
+		log_perror(filename);
 		dp->result = FALSE;
     	    }
 	}	    
@@ -169,7 +169,7 @@ delete_delete_one(const char *filename, void *userdata)
     {
 	if (unlink(filename) < 0 && !dp->quiet)
 	{
-	    logperror(filename);
+	    log_perror(filename);
 	    dp->result = FALSE;
 	}
     }
@@ -205,7 +205,8 @@ delete_execute(task_t *task)
     {
     	fileset_t *fs = (fileset_t *)iter->data;
 	
-	fileset_apply(fs, delete_delete_one, task);
+	fileset_apply(fs, project_get_props(task->project),
+	    	      delete_delete_one, task);
     }
 
     return dp->result;

@@ -24,9 +24,45 @@
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
+typedef struct logmsg_s     logmsg_t;
+
+/*
+ * Format and emit a message immediately in the
+ * current log context.
+ */
 void logf(const char *fmt, ...);
 void logv(const char *fmt, va_list a);
-void logperror(const char *filename);
+
+/* log version of perror() */ 
+void log_perror(const char *filename);
+
+/*
+ * Allocate and format a log message, including
+ * the current log context, for later emission.
+ */
+logmsg_t *logmsg_newf(const char *fmt, ...);
+/*
+ * Allocate a new log message, taking over the
+ * new string `str' as the text of the message.
+ */
+logmsg_t *logmsg_newm(char *str);
+/*
+ * Like logmsg_newm() except add a newline at
+ * the end of the message -- useful for expanded
+ * and un-newlined messages from XML attributes.
+ */
+logmsg_t *logmsg_newnm(char *str);
+/* Emit the saved log message. */
+void logmsg_emit(logmsg_t *);
+/* Destroy a log message */
+void logmsg_delete(logmsg_t *);
+
+/*
+ * Manipulate the current log context.  Note
+ * that context names are *not* saved, they are
+ * assumed to be allocated in some long-lived
+ * structure e.g. tasks or targets.
+ */
 void log_push_context(const char *name);
 void log_pop_context(void);
 

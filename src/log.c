@@ -19,11 +19,29 @@
 
 #include "log.h"
 
-CVSID("$Id: log.c,v 1.5 2001-11-14 06:30:26 gnb Exp $");
+CVSID("$Id: log.c,v 1.6 2001-11-16 03:34:19 gnb Exp $");
+
+struct logmsg_s
+{
+    /* saved formatted message */
+    char *message;
+    gboolean add_nl;
+    /* snapshot of log context */
+    int depth;
+    const char *context;    	/* not saved */
+};
 
 static GList *log_context_stack;
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+static void
+log_show_context(int depth, const char *context)
+{
+    while (depth--)
+	fputs("  ", stderr);
+    fprintf(stderr, "[%s] ", context);
+}
 
 void
 logv(const char *fmt, va_list args)
@@ -31,14 +49,8 @@ logv(const char *fmt, va_list args)
     /* TODO: handle embedded newlines */
     /* TODO: lock between threads */
     
-    if (log_context_stack != 0)
-    {
-    	int n = g_list_length(log_context_stack);
-	while (n--)
-	    fputs("  ", stderr);
-	fprintf(stderr, "[%s] ", (const char *)log_context_stack->data);
-    }
-
+    log_show_context(g_list_length(log_context_stack),
+    	    	     (const char *)log_context_stack->data);
     vfprintf(stderr, fmt, args);
     fflush(stderr);
 }
@@ -54,9 +66,65 @@ logf(const char *fmt, ...)
 }
 
 void
-logperror(const char *filename)
+log_perror(const char *filename)
 {
     logf("%s: %s\n", filename, strerror(errno));
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+logmsg_t *
+logmsg_newm(char *str)
+{
+    logmsg_t *lm;
+    
+    lm = new(logmsg_t);
+    lm->depth = g_list_length(log_context_stack);
+    lm->context = (const char *)log_context_stack->data;
+    lm->message = str;
+    
+    return lm;
+}
+
+logmsg_t *
+logmsg_newnm(char *str)
+{
+    logmsg_t *lm = logmsg_newm(str);
+    
+    lm->add_nl = TRUE;
+    
+    return lm;
+}
+
+logmsg_t *
+logmsg_newf(const char *fmt, ...)
+{
+    logmsg_t *lm;
+    va_list args;
+    
+    va_start(args, fmt);
+    lm = logmsg_newm(g_strdup_vprintf(fmt, args));
+    va_end(args);
+    
+    return lm;
+}
+
+void
+logmsg_delete(logmsg_t *lm)
+{
+    strdelete(lm->message);
+    g_free(lm);
+}
+
+void
+logmsg_emit(logmsg_t *lm)
+{
+    log_show_context(lm->depth, lm->context);
+    if (lm->message != 0)
+	fputs(lm->message, stderr);
+    if (lm->add_nl)
+    	fputc('\n', stderr);
+    fflush(stderr);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

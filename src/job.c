@@ -26,7 +26,7 @@
 #include "queue.h"
 #endif
 
-CVSID("$Id: job.c,v 1.2 2001-11-13 04:08:05 gnb Exp $");
+CVSID("$Id: job.c,v 1.3 2001-11-16 03:34:19 gnb Exp $");
 
 
 typedef enum
@@ -83,10 +83,10 @@ static unsigned int num_workers;
 
 typedef struct
 {
-    /* TODO: add a log message */
     /* TODO: need to make a snapshot of log context */
     strarray_t *command;
     strarray_t *env;
+    logmsg_t *logmessage;
 } job_process_private_t;
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -96,6 +96,8 @@ job_process_execute(void *userdata)
 {
     job_process_private_t *jpp = (job_process_private_t *)userdata;
     
+    if (jpp->logmessage != 0)
+    	logmsg_emit(jpp->logmessage);
     return process_run(jpp->command, jpp->env);
 }
 
@@ -116,6 +118,9 @@ job_process_delete(void *userdata)
 	strarray_delete(jpp->command);
     if (jpp->env != 0)
 	strarray_delete(jpp->env);
+	
+    if (jpp->logmessage != 0)
+	logmsg_delete(jpp->logmessage);
 	
     g_free(jpp);    
 }
@@ -237,13 +242,18 @@ job_add(const char *name, job_ops_t *ops, void *userdata)
 
 
 job_t *
-job_add_command(const char *name, strarray_t *command, strarray_t *env)
+job_add_command(
+    const char *name, 
+    strarray_t *command,
+    strarray_t *env,
+    logmsg_t *logmessage)
 {
     job_process_private_t *jpp;
     
     jpp = new(job_process_private_t);
     jpp->command = command;
     jpp->env = env;
+    jpp->logmessage = logmessage;
     
     return job_add(name, &job_process_ops, jpp);
 }
@@ -422,7 +432,9 @@ static void *
 worker_thread(void *arg)
 {
     job_t *job;
+#if DEBUG
     int threadno = (int)arg;
+#endif
     
 #if DEBUG
     fprintf(stderr, "Worker%d: pid=%d\n", threadno, (int)getpid());
@@ -568,7 +580,10 @@ job_immediate(job_ops_t *ops, void *userdata)
 }
 
 gboolean
-job_immediate_command(strarray_t *command, strarray_t *env)
+job_immediate_command(
+    strarray_t *command,
+    strarray_t *env,
+    logmsg_t *logmessage)
 {
     gboolean result = FALSE;
     
@@ -576,6 +591,11 @@ job_immediate_command(strarray_t *command, strarray_t *env)
     if (job_run())
     {
 	/* execute the command immediately */
+	if (logmessage != 0)
+	{
+	    logmsg_emit(logmessage);
+	    logmsg_delete(logmessage);
+	}
 	result = process_run(command, env);
     }
     

@@ -20,7 +20,7 @@
 #include "xtask.h"
 #include "job.h"
 
-CVSID("$Id: xtask.c,v 1.10 2001-11-14 10:59:03 gnb Exp $");
+CVSID("$Id: xtask.c,v 1.11 2001-11-16 03:34:19 gnb Exp $");
 
 typedef struct
 {
@@ -53,57 +53,6 @@ xtask_generic_setter(task_t *task, const char *name, const char *value)
     	return FALSE;
     props_set(xp->properties, propname, value);
     return TRUE;
-}
-
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
-
-typedef struct
-{
-    GList *mappers;
-    strarray_t *strarray;
-} xtask_mapped_strarray_rec_t;
-
-static gboolean
-xtask_append_file_mapped_strarray(const char *filename, void *userdata)
-{
-    xtask_mapped_strarray_rec_t *rec = (xtask_mapped_strarray_rec_t *)userdata;
-
-    if (rec->mappers == 0)
-    {
-	strarray_append(rec->strarray, filename);
-    }
-    else
-    {
-    	GList *iter;
-	char *mapped = 0;
-
-	for (iter = rec->mappers ; iter != 0 ; iter = iter->next)
-	{
-    	    mapper_t *ma = (mapper_t *)iter->data;
-
-	    if ((mapped = mapper_map(ma, filename)) != 0)
-		break;
-	}
-
-	if (mapped != 0)
-	{    
-	    strarray_append(rec->strarray, mapped);
-	    g_free(mapped);
-	}
-    }
-    
-    return TRUE;   /* keep going */
-}
-
-static void
-xtask_fileset_apply_mappers(fileset_t *fs, strarray_t *sa, GList *mappers)
-{
-    xtask_mapped_strarray_rec_t rec;
-    
-    rec.mappers = mappers;
-    rec.strarray = sa;
-    
-    fileset_apply(fs, xtask_append_file_mapped_strarray, &rec);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -156,12 +105,14 @@ xtask_build_command(task_t *task, strarray_t *command)
 	    /* TODO: <env> child */
 	
 	case XT_FILESET:    /* <fileset> child */
-    	    xtask_fileset_apply_mappers(xa->data.fileset, command, /*mappers*/0);
+    	    fileset_gather_mapped(xa->data.fileset, xp->properties,
+	    	    	    	  command, /*mappers*/0);
 	    break;
 
 	case XT_FILES:	    /* <files> child */
 	    if (task->fileset != 0)
-    	    	xtask_fileset_apply_mappers(task->fileset, command, xops->mappers);
+    	    	fileset_gather_mapped(task->fileset, xp->properties,
+		    	    	      command, xops->mappers);
 	    break;
 	}
     }
@@ -184,17 +135,11 @@ xtask_execute_command(task_t *task)
 {
     xtask_private_t *xp = (xtask_private_t *)task->private;
     xtask_ops_t *xops = (xtask_ops_t *)task->ops;
+    logmsg_t *logmsg = 0;
     strarray_t *command;
     strarray_t *depfiles;
     char *targfile = 0;
     
-    if (xops->logmessage != 0)
-    {
-    	char *logexp = props_expand(xp->properties, xops->logmessage);
-	logf("%s\n", logexp);
-	g_free(logexp);
-    }
-
     /* build the command from args and properties */
     command = strarray_new();
     
@@ -230,7 +175,8 @@ xtask_execute_command(task_t *task)
 	}
 	else
 	{
-    	    xtask_fileset_apply_mappers(task->fileset, depfiles, xops->mappers);
+    	    fileset_gather_mapped(task->fileset, xp->properties,
+	    	    	    	  depfiles, xops->mappers);
 
     	    targfile = props_expand(xp->properties, xops->dep_target);
     	}
@@ -238,10 +184,13 @@ xtask_execute_command(task_t *task)
 
     strnullnorm(targfile);
     
+    if (xops->logmessage != 0)
+    	logmsg = logmsg_newnm(props_expand(xp->properties, xops->logmessage));
+
     if (targfile == 0)
     {
     	/* no dependency information -- job barrier, serialised */
-    	if (!job_immediate_command(command, /*env*/0))
+    	if (!job_immediate_command(command, /*env*/0, logmsg))
 	    xp->result = FALSE;
     }
     else
@@ -250,7 +199,7 @@ xtask_execute_command(task_t *task)
     	job_t *job;
 	int i;
 	
-	job = job_add_command(targfile, command, /*env*/0);
+	job = job_add_command(targfile, command, /*env*/0, logmsg);
 	for (i = 0 ; i < depfiles->len ; i++)
 	    job_add_depend(job, strarray_nth(depfiles, i));
     }
@@ -290,7 +239,8 @@ xtask_execute(task_t *task)
     	if (xops->foreach)
 	{
 	    /* run the command once for each file in the fileset */
-	    fileset_apply(task->fileset, xtask_execute_one, task);
+	    fileset_apply(task->fileset, xp->properties,
+	    	    	  xtask_execute_one, task);
 	}
 	else
 	{
