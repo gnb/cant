@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 
-<!-- $Id: globals.xml,v 1.1 2001-11-19 01:37:25 gnb Exp $ -->
+<!-- $Id: globals.xml,v 1.2 2002-02-10 10:13:41 gnb Exp $ -->
 
 <globals>
 
@@ -36,7 +36,7 @@
     <arg value="-g" if="debug"/>
     <arg value="-O2" if="optimize"/>
     <arg value="-c"/>
-    <arg file="${file}" if="test009.abspath"/>
+    <arg file="../../test/test009/${file}" if="test009.abspath"/>
     <arg value="${file}" unless="test009.abspath"/>
   </xtaskdef>
 
