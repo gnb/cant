@@ -1,1 +1,1 @@
-define(LATEST_VERSION,0.0.5)
+define(LATEST_VERSION,0.0.6)
