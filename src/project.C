@@ -20,7 +20,7 @@
 #include "cant.H"
 #include "tok.H"
 
-CVSID("$Id: project.C,v 1.8 2002-04-07 08:28:51 gnb Exp $");
+CVSID("$Id: project.C,v 1.9 2002-04-12 13:07:24 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -329,7 +329,7 @@ project_execute_target_by_name(project_t *proj, const char *name)
     
     if ((targ = project_find_target(proj, name)) == 0)
     {
-    	logf("no such target \"%s\"\n", name);
+    	log::errorf("no such target \"%s\"\n", name);
     	return FALSE;
     }
     return target_execute(targ);

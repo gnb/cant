@@ -21,7 +21,7 @@
 #include "tok.H"
 #include <time.h>
 
-CVSID("$Id: task_foreach.C,v 1.5 2002-04-07 05:28:50 gnb Exp $");
+CVSID("$Id: task_foreach.C,v 1.6 2002-04-12 13:07:24 gnb Exp $");
 
 class foreach_task_t : public task_t
 {
@@ -92,7 +92,7 @@ do_iteration(const char *val, void *userdata)
      */
     ft->project_->properties->set(ft->variable_e_, val);
     if (verbose)
-	logf("%s = %s\n", ft->variable_e_, val);
+	log::infof("%s = %s\n", ft->variable_e_, val);
 
     if (!ft->execute_subtasks())
     {

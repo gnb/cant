@@ -21,7 +21,7 @@
 #include "log.H"
 #include "hashtable.H"
 
-CVSID("$Id: mapper.C,v 1.3 2002-04-06 11:21:55 gnb Exp $");
+CVSID("$Id: mapper.C,v 1.4 2002-04-12 13:07:24 gnb Exp $");
 
 hashtable_t<char*, mapper_creator_t> *mapper_t::creators;
 
@@ -39,9 +39,6 @@ mapper_t::~mapper_t()
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-/* TODO: fmeh */
-extern void parse_error(const char *fmt, ...);
-
 mapper_t *
 mapper_t::create(const char *name, const char *from, const char *to)
 {
@@ -51,7 +48,7 @@ mapper_t::create(const char *name, const char *from, const char *to)
     if (creators == 0 ||
     	(creator = creators->lookup((char*)name)) == 0)
     {
-    	parse_error("Unknown mapper type \"%s\"\n", name);
+    	log::errorf("Unknown mapper type \"%s\"\n", name);
     	return 0;
     }
 
@@ -95,7 +92,7 @@ mapper_t::add_creator(const char *name, mapper_creator_t *creator)
     	creators = new hashtable_t<char*, mapper_creator_t>;
     else if (creators->lookup((char *)name) != 0)
     {
-    	logf("mapper operations \"%s\" already registered, ignoring new definition\n",
+    	log::errorf("mapper operations \"%s\" already registered, ignoring new definition\n",
 	    	name);
     	return FALSE;
     }

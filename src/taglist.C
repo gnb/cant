@@ -20,7 +20,7 @@
 #include "cant.H"
 #include "tok.H"
 
-CVSID("$Id: taglist.C,v 1.8 2002-04-07 07:46:28 gnb Exp $");
+CVSID("$Id: taglist.C,v 1.9 2002-04-12 13:07:24 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -286,7 +286,7 @@ taglist_t::gather(
 
     if (strcmp(name_space_, te->name_space()))
     {
-    	logf("ERROR: namespace mismatch in taglist_t::gather, taglist=%s::%s tagexpand=%s::\n",
+    	log::errorf("namespace mismatch in taglist_t::gather, taglist=%s::%s tagexpand=%s::\n",
 	    	name_space_, id_, te->name_space());
 	return;
     }

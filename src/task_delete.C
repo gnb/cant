@@ -19,7 +19,7 @@
 
 #include "cant.H"
 
-CVSID("$Id: task_delete.C,v 1.3 2002-04-07 05:28:50 gnb Exp $");
+CVSID("$Id: task_delete.C,v 1.4 2002-04-12 13:07:24 gnb Exp $");
 
 class delete_task_t : public task_t
 {
@@ -119,7 +119,7 @@ post_parse()
 {
     if (file_ == 0 && directory_ == 0 && filesets_.first() == 0)
     {
-    	parse_error("At least one of \"file\", \"dir\" or \"<fileset>\" must be present\n");
+    	log::errorf("At least one of \"file\", \"dir\" or \"<fileset>\" must be present\n");
 	return FALSE;
     }
 
@@ -135,7 +135,7 @@ delete_one(const char *filename/*unnormalised*/, void *userdata)
     int r;
     
     if (dt->verbose_)
-    	logf("%s\n", filename);
+    	log::infof("%s\n", filename);
 	
     if (file_is_directory(filename) == 0)
     {
@@ -143,14 +143,14 @@ delete_one(const char *filename/*unnormalised*/, void *userdata)
 
 	if (r < 0)
 	{
-	    log_perror(filename);
+	    log::perror(filename);
 	}
 	else if (r == 1)
 	{
 	    if (dt->include_empty_dirs_ && file_rmdir(filename) < 0)
 	    {
 	    	if (!dt->quiet_)
-		    log_perror(filename);
+		    log::perror(filename);
 		if (dt->fail_on_error_)
 		    dt->result_ = FALSE;
     	    }
@@ -161,7 +161,7 @@ delete_one(const char *filename/*unnormalised*/, void *userdata)
 	if (file_unlink(filename) < 0)
 	{
 	    if (!dt->quiet_)
-		log_perror(filename);
+		log::perror(filename);
 	    if (dt->fail_on_error_)
 		dt->result_ = FALSE;
 	}
@@ -179,7 +179,7 @@ exec()
     result_ = TRUE;
     
     if (!verbose_)
-    	logf("\n");
+    	log::infof("\n");
     
     if (file_ != 0)
     {

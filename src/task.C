@@ -19,7 +19,7 @@
 
 #include "cant.H"
 
-CVSID("$Id: task.C,v 1.5 2002-04-07 05:28:50 gnb Exp $");
+CVSID("$Id: task.C,v 1.6 2002-04-12 13:07:24 gnb Exp $");
 
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -108,20 +108,17 @@ task_t::set_attribute(const char *name, const char *value)
 gboolean
 task_t::execute()
 {
-    gboolean ret = TRUE;
-
     /* TODO: filename, linenumber?? */
-    log_push_context(name_);
+    log_tree_context_t context(name_);
         
     if (!exec())
     {
     	/* TODO: be more gracious, e.g. for <condition> */
-    	logf("FAILED\n");
-	ret = FALSE;
+    	log::errorf("FAILED\n");
+	return FALSE;
     }
 
-    log_pop_context();
-    return ret;
+    return TRUE;
 }
 
 gboolean
@@ -332,7 +329,7 @@ task_scope_t::add(task_class_t *tclass)
 {
     if (taskdefs_->lookup(tclass->name()) != 0)
     {
-    	logf("Task operations \"%s\" already registered, ignoring new definition\n",
+    	log::errorf("Task operations \"%s\" already registered, ignoring new definition\n",
 	    	tclass->name());
     	return FALSE;
     }

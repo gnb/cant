@@ -23,6 +23,7 @@
 #include "common.H"
 #include <tree.h>
 #include <xmlmemory.h>
+#include "log.H"
 
 /* TODO: This macro would be non-trivial if glib and xml used different free()s */
 #define xml2g(x)    (x)
@@ -55,5 +56,26 @@ typedef struct
 xmlDoc *cantXmlParseFile(const char *filename);
 const node_info_t *cantXmlNodeInfoGet(const xmlNode *node);
 void cantXmlNodeInfoClear(void);
+
+
+class log_node_context_t : public log_context_t
+{
+private:
+    const xmlNode *node_;
+
+    char *format();
+    void format(FILE *);
+
+public:
+    log_node_context_t(const xmlNode *node)
+     :  node_(node)
+    {
+    }
+};
+
+extern void log_error_unknown_attribute(const xmlAttr *attr);
+extern void log_error_required_attribute(const xmlNode *node, const char *attrname);
+extern void log_error_unexpected_element(const xmlNode *node);
+
 
 #endif /* _cant_xml_h_ */

@@ -20,7 +20,7 @@
 #include "cant.H"
 #include "job.H"
 
-CVSID("$Id: target.C,v 1.5 2002-04-07 04:22:52 gnb Exp $");
+CVSID("$Id: target.C,v 1.6 2002-04-12 13:07:24 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -101,8 +101,8 @@ target_execute(target_t *targ)
     	    	    	    project_get_props(targ->project)))
 	return TRUE;	    /* disabled target: trivially successful */
     
-    log_push_context(targ->name);
-    logf("\n");
+    log_tree_context_t context(targ->name);
+    log::infof("\n");
     
     /* TODO: check if finished first */
 
@@ -112,10 +112,7 @@ target_execute(target_t *targ)
     	target_t *dep = *diter;
 	
 	if (!target_execute(dep))
-	{
-	    log_pop_context();
 	    return FALSE;
-	}
     }
     
     /* now handle this target's tasks */
@@ -126,14 +123,12 @@ target_execute(target_t *targ)
 	if (!task->execute())
 	{
 	    job_t::clear();
-	    log_pop_context();
 	    return FALSE;
 	}
     }
     
     job_t::run();
     
-    log_pop_context();
     return TRUE;
 }
 

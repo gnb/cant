@@ -21,50 +21,141 @@
 #define _cant_log_h_ 1
 
 #include "common.H"
+#include "list.H"
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-typedef struct logmsg_s     logmsg_t;
+class log_context_t
+{
+protected:
+    static log_context_t *stack_;
+    
+    log_context_t *next_;
+    log_context_t *prev_;
 
-/*
- * Format and emit a message immediately in the
- * current log context.
- */
-void logf(const char *fmt, ...);
-void logv(const char *fmt, va_list a);
+    log_context_t();
+    virtual ~log_context_t();
+    
+public:    
+    static log_context_t *top();
 
-/* log version of perror() */ 
-void log_perror(const char *filename);
+    virtual char *format() = 0;
+    virtual void format(FILE *);
+    virtual void format_ancestors(FILE *);
+};
 
-/*
- * Allocate and format a log message, including
- * the current log context, for later emission.
- */
-logmsg_t *logmsg_newf(const char *fmt, ...);
-/*
- * Allocate a new log message, taking over the
- * new string `str' as the text of the message.
- */
-logmsg_t *logmsg_newm(char *str);
-/*
- * Like logmsg_newm() except add a newline at
- * the end of the message -- useful for expanded
- * and un-newlined messages from XML attributes.
- */
-logmsg_t *logmsg_newnm(char *str);
-/* Emit the saved log message. */
-void logmsg_emit(logmsg_t *);
-/* Destroy a log message */
-void logmsg_delete(logmsg_t *);
 
-/*
- * Manipulate the current log context.  Note
- * that context names are *not* saved, they are
- * assumed to be allocated in some long-lived
- * structure e.g. tasks or targets.
- */
-void log_push_context(const char *name);
-void log_pop_context(void);
+class log_simple_context_t : public log_context_t
+{
+private:
+    const char *name_;
+
+    char *format();
+    void format(FILE *);
+
+public:
+    log_simple_context_t(const char *name)
+     :  name_(name)
+    {
+    }
+};
+
+class log_file_context_t : public log_context_t
+{
+private:
+    const char *filename_;
+    unsigned int lineno_;
+
+    char *format();
+    void format(FILE *);
+
+public:
+    log_file_context_t(const char *filename, unsigned int lineno)
+     :  filename_(filename),
+     	lineno_(lineno)
+    {
+    }
+};
+
+
+class log_tree_context_t : public log_context_t
+{
+private:
+    const char *name_;
+    unsigned int nmessages_;
+    unsigned int depth_;
+    static unsigned int stack_depth_;
+
+    char *format();
+    void format(FILE *);
+    void format_ancestors(FILE *);
+    void format_self(FILE *);
+
+
+public:
+    log_tree_context_t(const char *name)
+     :  name_(name),
+        nmessages_(0)
+    {
+	depth_ = ++stack_depth_;
+    }
+    
+    ~log_tree_context_t()
+    {
+	stack_depth_--;
+    }
+};
+
+
+
+class log_message_t
+{
+private:
+    /* saved formatted message */
+    char *message_;
+    gboolean add_newline_;
+    /* snapshot of log context */
+    char *context_;
+
+public:
+    log_message_t(const char *, gboolean addnl = FALSE);
+    log_message_t(char *, gboolean addnl = FALSE);
+    ~log_message_t();
+
+    static log_message_t *newf(const char *fmt, ...) _printf_fmt(1, 2);
+
+    void emit() const;
+};
+
+
+
+class log
+{
+private:
+    log();  	// can't instantiate
+
+public:
+
+    enum severity_t
+    {
+	INFO,
+	WARNING,
+	ERROR,
+	
+	_NUM_SEVERITY
+    };
+
+    static void messagev(severity_t, const char *fmt, va_list) _printf_fmt(2,0);
+    static void messagef(severity_t, const char *fmt, ...) _printf_fmt(2,3);
+    static void errorf(const char *fmt, ...) _printf_fmt(1,2);
+    static void warningf(const char *fmt, ...) _printf_fmt(1,2);
+    static void infof(const char *fmt, ...) _printf_fmt(1,2);
+    static void perror(const char *str);
+    
+    static void zero_message_counts();
+    static unsigned int message_count(severity_t);
+};
+
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 #endif /* _cant_log_h_ */

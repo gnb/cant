@@ -20,7 +20,7 @@
 #include "cant.H"
 #include <time.h>
 
-CVSID("$Id: task_cant.C,v 1.2 2002-04-02 11:52:28 gnb Exp $");
+CVSID("$Id: task_cant.C,v 1.3 2002-04-12 13:07:24 gnb Exp $");
 
 class cant_task_t : public task_t
 {
@@ -143,7 +143,7 @@ exec()
      * Now actually execute the target in the sub-project.
      */
     if (verbose)
-	logf("buildfile %s\n", buildfile_e);
+	log::infof("buildfile %s\n", buildfile_e);
     
     file_push_dir(proj->basedir);
     ret = project_execute_target_by_name(proj, target_e);

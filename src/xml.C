@@ -22,7 +22,57 @@
 #include <parser.h>
 #include <SAX.h>
 
-CVSID("$Id: xml.C,v 1.2 2002-03-29 16:12:31 gnb Exp $");
+CVSID("$Id: xml.C,v 1.3 2002-04-12 13:07:24 gnb Exp $");
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+char *
+log_node_context_t::format()
+{
+    const node_info_t *ni;
+
+    if (node_ != 0 && (ni = cantXmlNodeInfoGet(node_)) != 0)
+    	return g_strdup_printf("%s:%d: ", ni->filename, ni->lineno);
+    return 0;
+}
+
+void
+log_node_context_t::format(FILE *fp)
+{
+    const node_info_t *ni;
+
+    if (node_ != 0 && (ni = cantXmlNodeInfoGet(node_)) != 0)
+	fprintf(fp, "%s:%d: ", ni->filename, ni->lineno);
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+void
+log_error_unknown_attribute(const xmlAttr *attr)
+{
+    log_node_context_t context(attr->node);
+    
+    log::errorf("Unknown attribute \"%s\" on \"%s\"\n",
+    	    	cantXmlAttrName(attr), cantXmlNodeGetName(attr->node));
+}
+
+void
+log_error_required_attribute(const xmlNode *node, const char *attrname)
+{
+    log_node_context_t context(node);
+    
+    log::errorf("Required attribute \"%s\" missing from \"%s\"\n",
+    	    	attrname, cantXmlNodeGetName(node));
+}
+
+void
+log_error_unexpected_element(const xmlNode *node)
+{
+    log_node_context_t context(node);
+    
+    log::errorf("Element \"%s\" unexpected at this point\n",
+    	    	cantXmlNodeGetName(node));
+}
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -37,7 +87,8 @@ cantXmlGetBooleanProp(xmlNode *node, const char *name, gboolean deflt)
 	
     if ((res = strbool(value, -1)) < 0)
     {
-    	parse_node_error(node, "attribute \"%s\" is not a recognisable boolean\n", name);
+	log_node_context_t context(node);
+    	log::errorf("Attribute \"%s\" is not a recognisable boolean\n", name);
     	res = deflt;
     }
     
@@ -129,13 +180,12 @@ sax_error(void *ctx, const char *fmt, ...)
     xmlParserCtxt *parser_context = (xmlParserCtxt *)ctx;
     va_list args;
     
-    fprintf(stderr, "%s:%d: ",
+    log_file_context_t context(
     	    parser_context->input->filename,
 	    parser_context->input->line);
-    fprintf(stderr, "ERROR: ");
 
     va_start(args, fmt);
-    vfprintf(stderr, fmt, args);
+    log::messagev(log::ERROR, fmt, args);
     va_end(args);
 }
 
@@ -173,7 +223,7 @@ cantXmlParseFile(const char *filename)
 
     if ((fp = fopen(filename, "r")) == 0)
     {
-    	log_perror(filename);
+    	log::perror(filename);
     	return 0;
     }
 

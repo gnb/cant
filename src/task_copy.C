@@ -19,7 +19,7 @@
 
 #include "cant.H"
 
-CVSID("$Id: task_copy.C,v 1.4 2002-04-07 05:28:50 gnb Exp $");
+CVSID("$Id: task_copy.C,v 1.5 2002-04-12 13:07:24 gnb Exp $");
 
 class copy_task_t : public task_t
 {
@@ -145,7 +145,7 @@ add_mapper(xmlNode *node)
 {
     if (mapper_ != 0)
     {
-    	parse_error("Only a single \"mapper\" child may be used\n");
+    	log::errorf("Only a single \"mapper\" child may be used\n");
 	return FALSE;
     }
     
@@ -164,7 +164,7 @@ post_parse()
     {
     	if (tofile_ == 0 && todir_ == 0)
 	{
-	    parse_error("One of \"tofile\" or \"todir\" must be specified with \"file\"\n");
+	    log::errorf("One of \"tofile\" or \"todir\" must be specified with \"file\"\n");
 	    return FALSE;
 	}
     }
@@ -172,18 +172,18 @@ post_parse()
     {
     	if (tofile_ != 0)
 	{
-	    parse_error("Only \"todir\" is allowed with \"filesets\"\n");
+	    log::errorf("Only \"todir\" is allowed with \"filesets\"\n");
 	    return FALSE;
 	}
     	if (todir_ == 0)
 	{
-	    parse_error("Must use \"todir\" is \"filesets\"\n");
+	    log::errorf("Must use \"todir\" is \"filesets\"\n");
 	    return FALSE;
 	}
     }
     else if (file_ == 0 && filesets_.first() == 0)
     {
-    	parse_error("At least one of \"file\" or \"<fileset>\" must be present\n");
+    	log::errorf("At least one of \"file\" or \"<fileset>\" must be present\n");
 	return FALSE;
     }
 
@@ -221,7 +221,7 @@ do_copy_file(const char *fromfile, const char *tofile)
     
     if ((fromfp = fopen(fromfile, "r")) == 0)
     {
-    	log_perror(fromfile);
+    	log::perror(fromfile);
 	return FALSE;
     }
 
@@ -229,7 +229,7 @@ do_copy_file(const char *fromfile, const char *tofile)
     	mode = 0644;	    /* should never happen */
     if ((tofp = file_open_mode(tofile, "w", mode)) == 0)
     {
-    	log_perror(tofile);
+    	log::perror(tofile);
 	fclose(fromfp);
 	return FALSE;
     }
@@ -275,7 +275,7 @@ copy_one(const char *filename, void *userdata)
 	return TRUE;	    	/* keep going */
     }
         
-    logf("%s -> %s\n", filename, mappedfile);
+    log::infof("%s -> %s\n", filename, mappedfile);
 	
     /* TODO: apply proj->basedir */
 
@@ -288,7 +288,7 @@ copy_one(const char *filename, void *userdata)
 	
 	if (r < 0)
 	{
-	    log_perror(filename);
+	    log::perror(filename);
 	}
 	else if (ncopied == ct->ncopied_ && ct->include_empty_dirs_)
 	{
@@ -297,7 +297,7 @@ copy_one(const char *filename, void *userdata)
 	    /* TODO: control uid,gid */
 	    if (file_build_tree(mappedfile, 0755))
 	    {
-		log_perror(filename);
+		log::perror(filename);
 		ct->result_ = FALSE;
     	    }
 	}

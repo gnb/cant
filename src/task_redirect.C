@@ -20,7 +20,7 @@
 #include "cant.H"
 #include <fcntl.h>
 
-CVSID("$Id: task_redirect.C,v 1.4 2002-04-07 08:28:51 gnb Exp $");
+CVSID("$Id: task_redirect.C,v 1.5 2002-04-12 13:07:24 gnb Exp $");
 
 static const char tmpfile_proto[] = "/tmp/cant-redirect-propXXXXXX";
 
@@ -94,13 +94,13 @@ post_parse()
 
     if (output_file_ != 0 && output_property_ != 0)
     {
-	parse_error("Cannot specify both \"output_file\" and \"output_property\"\n");
+	log::errorf("Cannot specify both \"output_file\" and \"output_property\"\n");
 	ret = FALSE;
     }
     
     if (input_file_ != 0 && input_property_ != 0)
     {
-	parse_error("Cannot specify both \"input_file\" and \"input_property\"\n");
+	log::errorf("Cannot specify both \"input_file\" and \"input_property\"\n");
 	ret = FALSE;
     }
     
@@ -148,7 +148,7 @@ exec()
     	new_stdout = open(exp, O_RDWR|O_CREAT|O_TRUNC, 0600);
 	if (new_stdout < 0)
 	{
-	    log_perror(exp);
+	    log::perror(exp);
 	    ret = FALSE;
 	    goto cleanups;
 	}
@@ -166,7 +166,7 @@ exec()
 	new_stdout = mkstemp(new_stdout_tmp);
 	if (new_stdout < 0)
 	{
-	    log_perror(exp);
+	    log::perror(exp);
 	    ret = FALSE;
 	    goto cleanups;
 	}
@@ -184,7 +184,7 @@ exec()
     	new_stdin = open(exp, O_RDONLY, 0);
 	if (new_stdin < 0)
 	{
-	    log_perror(exp);
+	    log::perror(exp);
 	    ret = FALSE;
 	    goto cleanups;
 	}
@@ -204,7 +204,7 @@ exec()
 	new_stdin = mkstemp(new_stdin_tmp);
 	if (new_stdin < 0)
 	{
-	    log_perror(new_stdin_tmp);
+	    log::perror(new_stdin_tmp);
 	    ret = FALSE;
 	    goto cleanups;
 	}

@@ -20,7 +20,7 @@
 #include "cant.H"
 #include <time.h>
 
-CVSID("$Id: task_tstamp.C,v 1.3 2002-04-07 08:28:51 gnb Exp $");
+CVSID("$Id: task_tstamp.C,v 1.4 2002-04-12 13:07:24 gnb Exp $");
 
 class tstamp_format_t
 {
@@ -132,7 +132,7 @@ tstamp_format_t::set_offset(const char *offset_str, const char *unit_str)
 {
     if (offset_str != 0 || unit_str != 0)
     {
-    	fprintf(stderr, "%s: sorry, <tstamp> does not support \"offset\" or \"unit\"\n", argv0);
+    	log::errorf("Sorry, <tstamp> does not support \"offset\" or \"unit\"\n");
     	return FALSE;
     }
     return TRUE;
@@ -146,7 +146,7 @@ tstamp_format_t::execute(project_t *proj, struct tm *tm)
     char buf[256];
     
     strftime(buf, sizeof(buf), cpattern_, tm);
-    logf("%s=\"%s\"\n", property_, buf);
+    log::infof("%s=\"%s\"\n", property_, buf);
     project_set_property(proj, property_, buf);
 }
 
@@ -191,7 +191,7 @@ tstamp_task_t::add_format(xmlNode *node)
     property = cantXmlGetProp(node, "property");
     if (property == 0)
     {
-	parse_error_required_attribute(node, "property");
+	log_error_required_attribute(node, "property");
 	return FALSE;
     }
     fmt = new tstamp_format_t;
@@ -204,13 +204,13 @@ tstamp_task_t::add_format(xmlNode *node)
     pattern = cantXmlGetProp(node, "pattern");
     if (pattern == 0)
     {
-	parse_error_required_attribute(node, "pattern");
+	log_error_required_attribute(node, "pattern");
 	delete fmt;
 	return FALSE;
     }
     if (!fmt->set_pattern(pattern))
     {
-    	parse_error("Bad format in \"pattern\"\n");
+    	log::errorf("Bad format in \"pattern\"\n");
 	xmlFree(pattern);
 	delete fmt;
 	return FALSE;
@@ -230,7 +230,7 @@ tstamp_task_t::add_format(xmlNode *node)
     	xmlFree(unit_str);
     if (!ok)
     {
-    	parse_error("Bad format in \"offset\" or \"unit\"\n");
+    	log::errorf("Bad format in \"offset\" or \"unit\"\n");
 	delete fmt;
 	return FALSE;
     }
@@ -241,7 +241,7 @@ tstamp_task_t::add_format(xmlNode *node)
     locale = cantXmlGetProp(node, "locale");
     if (locale != 0)
     {
-    	fprintf(stderr, "%s: sorry, <tstamp> does not support \"locale\"\n", argv0);
+    	log::errorf("Sorry, <tstamp> does not support \"locale\"\n");
 	delete fmt;
     	return FALSE;
     }

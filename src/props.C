@@ -21,8 +21,9 @@
 #include "estring.H"
 #include "filename.H"
 #include "hashtable.H"
+#include "log.H"
 
-CVSID("$Id: props.C,v 1.5 2002-04-07 08:28:51 gnb Exp $");
+CVSID("$Id: props.C,v 1.6 2002-04-12 13:07:24 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -183,7 +184,7 @@ props_t::expand_1(
 		if (value != 0)
 		{
 		    if (depth == MAXDEPTH)
-		    	fprintf(stderr, "Property loop detected while expanding \"%s\"\n",
+		    	log::errorf("Property loop detected while expanding \"%s\"\n",
 			    	    	    name.data());
 		    else
 		    	expand_1(rep, value, depth+1);
@@ -246,7 +247,7 @@ props_t::read_shellfile(const char *filename)
     if ((fp = file_open_mode(filename, "r", 0)) == 0)
     	/* TODO: perror */
     	return FALSE;
-    
+
 #if DEBUG
     fprintf(stderr, "props_t::read_shellfile: \"%s\"\n", filename);
 #endif
@@ -272,7 +273,8 @@ props_t::read_shellfile(const char *filename)
 	    	name.append_char(c);
 	    else
 	    {
-	    	fprintf(stderr, "%s:%d: syntax error\n", filename, lineno);
+		log_file_context_t context(filename, lineno);
+	    	log::errorf("Syntax error\n");
 	    	ret = FALSE;
 	    }
 	    break;

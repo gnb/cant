@@ -20,7 +20,7 @@
 #include "xtask.H"
 #include "job.H"
 
-CVSID("$Id: xtask.C,v 1.9 2002-04-07 07:46:28 gnb Exp $");
+CVSID("$Id: xtask.C,v 1.10 2002-04-12 13:07:24 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -150,7 +150,7 @@ gboolean
 xtask_t::execute_command()
 {
     xtask_class_t *xtclass = (xtask_class_t *)tclass_;	/* downcast */
-    logmsg_t *logmsg = 0;
+    log_message_t *logmsg = 0;
     strarray_t *command;
     strarray_t *depfiles;
     char *targfile = 0;
@@ -204,9 +204,9 @@ xtask_t::execute_command()
     
     
     if (verbose)
-    	logmsg = logmsg_newnm(command->join(" "));
+    	logmsg = new log_message_t(command->join(" "));
     else if (xtclass->logmessage_ != 0)
-    	logmsg = logmsg_newnm(properties_->expand(xtclass->logmessage_));
+    	logmsg = new log_message_t(properties_->expand(xtclass->logmessage_));
 
     if (targfile == 0)
     {

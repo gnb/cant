@@ -27,7 +27,7 @@
 #include "queue.H"
 #endif
 
-CVSID("$Id: job.C,v 1.7 2002-04-06 04:16:38 gnb Exp $");
+CVSID("$Id: job.C,v 1.8 2002-04-12 13:07:24 gnb Exp $");
 
 
 extern int process_run(strarray_t *command, strarray_t *env, const char *dir);
@@ -73,7 +73,7 @@ job_op_t::~job_op_t()
 command_job_op_t::command_job_op_t(
     strarray_t *command,
     strarray_t *env,
-    logmsg_t *logmsg)
+    log_message_t *logmsg)
 {
     command_ = command;
     env_ = env;
@@ -90,14 +90,14 @@ command_job_op_t::~command_job_op_t()
     strdelete(directory_);
 	
     if (logmessage_ != 0)
-	logmsg_delete(logmessage_);
+	delete logmessage_;
 }
 
 gboolean
 command_job_op_t::execute()
 {
     if (logmessage_ != 0)
-    	logmsg_emit(logmessage_);
+    	logmessage_->emit();
     return process_run(command_, env_, directory_);
 }
 
@@ -168,7 +168,7 @@ job_t::add(const char *name, job_op_t *op)
     {
     	if (job->op_ != 0)
 	{
-	    fprintf(stderr, "Duplicate job \"%s\"\n", name);
+	    log::errorf("Duplicate job \"%s\"\n", name);
 	    return 0;
 	}
     }
@@ -297,7 +297,7 @@ job_t::initialise_one(const char *key, job_t *job, void *userdata)
     {
     	if (job->op_ == 0 && file_exists(job->name_) < 0)
 	{
-	    fprintf(stderr, "No rule to make \"%s\"\n", job->name_);
+	    log::errorf("No rule to make \"%s\"\n", job->name_);
 	    job->set_state(FAILED);
 	}
 	else

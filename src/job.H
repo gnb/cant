@@ -46,7 +46,7 @@ private:
     /* TODO: need to make a snapshot of log context */
     strarray_t *command_;
     strarray_t *env_;
-    logmsg_t *logmessage_;
+    log_message_t *logmessage_;
     char *directory_;
 
     gboolean execute();
@@ -54,7 +54,7 @@ private:
 
 public:
     /* ctor */
-    command_job_op_t(strarray_t *command, strarray_t *env, logmsg_t *logmsg);
+    command_job_op_t(strarray_t *command, strarray_t *env, log_message_t *logmsg);
     /* dtor */
     ~command_job_op_t();
 };

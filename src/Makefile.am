@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 # 
-# $Id: Makefile.am,v 1.30 2002-04-07 07:46:28 gnb Exp $
+# $Id: Makefile.am,v 1.31 2002-04-12 13:07:23 gnb Exp $
 #
 
 bin_PROGRAMS=	cant
@@ -123,5 +123,6 @@ normalise_test_SOURCES=		normalise_test.C \
 				filename.H filename.C \
 				estring.H estring.C \
 				tok.H tok.C \
+				log.H log.C \
 				common.H common.C
 normalise_test_LDADD=		$(GLIB_LIBS)

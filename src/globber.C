@@ -22,7 +22,7 @@
 #include "log.H"
 #include <dirent.h>
 
-CVSID("$Id: globber.C,v 1.1 2002-04-07 06:22:51 gnb Exp $");
+CVSID("$Id: globber.C,v 1.2 2002-04-12 13:07:24 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -277,7 +277,7 @@ globber_t::apply_file(const char *pattfile, gboolean include_flag)
     /* read the file */
     if ((fp = fopen(pattfile, "r")) == 0)
     {
-    	log_perror(pattfile);
+    	log::perror(pattfile);
 	return;
     }
     

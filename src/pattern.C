@@ -21,7 +21,7 @@
 #include "estring.H"
 #include "log.H"
 
-CVSID("$Id: pattern.C,v 1.4 2002-04-07 08:28:51 gnb Exp $");
+CVSID("$Id: pattern.C,v 1.5 2002-04-12 13:07:24 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -41,13 +41,6 @@ pattern_t::~pattern_t()
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
-
-/*
- * TODO: this really, really needs a more sensible approach
- *       to error reporting, so that I don't have to declare
- *       the right function to report errors.  FMEH!!
- */
-extern void parse_error(const char *fmt, ...);
 
 gboolean
 pattern_t::set_pattern(const char *pattern, unsigned flags)
@@ -120,7 +113,7 @@ pattern_t::set_pattern(const char *pattern, unsigned flags)
 	char errbuf[1024];
 
 	regerror(errcode, &regex_, errbuf, sizeof(errbuf));
-    	parse_error("\"%s\": %s\n", pattern, errbuf);
+    	log::errorf("\"%s\": %s\n", pattern, errbuf);
     }
     memset(&groups_, 0, sizeof(groups_));
     return (errcode == 0);

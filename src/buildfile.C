@@ -20,89 +20,19 @@
 #include "cant.H"
 #include "xtask.H"
 
-CVSID("$Id: buildfile.C,v 1.8 2002-04-07 07:46:28 gnb Exp $");
-
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
-
-static int num_errs;
-static GList *parse_node_stack;     /* just for error reporting */
+CVSID("$Id: buildfile.C,v 1.9 2002-04-12 13:07:23 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static void
-parse_node_push(const xmlNode *node)
-{
-    parse_node_stack = g_list_prepend(parse_node_stack, (gpointer)node);
-}
-
-static void
-parse_node_pop(void)
-{
-    parse_node_stack = g_list_remove_link(parse_node_stack, parse_node_stack);
-}
-
-const xmlNode *
-parse_node_top(void)
-{
-    return (parse_node_stack == 0 ? 0 :
-    	    	(const xmlNode *)parse_node_stack->data);
-}
-
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
-
-static void
-parse_node_errorv(const xmlNode *node, const char *fmt, va_list args)
-{
-    const node_info_t *ni;
-
-    if (node != 0 && (ni = cantXmlNodeInfoGet(node)) != 0)
-	fprintf(stderr, "%s:%d: ", ni->filename, ni->lineno);
-    fprintf(stderr, "ERROR: ");
-    
-    vfprintf(stderr, fmt, args);
-    
-    num_errs++;
-}
-
-void
 parse_node_error(const xmlNode *node, const char *fmt, ...)
 {
     va_list args;
+    log_node_context_t context(node);
     
     va_start(args, fmt);
-    parse_node_errorv(node, fmt, args);
+    log::messagev(log::ERROR, fmt, args);
     va_end(args);
-}
-
-void
-parse_error(const char *fmt, ...)
-{
-    va_list args;
-    
-    va_start(args, fmt);
-    parse_node_errorv(parse_node_top(), fmt, args);
-    va_end(args);
-}
-
-void
-parse_error_unknown_attribute(const xmlAttr *attr)
-{
-    parse_node_error(attr->node, "Unknown attribute \"%s\" on \"%s\"\n",
-    	    	cantXmlAttrName(attr), cantXmlNodeGetName(attr->node));
-}
-
-void
-parse_error_required_attribute(const xmlNode *node, const char *attrname)
-{
-    parse_node_error(node, "Required attribute \"%s\" missing from \"%s\"\n",
-    	    	attrname, cantXmlNodeGetName(node));
-}
-
-void
-parse_error_unexpected_element(const xmlNode *node)
-{
-    parse_node_error(node, "Element \"%s\" unexpected at this point\n",
-    	    	cantXmlNodeGetName(node));
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -321,7 +251,7 @@ parse_property(project_t *proj, xmlNode *node)
 	    ;
 	else
 	{
-	    parse_error_unknown_attribute(attr);
+	    log_error_unknown_attribute(attr);
 	    failed = TRUE;
 	}
 
@@ -349,7 +279,7 @@ check_childless(xmlNode *node)
     	if (child->type != XML_ELEMENT_NODE)
 	    continue;
 
-    	parse_error_unexpected_element(child);
+    	log_error_unexpected_element(child);
 	res = FALSE;
     }
     
@@ -371,7 +301,7 @@ parse_tagexpand(project_t *proj, xmlNode *node)
 
     if ((buf = cantXmlGetProp(node, "namespace")) == 0)
     {
-	parse_error_required_attribute(node, "namespace");
+	log_error_required_attribute(node, "namespace");
 	return 0;
     }
     
@@ -402,13 +332,13 @@ parse_tagexpand(project_t *proj, xmlNode *node)
 	    
 	    if ((tag = cantXmlGetProp(child, "tag")) == 0)
 	    {
-	    	parse_error_required_attribute(child, "tag");
+	    	log_error_required_attribute(child, "tag");
 	    	failed = TRUE;
 	    }
 	    	    
 	    if ((to = cantXmlGetProp(child, "to")) == 0)
 	    {
-	    	parse_error_required_attribute(child, "to");
+	    	log_error_required_attribute(child, "to");
 	    	failed = TRUE;
 	    }
 	    
@@ -431,7 +361,7 @@ parse_tagexpand(project_t *proj, xmlNode *node)
 	    
 	    if ((to = cantXmlGetProp(child, "to")) == 0)
 	    {
-	    	parse_error_required_attribute(child, "to");
+	    	log_error_required_attribute(child, "to");
 	    	failed = TRUE;
 	    }
 	    
@@ -448,7 +378,7 @@ parse_tagexpand(project_t *proj, xmlNode *node)
 	}
 	else
 	{
-	    parse_error_unexpected_element(child);
+	    log_error_unexpected_element(child);
 	    failed = TRUE;
 	}
     }
@@ -516,7 +446,7 @@ parse_taglist(project_t *proj, xmlNode *node)
     /* actual taglist definition */
     if ((buf = cantXmlGetProp(node, "id")) == 0)
     {
-	parse_error_required_attribute(node, "id");
+	log_error_required_attribute(node, "id");
 	return 0;
     }
 
@@ -540,7 +470,7 @@ parse_taglist(project_t *proj, xmlNode *node)
 
 	    if (name == 0 && tag->name_avail_ == AV_MANDATORY)
 	    {
-		parse_error_required_attribute(child, "name");
+		log_error_required_attribute(child, "name");
 		failed = TRUE;
 	    }
 	    else if (name != 0 && tag->name_avail_ == AV_FORBIDDEN)
@@ -577,7 +507,7 @@ parse_taglist(project_t *proj, xmlNode *node)
     	}
 	else
 	{
-	    parse_error_unexpected_element(child);
+	    log_error_unexpected_element(child);
 	    failed = FALSE;
 	}
     }
@@ -629,11 +559,11 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
 
     if ((buf = cantXmlGetProp(node, "name")) == 0)
     {
-	parse_error_required_attribute(node, "name");
+	log_error_required_attribute(node, "name");
 	return FALSE;
     }
 
-    parse_node_push(node);
+    log_node_context_t context(node);
     xtclass = new xtask_class_t(buf);
     xmlFree(buf);
 
@@ -662,7 +592,7 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
     	if (child->type != XML_ELEMENT_NODE)
 	    continue;
 
-    	parse_node_push(child);
+	log_node_context_t context(node);
     	xa = 0;
     	if (!strcmp(cantXmlNodeGetName(child), "arg"))
 	{
@@ -693,7 +623,7 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
 	    
 	    if ((from = cantXmlGetProp(child, "attribute")) == 0)
 	    {
-		parse_error_required_attribute(node, "attribute");
+		log_error_required_attribute(node, "attribute");
 		failed = TRUE;
 	    }
 	    else if ((to = cantXmlGetProp(child, "property")) == 0)
@@ -714,7 +644,7 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
 	    
 	    if ((name_space = cantXmlGetProp(child, "namespace")) == 0)
 	    {
-		parse_error_required_attribute(node, "namespace");
+		log_error_required_attribute(node, "namespace");
 		failed = TRUE;
 	    }
 
@@ -763,11 +693,10 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
 	}
 	else
 	{
-	    parse_error_unexpected_element(child);
+	    log_error_unexpected_element(child);
 	    failed = TRUE;
 	}
 
-    	parse_node_pop();
     	if (xa == 0)
 	    continue;
 
@@ -778,7 +707,6 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
 	}
     }    
 
-    parse_node_pop();
     if (failed)
     {
     	delete xtclass;
@@ -839,7 +767,7 @@ parse_taglistdef(project_t *proj, xmlNode *node)
 
     if ((buf = cantXmlGetProp(node, "name")) == 0)
     {
-	parse_error_required_attribute(node, "name");
+	log_error_required_attribute(node, "name");
 	return FALSE;
     }
 
@@ -861,7 +789,7 @@ parse_taglistdef(project_t *proj, xmlNode *node)
 	    
 	    if ((tag = cantXmlGetProp(child, "tag")) == 0)
 	    {
-	    	parse_error_required_attribute(child, "tag");
+	    	log_error_required_attribute(child, "tag");
 	    	failed = TRUE;
 	    }
 	    
@@ -877,7 +805,7 @@ parse_taglistdef(project_t *proj, xmlNode *node)
 	    }
 	}
 	else
-	    parse_error_unexpected_element(child);
+	    log_error_unexpected_element(child);
     }    
 
     /* TODO: handle duplicate registrations cleanly */
@@ -1044,7 +972,7 @@ parse_fileset(project_t *proj, xmlNode *node, const char *dirprop)
 	    
 	if ((buf = cantXmlGetProp(child, "name")) == 0)
 	{
-	    parse_error_required_attribute(node, "name");
+	    log_error_required_attribute(node, "name");
 	    continue;
 	}
 	
@@ -1127,20 +1055,20 @@ parse_mapper(project_t *proj, xmlNode *node)
     
     if ((name = cantXmlGetProp(node, "name")) == 0)
     {
-	parse_error_required_attribute(node, "name");
+	log_error_required_attribute(node, "name");
     	return 0;
     }
 
     if ((from = cantXmlGetProp(node, "from")) == 0)
     {
-	parse_error_required_attribute(node, "from");
+	log_error_required_attribute(node, "from");
 	xmlFree(name);
     	return 0;
     }
 
     if ((to = cantXmlGetProp(node, "to")) == 0)
     {
-	parse_error_required_attribute(node, "to");
+	log_error_required_attribute(node, "to");
 	xmlFree(name);
 	xmlFree(from);
     	return 0;
@@ -1174,7 +1102,7 @@ check_one_attribute(const task_attr_t *ta, void *userdata)
 	
     if ((value = cantXmlGetProp(rec->node, ta->name)) == 0)
     {
-	parse_error_required_attribute(rec->node, ta->name);
+	log_error_required_attribute(rec->node, ta->name);
 	rec->failed = TRUE;
     }
     else
@@ -1202,7 +1130,7 @@ parse_task(project_t *proj, xmlNode *node)
 	return 0;
     }
 
-    parse_node_push(node);
+    log_node_context_t context(node);
     
     task = tclass->create_task(proj);
     
@@ -1221,7 +1149,7 @@ parse_task(project_t *proj, xmlNode *node)
 	    ;	/* parse_fileset will get it later */
 	else if (!task->set_attribute(cantXmlAttrName(attr), value))
 	{
-	    parse_error_unknown_attribute(attr);
+	    log_error_unknown_attribute(attr);
 	    failed = TRUE;
 	}
     	xmlFree(value);
@@ -1255,10 +1183,9 @@ parse_task(project_t *proj, xmlNode *node)
 
 	if ((tc = tclass->find_child(cantXmlNodeGetName(child))) != 0)
 	{
-	    parse_node_push(child);
+	    log_node_context_t context(node);
 	    if (!(task->*tc->adder)(child))
 		failed = TRUE;
-	    parse_node_pop();
 	    continue;
 	}
 	
@@ -1272,7 +1199,7 @@ parse_task(project_t *proj, xmlNode *node)
 	    continue;
 	}
 	
-	parse_error_unexpected_element(child);
+	log_error_unexpected_element(child);
 	failed = TRUE;
     }
     
@@ -1289,8 +1216,6 @@ parse_task(project_t *proj, xmlNode *node)
     /* call the task's post-parse function */    
     if (!failed && !task->post_parse())
 	failed = TRUE;
-
-    parse_node_pop();
 
     if (failed)
     {
@@ -1352,7 +1277,7 @@ parse_target(project_t *proj, xmlNode *node)
     
     if (name == 0)
     {
-	parse_error_required_attribute(node, "name");
+	log_error_required_attribute(node, "name");
     	return FALSE;
     }
     
@@ -1398,7 +1323,7 @@ parse_target(project_t *proj, xmlNode *node)
     	else if (is_condition_attribute(cantXmlAttrName(attr)))
 	    ;
 	else
-	    parse_error_unknown_attribute(attr);
+	    log_error_unknown_attribute(attr);
 
     	xmlFree(value);
     }
@@ -1461,7 +1386,7 @@ parse_project(xmlNode *node, project_t *parent)
 		project_set_basedir(proj, value);
 	    else
 	    {
-		parse_error_unknown_attribute(attr);
+		log_error_unknown_attribute(attr);
 		failed = TRUE;
 	    }
 
@@ -1469,7 +1394,7 @@ parse_project(xmlNode *node, project_t *parent)
 	}
 	if (proj->default_target == 0)
 	{
-	    parse_error_required_attribute(node, "default");
+	    log_error_required_attribute(node, "default");
 	    failed = TRUE;
 	}
     }
@@ -1497,7 +1422,7 @@ parse_project(xmlNode *node, project_t *parent)
 	else
 	{
 	    /* TODO: patternset */
-	    parse_error_unexpected_element(child);
+	    log_error_unexpected_element(child);
 	    failed = TRUE;
 	}
     }
@@ -1531,11 +1456,11 @@ read_buildfile(const char *filename, project_t *parent)
     if ((doc = cantXmlParseFile(filename)) == 0)
     {
     	/* TODO: print error message */
-	logf("Failed to load file \"%s\"\n", filename);
+	log::errorf("Failed to load file \"%s\"\n", filename);
 	return 0;
     }
         
-    num_errs = 0;
+    log::zero_message_counts();
     root = xmlDocGetRootElement(doc);
 
     if (root == 0)
@@ -1548,7 +1473,7 @@ read_buildfile(const char *filename, project_t *parent)
     
     if (strcmp(cantXmlNodeGetName(root), (parent == 0 ? "globals" : "project")))
     {
-    	parse_error_unexpected_element(root);
+    	log_error_unexpected_element(root);
 	xmlFreeDoc(doc);
 	cantXmlNodeInfoClear();
 	return 0;
@@ -1558,9 +1483,10 @@ read_buildfile(const char *filename, project_t *parent)
     if (proj != 0)
 	project_set_filename(proj, filename);
     
-    if (num_errs > 0)
+    if (log::message_count(log::ERROR) > 0)
     {
-    	logf("%s: found %d errors\n", filename, num_errs);
+    	log::errorf("%s: found %d errors\n", filename,
+	    	    	log::message_count(log::ERROR));
 	if (proj != 0)
 	    project_delete(proj);
 	xmlFreeDoc(doc);

@@ -19,7 +19,7 @@
 
 #include "cant.H"
 
-CVSID("$Id: task_changedir.C,v 1.2 2002-04-02 11:52:28 gnb Exp $");
+CVSID("$Id: task_changedir.C,v 1.3 2002-04-12 13:07:24 gnb Exp $");
 
 class changedir_task_t : public task_t
 {
@@ -62,19 +62,19 @@ exec()
     strnullnorm(dir_e);
     if (dir_e == 0)
     {
-    	logf("No directory for <changedir>\n");
+    	log::errorf("No directory for <changedir>\n");
     	return FALSE;
     }
     
     if (file_is_directory(dir_e) < 0)
     {
-    	log_perror(dir_e);
+    	log::perror(dir_e);
 	g_free(dir_e);
 	return FALSE;
     }
         
     if (verbose)
-	logf("%s\n", dir_e);
+	log::infof("%s\n", dir_e);
     
     file_push_dir(dir_e);
 

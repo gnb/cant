@@ -23,8 +23,9 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <fcntl.h>
+#include "log.H"
 
-CVSID("$Id: filename.C,v 1.3 2002-04-07 08:28:51 gnb Exp $");
+CVSID("$Id: filename.C,v 1.4 2002-04-12 13:07:24 gnb Exp $");
 
 #ifndef __set_errno
 #define __set_errno(v)	 errno = (v)
@@ -168,7 +169,7 @@ file_mode_from_string(const char *str, mode_t base, mode_t deflt)
     if (str[0] >= '0' && str[0] <= '7')
     	return strtol(str, 0, 8);
 
-    fprintf(stderr, "TODO: can't handle mode strings properly\n");
+    log::infof("TODO: can't handle mode strings properly\n");
     return base;
 }
 

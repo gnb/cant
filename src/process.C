@@ -23,7 +23,7 @@
 #include <sys/wait.h>
 #endif
 
-CVSID("$Id: process.C,v 1.2 2002-03-29 13:57:32 gnb Exp $");
+CVSID("$Id: process.C,v 1.3 2002-04-12 13:07:24 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -86,7 +86,7 @@ process_run(strarray_t *command, strarray_t *env, const char *dir)
     if (pid < 0)
     {
     	/* error */
-    	log_perror("fork");
+    	log::perror("fork");
 	return FALSE;
     }
     
@@ -111,13 +111,13 @@ process_run(strarray_t *command, strarray_t *env, const char *dir)
 	
 	if (status < 0)
 	{
-	    log_perror("waitpid");
+	    log::perror("waitpid");
 	    return FALSE;
 	}
 	else if (status & SIGNAL_FLAG)
 	{
 	    status &= ~SIGNAL_FLAG;
-    	    logf("Command \"%s\" was terminated by signal %d (%s)\n",
+    	    log::errorf("Command \"%s\" was terminated by signal %d (%s)\n",
 	    	    command->nth(0),
 		    status,
 		    g_strsignal(status));
@@ -125,7 +125,7 @@ process_run(strarray_t *command, strarray_t *env, const char *dir)
 	}
 	else if (status > 0)
 	{
-    	    logf("Command \"%s\" exited with status %d\n",
+    	    log::errorf("Command \"%s\" exited with status %d\n",
 	    	    command->nth(0),
 		    status);
 	    return FALSE;

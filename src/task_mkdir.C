@@ -19,7 +19,7 @@
 
 #include "cant.H"
 
-CVSID("$Id: task_mkdir.C,v 1.2 2002-04-02 11:52:28 gnb Exp $");
+CVSID("$Id: task_mkdir.C,v 1.3 2002-04-12 13:07:24 gnb Exp $");
 
 class mkdir_task_t : public task_t
 {
@@ -83,7 +83,7 @@ exec()
     
     /* TODO: canonicalise */
     /* TODO: use project's basedir */
-    logf("%s\n", dir);
+    log::infof("%s\n", dir);
     
     if (file_build_tree(dir, mode) < 0)
     {

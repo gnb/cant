@@ -21,7 +21,7 @@
 #include "cant.H"
 #include "job.H"
 
-CVSID("$Id: cant.C,v 1.8 2002-04-07 08:28:14 gnb Exp $");
+CVSID("$Id: cant.C,v 1.9 2002-04-12 13:07:24 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -106,21 +106,6 @@ hack_mapper_test(void)
 }
 
 #endif
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
-
-void
-fatal(const char *fmt, ...)
-{
-    va_list args;
-    
-    va_start(args, fmt);
-    fprintf(stderr, "%s: ", argv0);
-    vfprintf(stderr, fmt, args);
-    va_end(args);
-    
-    exit(1);
-}
-
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static gboolean
@@ -213,8 +198,7 @@ usagef(int ec, const char *fmt, ...)
     va_list args;
     
     va_start(args, fmt);
-    fprintf(stderr, "%s: ", argv0);
-    vfprintf(stderr, fmt, args);
+    log::messagev(log::ERROR, fmt, args);
     va_end(args);
     
     usage(ec);
@@ -494,7 +478,9 @@ main(int argc, char **argv)
 {
     project_t *proj;
     int ret;
-    
+
+    log_simple_context_t context(file_basename_c(argv[0]));
+
     parse_args(argc, argv);
     
     task_scope_t::initialise_builtins();
@@ -504,13 +490,22 @@ main(int argc, char **argv)
 
     project_globals = read_buildfile(globals_file, /*parent*/0);
     if (project_globals == 0)
-    	fatal("Can't read globals file \"%s\"\n", globals_file);
+    {
+    	log::errorf("Can't read globals file \"%s\"\n", globals_file);
+	exit(1);
+    }
 
     if (find_flag && !find_buildfile())
-    	fatal("Can't find buildfile \"%s\" in any parent directory\n", buildfile);
+    {
+    	log::errorf("Can't find buildfile \"%s\" in any parent directory\n", buildfile);
+	exit(1);
+    }
 
     if ((proj = read_buildfile(buildfile, project_globals)) == 0)
-    	fatal("Can't read buildfile \"%s\"\n", buildfile);
+    {
+    	log::errorf("Can't read buildfile \"%s\"\n", buildfile);
+	exit(1);
+    }
 
     if (command_defines != 0)
 	project_override_properties(proj, command_defines);

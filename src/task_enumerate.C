@@ -19,7 +19,7 @@
 
 #include "cant.H"
 
-CVSID("$Id: task_enumerate.C,v 1.4 2002-04-07 05:28:50 gnb Exp $");
+CVSID("$Id: task_enumerate.C,v 1.5 2002-04-12 13:07:24 gnb Exp $");
 
 
 class enumerate_task_t : public task_t
@@ -72,10 +72,10 @@ exec()
 	fs->gather_mapped(project_get_props(project_), sa, 0);
     	sa->sort(0);
 	
-	logf("{\n");
+	log::infof("{\n");
 	for (i = 0 ; i < sa->len ; i++)
-	    logf("%s\n", sa->nth(i));
-	logf("}\n");
+	    log::infof("%s\n", sa->nth(i));
+	log::infof("}\n");
 	
 	delete sa;
     }

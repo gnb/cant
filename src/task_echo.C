@@ -19,7 +19,7 @@
 
 #include "cant.H"
 
-CVSID("$Id: task_echo.C,v 1.2 2002-04-02 11:52:28 gnb Exp $");
+CVSID("$Id: task_echo.C,v 1.3 2002-04-12 13:07:24 gnb Exp $");
 
 class echo_task_t : public task_t
 {
@@ -93,7 +93,7 @@ post_parse()
 {
     if (message_ == 0)
     {
-    	parse_error("Either \"message\" attribute or content must be set\n");
+    	log::errorf("Either \"message\" attribute or content must be set\n");
 	return FALSE;
     }
 
@@ -116,7 +116,7 @@ exec()
     {
     	if ((fp = fopen(expfile, (append_ ? "a" : "w"))) == 0)
 	{
-	    log_perror(expfile);
+	    log::perror(expfile);
 	    return FALSE;
 	}
 	g_free(expfile);
