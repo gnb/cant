@@ -21,7 +21,7 @@
 #include "cant.H"
 #include "job.H"
 
-CVSID("$Id: cant.C,v 1.5 2002-04-07 04:23:25 gnb Exp $");
+CVSID("$Id: cant.C,v 1.6 2002-04-07 05:28:50 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -399,25 +399,25 @@ static void
 dump_one_fileset(gpointer key, gpointer value, gpointer userdata)
 {
     fileset_t *fs = (fileset_t *)value;
-    GList *iter;
+    list_t<fileset_t::spec_t> iter;
     char *cond_desc;
     
     fprintf(stderr, "    FILESET {\n");
-    fprintf(stderr, "        ID=\"%s\"\n", fs->id);
-    fprintf(stderr, "        REFCOUNT=%d\n", fs->refcount);
-    fprintf(stderr, "        DIRECTORY=\"%s\"\n", fs->directory);
-    fprintf(stderr, "        DEFAULT_EXCLUDES=%s\n", boolstr(fs->default_excludes));
-    fprintf(stderr, "        CASE_SENSITIVE=%s\n", boolstr(fs->case_sensitive));
+    fprintf(stderr, "        ID=\"%s\"\n", fs->id());
+    fprintf(stderr, "        REFCOUNT=%d\n", fs->refcount());
+    fprintf(stderr, "        DIRECTORY=\"%s\"\n", fs->directory());
+    fprintf(stderr, "        DEFAULT_EXCLUDES=%s\n", boolstr(fs->default_excludes()));
+    fprintf(stderr, "        CASE_SENSITIVE=%s\n", boolstr(fs->case_sensitive()));
 
-    for (iter = fs->specs ; iter != 0 ; iter = iter->next)
+    for (iter = fs->first_spec() ; iter != 0 ; ++iter)
     {
-    	fs_spec_t *fss = (fs_spec_t *)iter->data;
+    	fileset_t::spec_t *fss = *iter;
 	
 	fprintf(stderr, "        FS_SPEC {\n");
-	fprintf(stderr, "            FLAGS=%d\n", fss->flags);
-	fprintf(stderr, "            FILENAME=\"%s\"\n", fss->filename);
-	fprintf(stderr, "            PATTERN=\"%s\"\n", fss->pattern.pattern);
-	cond_desc = fss->condition.describe();
+	fprintf(stderr, "            FLAGS=%d\n", fss->flags_);
+	fprintf(stderr, "            FILENAME=\"%s\"\n", fss->filename_);
+	fprintf(stderr, "            PATTERN=\"%s\"\n", fss->pattern_.get_pattern());
+	cond_desc = fss->condition_.describe();
 	fprintf(stderr, "            CONDITION=%s\n", cond_desc);
 	g_free(cond_desc);
 	fprintf(stderr, "        }\n");

@@ -20,7 +20,7 @@
 #include "cant.H"
 #include "xtask.H"
 
-CVSID("$Id: buildfile.C,v 1.6 2002-04-07 04:20:13 gnb Exp $");
+CVSID("$Id: buildfile.C,v 1.7 2002-04-07 05:28:49 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -893,7 +893,7 @@ fileset_t *
 parse_fileset(project_t *proj, xmlNode *node, const char *dirprop)
 {
     fileset_t *fs;
-    fs_spec_t *fss;
+    fileset_t::spec_t *fss;
     char *buf, *buf2, *x;
     xmlNode *child;
     gboolean appending = FALSE;
@@ -932,7 +932,7 @@ parse_fileset(project_t *proj, xmlNode *node, const char *dirprop)
 	    return 0;
 	}
     	xmlFree(buf);
-	fileset_ref(fs);
+	fs->ref();
 	return fs;
     }
     else if ((buf = cantXmlGetProp(node, "append")) != 0)
@@ -972,36 +972,37 @@ parse_fileset(project_t *proj, xmlNode *node, const char *dirprop)
     {
 	/* Handle definition of a new fileset */
 
-	fs = fileset_new();
+	fs = new fileset_t();
 
 	if (dirprop != 0 && (buf = cantXmlGetProp(node, dirprop)) != 0)
 	{
-	    fileset_set_directory(fs, buf);
+	    fs->set_directory(buf);
 	    xmlFree(buf);
     	}
 
 	if ((buf = cantXmlGetProp(node, "id")) != 0)
 	{
-    	    strassign(fs->id, buf);
+    	    fs->set_id(buf);
     	    xmlFree(buf);
 	}
 
 
-	fileset_set_case_sensitive(fs,
+	fs->set_case_sensitive(
     	    		cantXmlGetBooleanProp(node, "casesensitive", TRUE));
-	fileset_set_default_excludes(fs,
+	fs->set_default_excludes(
     	    		cantXmlGetBooleanProp(node, "defaultexcludes", TRUE));
     }
 
     /*
      * "includes" attribute
+     * TODO: use tok_t
      */
     buf = buf2 = cantXmlGetProp(node, "includes");
     if (buf != 0)
 	while ((x = strtok(buf2, sep)) != 0)
 	{
 	    buf2 = 0;
-	    fileset_add_include(fs, x);
+	    fs->add_include(x);
 	}
     xmlFree(buf);
 
@@ -1010,19 +1011,20 @@ parse_fileset(project_t *proj, xmlNode *node, const char *dirprop)
      */
     buf = cantXmlGetProp(node, "includesfile");
     if (buf != 0)
-	fileset_add_include_file(fs, buf);
+	fs->add_include_file(buf);
     xmlFree(buf);
     
 
     /*
      * "excludes" attribute
+     * TODO: use tok_t
      */
     buf = buf2 = cantXmlGetProp(node, "excludes");
     if (buf != 0)
 	while ((x = strtok(buf2, sep)) != 0)
 	{
 	    buf2 = 0;
-	    fileset_add_exclude(fs, x);
+	    fs->add_exclude(x);
 	}
     xmlFree(buf);
 
@@ -1031,7 +1033,7 @@ parse_fileset(project_t *proj, xmlNode *node, const char *dirprop)
      */
     buf = cantXmlGetProp(node, "excludesfile");
     if (buf != 0)
-	fileset_add_exclude_file(fs, buf);
+	fs->add_exclude_file(buf);
     xmlFree(buf);
     
     /*
@@ -1050,19 +1052,19 @@ parse_fileset(project_t *proj, xmlNode *node, const char *dirprop)
 	
 	fss = 0;
 	if (!strcmp(cantXmlNodeGetName(child), "include"))
-	    fss = fileset_add_include(fs, buf);
+	    fss = fs->add_include(buf);
 	else if (!strcmp(cantXmlNodeGetName(child), "includesfile"))
-	    fss = fileset_add_include_file(fs, buf);
+	    fss = fs->add_include_file(buf);
 	else if (!strcmp(cantXmlNodeGetName(child), "exclude"))
-	    fss = fileset_add_exclude(fs, buf);
+	    fss = fs->add_exclude(buf);
 	else if (!strcmp(cantXmlNodeGetName(child), "excludesfile"))
-	    fss = fileset_add_exclude_file(fs, buf);
+	    fss = fs->add_exclude_file(buf);
 	    
 	xmlFree(buf);
 	if (fss == 0)
 	    continue;
 
-    	if (!parse_condition(&fss->condition, child))
+    	if (!parse_condition(&fss->condition_, child))
 	    continue;	    /* TODO: do something more drastic!!! */
     }
     
@@ -1078,7 +1080,7 @@ parse_project_fileset(project_t *proj, xmlNode *node)
     if ((fs = parse_fileset(proj, node, "dir")) == 0)
     	return FALSE;
 	
-    if (fs->id == 0)
+    if (fs->id() == 0)
     {
     	parse_node_error(node, "<fileset> at project scope must have \"id\" attribute\n");
     	return FALSE;

@@ -19,7 +19,7 @@
 
 #include "cant.H"
 
-CVSID("$Id: task_copy.C,v 1.3 2002-04-06 11:31:36 gnb Exp $");
+CVSID("$Id: task_copy.C,v 1.4 2002-04-07 05:28:50 gnb Exp $");
 
 class copy_task_t : public task_t
 {
@@ -27,7 +27,7 @@ private:
     char *file_;
     char *tofile_;
     char *todir_;
-    GList *filesets_;	    	/* list of fileset_t */
+    list_t<fileset_t> filesets_;
 //    GList *filtersets_;	    	/* list of filterset_t */
     mapper_t *mapper_;
     gboolean preserve_last_modified_:1;
@@ -64,7 +64,8 @@ copy_task_t(task_class_t *tclass, project_t *proj)
 	delete mapper_;
     
     /* delete filesets */
-    listdelete(filesets_, fileset_t, fileset_unref);
+    // TODO: void unref(refcounted_t*)
+    filesets_.apply_remove(unref);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -135,7 +136,7 @@ add_fileset(xmlNode *node)
     if ((fs = parse_fileset(project_, node, "dir")) == 0)
     	return FALSE;
 	
-    filesets_ = g_list_append(filesets_, fs);
+    filesets_.append(fs);
     return TRUE;
 }
 
@@ -167,7 +168,7 @@ post_parse()
 	    return FALSE;
 	}
     }
-    else if (filesets_ != 0)
+    else if (filesets_.first() != 0)
     {
     	if (tofile_ != 0)
 	{
@@ -180,7 +181,7 @@ post_parse()
 	    return FALSE;
 	}
     }
-    else if (file_ == 0 && filesets_ == 0)
+    else if (file_ == 0 && filesets_.first() == 0)
     {
     	parse_error("At least one of \"file\" or \"<fileset>\" must be present\n");
 	return FALSE;
@@ -313,7 +314,7 @@ copy_one(const char *filename, void *userdata)
 gboolean
 exec()
 {
-    GList *iter;
+    list_iterator_t<fileset_t> iter;
     
     result_ = TRUE;
     ncopied_ = 0;
@@ -329,12 +330,8 @@ exec()
 
     /* execute for <fileset> children */
     
-    for (iter = filesets_ ; iter != 0 ; iter = iter->next)
-    {
-    	fileset_t *fs = (fileset_t *)iter->data;
-	
-	fileset_apply(fs, project_get_props(project_), copy_one, this);
-    }
+    for (iter = filesets_.first() ; iter != 0 ; ++iter)
+	(*iter)->apply(project_get_props(project_), copy_one, this);
     
     strdelete(exp_todir_);
 

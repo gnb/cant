@@ -20,7 +20,7 @@
 #include "cant.H"
 #include "tok.H"
 
-CVSID("$Id: project.C,v 1.5 2002-04-06 11:34:39 gnb Exp $");
+CVSID("$Id: project.C,v 1.6 2002-04-07 05:28:50 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -59,7 +59,7 @@ project_delete_one_target(const char *key, target_t *value, void *userdata)
 static gboolean
 project_unref_one_fileset(const char *key, fileset_t *value, void *userdata)
 {
-    fileset_unref(value);
+    value->unref();
     return TRUE;    /* so remove it already */
 }
 
@@ -315,8 +315,8 @@ project_append_property(project_t *proj, const char *name, const char *value)
 void
 project_add_fileset(project_t *proj, fileset_t *fs)
 {
-    assert(fs->id != 0);
-    proj->filesets->insert(fs->id, fs);
+    assert(fs->id() != 0);
+    proj->filesets->insert(fs->id(), fs);
 }
 
 fileset_t *

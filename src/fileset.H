@@ -31,54 +31,89 @@
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
  
-typedef struct fileset_s    	fileset_t;
-typedef struct fs_spec_s    	fs_spec_t;
-
-
-struct fileset_s
+class fileset_t
 {
-    char *id;
-    unsigned refcount;
-    
-    char *directory;
-    
-    list_t<fs_spec_t> specs;
+public:
 
-    unsigned int default_excludes:1;
-    unsigned int case_sensitive:1;
+    enum _spec_flags
+    {
+    	/* Values for spec_t `flags' */
+	FS_INCLUDE  	=(1<<0),
+	FS_EXCLUDE  	=0,
+	FS_FILE  	=(1<<1)
+    };
+    
+    struct spec_t
+    {
+	~spec_t();
+
+	unsigned flags_;
+	char *filename_;
+	pattern_t pattern_;
+	condition_t condition_;
+    };
+
+private:
+    char *id_;
+    unsigned int refcount_;
+
+    char *directory_;
+    
+    list_t<spec_t> specs_;
+
+    unsigned int default_excludes_:1;
+    unsigned int case_sensitive_:1;
+
+    spec_t *spec_add(unsigned flags, const char *pattern, const char *filename);
+
+public:
+    fileset_t();
+    ~fileset_t();
+
+    // reference counting. Object begins with a refcount of 1
+    // and falling to 0 deletes it.
+    void ref();
+    void unref();
+#if DEBUG
+    // avoid using this in logic, it should only be used for diagnostics
+    unsigned int refcount() const { return refcount_; }
+#endif
+
+    const char *id() const { return id_; }
+    void set_id(const char *id);
+    
+    const char *directory() const { return directory_; }
+    void set_directory(const char *dir);
+
+    gboolean default_excludes() const { return default_excludes_; }
+    void set_default_excludes(gboolean b);
+
+    gboolean set_case_sensitive(gboolean b) const { return case_sensitive_; }
+    void set_case_sensitive(gboolean b);
+
+    // add various children to the fileset
+    spec_t *add_include(const char *s);
+    spec_t *add_include_file(const char *s);
+    spec_t *add_exclude(const char *s);
+    spec_t *add_exclude_file(const char *s);
+#if DEBUG
+    // for diagnostic use only
+    list_iterator_t<spec_t> first_spec() const { return specs_.first(); }
+#endif
+
+    // iterate the function `func' over all filenames which the fileset generates.
+    void apply(const props_t *props,
+    	       file_apply_proc_t func, void *userdata) const;
+
+    // gather all filenames which the fileset generates, appending them to
+    // the string array `sa', optionally filtering through the list of
+    // mappers `mappers'.
+    void gather_mapped(const props_t *props, strarray_t *sa,
+		       const list_t<mapper_t> *mappers/*may be 0*/) const;
 };
 
-
-#define FS_INCLUDE  	(1<<0)
-#define FS_EXCLUDE  	0
-#define FS_FILE  	(1<<1)
-
-struct fs_spec_s
-{
-    unsigned flags;
-    char *filename;
-    pattern_t pattern;
-    condition_t condition;
-};
-
-
-
-fileset_t *fileset_new(void);
-void fileset_ref(fileset_t *);
-void fileset_unref(fileset_t *);
-void fileset_set_id(fileset_t *, const char *id);
-void fileset_set_directory(fileset_t *, const char *dir);
-fs_spec_t *fileset_add_include(fileset_t *, const char *s);
-fs_spec_t *fileset_add_include_file(fileset_t *, const char *s);
-fs_spec_t *fileset_add_exclude(fileset_t *, const char *s);
-fs_spec_t *fileset_add_exclude_file(fileset_t *, const char *s);
-void fileset_set_default_excludes(fileset_t *, gboolean b);
-void fileset_set_case_sensitive(fileset_t *, gboolean b);
-void fileset_apply(const fileset_t *, const props_t *props,
-    	    	  file_apply_proc_t, void *userdata);
-void fileset_gather_mapped(const fileset_t *, const props_t *props,
-    	    	    	  strarray_t *sa,
-			  const list_t<mapper_t> *mappers/*may be 0*/);
+// for use in list_t.apply_remove()
+void unref(fileset_t*);
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 #endif /* _fileset_h_ */

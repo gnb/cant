@@ -19,7 +19,7 @@
 
 #include "cant.H"
 
-CVSID("$Id: task.C,v 1.4 2002-04-06 04:16:38 gnb Exp $");
+CVSID("$Id: task.C,v 1.5 2002-04-07 05:28:50 gnb Exp $");
 
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -39,7 +39,8 @@ task_t::~task_t()
     strdelete(name_);
     strdelete(description_);
     
-    // TODO: delete fileset_
+    if (fileset_ != 0)
+    	fileset_->unref();
 
     subtasks_.delete_all();
 }
@@ -57,7 +58,12 @@ void
 task_t::set_fileset(fileset_t *fs)
 {
     // TODO: refcount filesets
+    // TODO: refcounted_t class, _var smart pointer
+    if (fileset_ != 0)
+    	fileset_->unref();
     fileset_ = fs;
+    if (fileset_ != 0)
+    	fileset_->ref();
 }
 
 gboolean

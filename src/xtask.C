@@ -20,7 +20,7 @@
 #include "xtask.H"
 #include "job.H"
 
-CVSID("$Id: xtask.C,v 1.7 2002-04-07 04:23:06 gnb Exp $");
+CVSID("$Id: xtask.C,v 1.8 2002-04-07 05:28:50 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -117,13 +117,13 @@ xtask_t::build_command(strarray_t *command)
 	    break;
 	    
 	case xtask_class_t::XT_FILESET:    /* <fileset> child */
-    	    fileset_gather_mapped(xa->data.fileset, properties_,
+    	    xa->data.fileset->gather_mapped(properties_,
 	    	    	    	  command, /*mappers*/0);
 	    break;
 
 	case xtask_class_t::XT_FILES:	    /* <files> child */
 	    if (fileset_ != 0)
-    	    	fileset_gather_mapped(fileset_, properties_,
+    	    	fileset_->gather_mapped(properties_,
 		    	    	      command, &xtclass->mappers_);
 	    break;
 	    
@@ -180,7 +180,7 @@ xtask_t::execute_command()
 	}
 	else
 	{
-    	    fileset_gather_mapped(fileset_, properties_,
+    	    fileset_->gather_mapped(properties_,
 	    	    	    	  depfiles, &xtclass->mappers_);
 
     	    targfile = properties_->expand(xtclass->dep_target_);
@@ -259,7 +259,7 @@ xtask_t::exec()
     	if (xtclass->foreach_)
 	{
 	    /* run the command once for each file in the fileset */
-	    fileset_apply(fileset_, properties_, execute_one, this);
+	    fileset_->apply(properties_, execute_one, this);
 	}
 	else
 	{
@@ -297,7 +297,7 @@ xtask_class_t::arg_t::~arg_t()
     	break;
     case XT_FILESET:    /* <fileset> child */
 	if (data.fileset != 0)
-    	    fileset_unref(data.fileset);
+    	    data.fileset->unref();
     	break;
     case XT_FILES:  	/* <files> child */
     	break;
@@ -397,6 +397,7 @@ xtask_class_t::add_fileset(fileset_t *fs)
     
     xa = add_arg(XT_FILESET);
     xa->data.fileset = fs;
+    // TODO: ref()
     
     return xa;
 }

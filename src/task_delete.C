@@ -19,14 +19,14 @@
 
 #include "cant.H"
 
-CVSID("$Id: task_delete.C,v 1.2 2002-04-02 11:52:28 gnb Exp $");
+CVSID("$Id: task_delete.C,v 1.3 2002-04-07 05:28:50 gnb Exp $");
 
 class delete_task_t : public task_t
 {
 private:
     char *file_;
     char *directory_;
-    GList *filesets_;
+    list_t<fileset_t> filesets_;
     gboolean verbose_:1;
     gboolean quiet_:1;
     gboolean fail_on_error_:1;
@@ -53,7 +53,7 @@ delete_task_t(task_class_t *tclass, project_t *proj)
     strdelete(directory_);
     
     /* delete filesets */
-    listdelete(filesets_, fileset_t, fileset_unref);
+    filesets_.apply_remove(unref);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -110,14 +110,14 @@ add_fileset(xmlNode *node)
     if ((fs = parse_fileset(project_, node, "dir")) == 0)
     	return FALSE;
 	
-    filesets_ = g_list_append(filesets_, fs);
+    filesets_.append(fs);
     return TRUE;
 }
 
 gboolean
 post_parse()
 {
-    if (file_ == 0 && directory_ == 0 && filesets_ == 0)
+    if (file_ == 0 && directory_ == 0 && filesets_.first() == 0)
     {
     	parse_error("At least one of \"file\", \"dir\" or \"<fileset>\" must be present\n");
 	return FALSE;
@@ -174,7 +174,7 @@ gboolean
 exec()
 {
     char *expfile;
-    GList *iter;
+    list_iterator_t<fileset_t> iter;
     
     result_ = TRUE;
     
@@ -196,12 +196,8 @@ exec()
 
     /* execute for <fileset> children */
     
-    for (iter = filesets_ ; iter != 0 ; iter = iter->next)
-    {
-    	fileset_t *fs = (fileset_t *)iter->data;
-	
-	fileset_apply(fs, project_get_props(project_), delete_one, this);
-    }
+    for (iter = filesets_.first() ; iter != 0 ; ++iter)
+	(*iter)->apply(project_get_props(project_), delete_one, this);
 
     return result_;
 }

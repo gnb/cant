@@ -21,7 +21,7 @@
 #include "tok.H"
 #include <time.h>
 
-CVSID("$Id: task_foreach.C,v 1.4 2002-04-06 11:34:39 gnb Exp $");
+CVSID("$Id: task_foreach.C,v 1.5 2002-04-07 05:28:50 gnb Exp $");
 
 class foreach_task_t : public task_t
 {
@@ -29,7 +29,7 @@ private:
     char *variable_;
     /* TODO: whitespace-safe technique */
     char *values_;
-    GList *filesets_;
+    list_t<fileset_t> filesets_;
     /* TODO: support nested <property> tags */
 
     char *variable_e_;
@@ -74,7 +74,7 @@ add_fileset(xmlNode *node)
     if ((fs = parse_fileset(project_, node, "dir")) == 0)
     	return FALSE;
 
-    filesets_ = g_list_append(filesets_, fs);
+    filesets_.append(fs);
     
     return TRUE;
 }
@@ -106,7 +106,7 @@ gboolean
 exec()
 {
     const char *val;
-    GList *iter;
+    list_iterator_t<fileset_t> iter;
 
     failed_ = FALSE;    
     variable_e_ = expand(variable_);
@@ -115,12 +115,8 @@ exec()
     while (!failed_ && (val = tok.next()) != 0)
     	do_iteration(val, this);
     
-    for (iter = filesets_ ; !failed_ && iter != 0 ; iter = iter->next)
-    {
-    	fileset_t *fs = (fileset_t *)iter->data;
-	
-	fileset_apply(fs, project_get_props(project_), do_iteration, this);
-    }
+    for (iter = filesets_.first() ; !failed_ && iter != 0 ; ++iter)
+	(*iter)->apply(project_get_props(project_), do_iteration, this);
 
     g_free(variable_e_);
 

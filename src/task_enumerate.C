@@ -19,13 +19,13 @@
 
 #include "cant.H"
 
-CVSID("$Id: task_enumerate.C,v 1.3 2002-04-02 11:52:28 gnb Exp $");
+CVSID("$Id: task_enumerate.C,v 1.4 2002-04-07 05:28:50 gnb Exp $");
 
 
 class enumerate_task_t : public task_t
 {
 private:
-    GList *filesets_;	    /* GList of fileset_t */
+    list_t<fileset_t> filesets_;
     
 public:
 
@@ -38,7 +38,7 @@ enumerate_task_t(task_class_t *tclass, project_t *proj)
 
 ~enumerate_task_t()
 {
-    listdelete(filesets_, fileset_t, fileset_unref);
+    filesets_.apply_remove(unref);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -51,7 +51,7 @@ add_fileset(xmlNode *node)
     if ((fs = parse_fileset(project_, node, "dir")) == 0)
     	return FALSE;
 
-    filesets_ = g_list_append(filesets_, fs);
+    filesets_.append(fs);
 
     return TRUE;
 }
@@ -61,15 +61,15 @@ add_fileset(xmlNode *node)
 gboolean
 exec()
 {
-    GList *iter;
+    list_iterator_t<fileset_t> iter;
     
-    for (iter = filesets_ ; iter != 0 ; iter = iter->next)
+    for (iter = filesets_.first() ; iter != 0 ; ++iter)
     {
-    	fileset_t *fs = (fileset_t *)iter->data;
+    	fileset_t *fs = *iter;
 	strarray_t *sa = new strarray_t;
 	int i;
 	
-	fileset_gather_mapped(fs, project_get_props(project_), sa, 0);
+	fs->gather_mapped(project_get_props(project_), sa, 0);
     	sa->sort(0);
 	
 	logf("{\n");

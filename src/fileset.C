@@ -24,158 +24,127 @@
 #include "log.H"
 #include <dirent.h>
 
-CVSID("$Id: fileset.C,v 1.7 2002-04-07 04:23:25 gnb Exp $");
-
-static void fs_spec_delete(fs_spec_t *fss);
+CVSID("$Id: fileset.C,v 1.8 2002-04-07 05:28:50 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-fileset_t *
-fileset_new(void)
+fileset_t::fileset_t()
 {
-    fileset_t *fs;
-    
-    fs = new(fileset_t);
-    fs->refcount = 1;
-    fs->directory = g_strdup(".");
-
-    return fs;
+    refcount_ = 1;
+    directory_ = g_strdup(".");
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void
-fileset_delete(fileset_t *fs)
+fileset_t::~fileset_t()
 {
-    fs->specs.apply_remove(fs_spec_delete);
-    strdelete(fs->id);
-    strdelete(fs->directory);
-	
-    g_free(fs);
+    specs_.delete_all();
+    strdelete(id_);
+    strdelete(directory_);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 void
-fileset_ref(fileset_t *fs)
+fileset_t::ref()
 {
-    fs->refcount++;
+    refcount_++;
 }
 
 void
-fileset_unref(fileset_t *fs)
+fileset_t::unref()
 {
-    if (--fs->refcount == 0)
-    	fileset_delete(fs);
+    if (--refcount_ == 0)
+    	delete this;
+}
+
+void
+unref(fileset_t *fs)
+{
+    fs->unref();
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 void
-fileset_set_id(fileset_t *fs, const char *s)
+fileset_t::set_id(const char *s)
 {
-    strassign(fs->id, s);
+    strassign(id_, s);
 }
 
 void
-fileset_set_directory(fileset_t *fs, const char *dir)
+fileset_t::set_directory(const char *dir)
 {
-    strassign(fs->directory, dir);
+    strassign(directory_, dir);
+}
+
+void
+fileset_t::set_default_excludes(gboolean b)
+{
+    default_excludes_ = b;
+}
+
+void
+fileset_t::set_case_sensitive(gboolean b)
+{
+    case_sensitive_ = b;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static fs_spec_t *
-fs_spec_add(
-    fileset_t *fs,
+fileset_t::spec_t *
+fileset_t::spec_add(
     unsigned flags,
     const char *pattern,
     const char *filename)
 {
-    fs_spec_t *fss;
+    spec_t *fss;
     
-    fss = new(fs_spec_t);
+    fss = new spec_t;
     
-    fss->flags = flags;
+    fss->flags_ = flags;
     
     if (pattern != 0)
-    	fss->pattern.set_pattern(pattern,
-	    	    	(fs->case_sensitive ? PAT_CASE : 0));
+    	fss->pattern_.set_pattern(pattern,
+	    	    	(case_sensitive_ ? PAT_CASE : 0));
     
-    strassign(fss->filename, filename);
+    strassign(fss->filename_, filename);
 
-    fs->specs.append(fss);
+    specs_.append(fss);
         
     return fss;
 }
 
-static void
-fs_spec_delete(fs_spec_t *fss)
+fileset_t::spec_t::~spec_t()
 {
-    strdelete(fss->filename);
-    fss->pattern.set_pattern(0, 0);
-
-    delete fss;
+    strdelete(filename_);
 }
 
-fs_spec_t *
-fileset_add_include(fileset_t *fs, const char *pattern)
+fileset_t::spec_t *
+fileset_t::add_include(const char *pattern)
 {
-    return fs_spec_add(fs, FS_INCLUDE, /*pattern*/0, pattern);
+    return spec_add(FS_INCLUDE, /*pattern*/0, pattern);
 }
 
-fs_spec_t *
-fileset_add_include_file(fileset_t *fs, const char *filename)
+fileset_t::spec_t *
+fileset_t::add_include_file(const char *filename)
 {
-    return fs_spec_add(fs, FS_INCLUDE|FS_FILE, /*pattern*/0, filename);
+    return spec_add(FS_INCLUDE|FS_FILE, /*pattern*/0, filename);
 }
 
-fs_spec_t *
-fileset_add_exclude(fileset_t *fs, const char *pattern)
+fileset_t::spec_t *
+fileset_t::add_exclude(const char *pattern)
 {
-    return fs_spec_add(fs, FS_EXCLUDE, pattern, /*filename*/0);
+    return spec_add(FS_EXCLUDE, pattern, /*filename*/0);
 }
 
-fs_spec_t *
-fileset_add_exclude_file(fileset_t *fs, const char *filename)
+fileset_t::spec_t *
+fileset_t::add_exclude_file(const char *filename)
 {
-    return fs_spec_add(fs, FS_EXCLUDE|FS_FILE, /*pattern*/0, filename);
+    return spec_add(FS_EXCLUDE|FS_FILE, /*pattern*/0, filename);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
-
-void
-fileset_set_default_excludes(fileset_t *fs, gboolean b)
-{
-    fs->default_excludes = b;
-}
-
-void
-fileset_set_case_sensitive(fileset_t *fs, gboolean b)
-{
-    fs->case_sensitive = b;
-}
-
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
-#if 0
-static void
-list_splice(GList *after, GList *list2)
-{
-    GList *last2;
-    
-    if (list2 == 0)
-    	return;
-	
-    last2 = g_list_last(list2);
-
-    if (after->next != 0)
-	after->next->prev = last2;
-    last2->next = after->next;
-    
-    after->next = list2;
-    list2->prev = after;
-}
-#endif
 
 typedef struct
 {
@@ -450,32 +419,31 @@ fs_apply_file(
 
 
 void
-fileset_apply(
-    const fileset_t *fs,
+fileset_t::apply(
     const props_t *props,
     file_apply_proc_t func,
-    void *userdata)
+    void *userdata) const
 {
-    list_iterator_t<fs_spec_t> iter;
+    list_iterator_t<spec_t> iter;
     list_iterator_t<char> fniter;
     fs_glob_state_t state;
 
-    state.basedir = props->expand(fs->directory);
-    state.case_sens = fs->case_sensitive;
+    state.basedir = props->expand(directory_);
+    state.case_sens = case_sensitive_;
     
-    for (iter = fs->specs.first() ; iter != 0 ; ++iter )
+    for (iter = specs_.first() ; iter != 0 ; ++iter )
     {
-    	fs_spec_t *fss = *iter;
+    	spec_t *fss = *iter;
 	
-	if (!fss->condition.evaluate(props))
+	if (!fss->condition_.evaluate(props))
 	    continue;
 
-	if (fss->flags & FS_FILE)
-	    fs_apply_file(&state, fss->filename, (fss->flags & FS_INCLUDE));
-	else if (fss->flags & FS_INCLUDE)
-	    fs_include(&state, file_normalise(fss->filename, state.basedir));
+	if (fss->flags_ & FS_FILE)
+	    fs_apply_file(&state, fss->filename_, (fss->flags_ & FS_INCLUDE));
+	else if (fss->flags_ & FS_INCLUDE)
+	    fs_include(&state, file_normalise(fss->filename_, state.basedir));
 	else
-	    fs_exclude(&state, &fss->pattern);
+	    fs_exclude(&state, &fss->pattern_);
     }
     
     g_free(state.basedir);
@@ -525,18 +493,17 @@ fileset_gather_one(const char *filename, void *userdata)
 }
 
 void
-fileset_gather_mapped(
-    const fileset_t *fs,
+fileset_t::gather_mapped(
     const props_t *props,
     strarray_t *sa,
-    const list_t<mapper_t> *mappers)
+    const list_t<mapper_t> *mappers) const
 {
     fs_gather_rec_t rec;
     
     rec.mappers = mappers;
     rec.strarray = sa;
     
-    fileset_apply(fs, props, fileset_gather_one, &rec);
+    apply(props, fileset_gather_one, &rec);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
