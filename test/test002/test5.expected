@@ -1,0 +1,5 @@
+  [test5] 
+    [enumerate] {
+    [enumerate] d1/a.c
+    [enumerate] d1/b.c
+    [enumerate] }

@@ -1,0 +1,26 @@
+#!/bin/sh
+#
+# $Id: runtest,v 1.1 2001-11-21 12:40:14 gnb Exp $
+#
+
+. ../testfunctions.sh
+
+fileset_test ()
+{
+    local VALUE="$1"
+    local EXPECTED="$2"
+    
+    start_test "fileset"
+    
+    cant "test$VALUE"
+    check_output_file test$VALUE.expected
+}
+
+fileset_test 1
+fileset_test 1b
+fileset_test 2
+fileset_test 3
+fileset_test 3b
+fileset_test 4
+fileset_test 5
+fileset_test 6

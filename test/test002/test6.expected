@@ -1,0 +1,6 @@
+  [test6] 
+    [enumerate] {
+    [enumerate] d1/a.c
+    [enumerate] d1/b.c
+    [enumerate] d1/d2/d3/e.c
+    [enumerate] }

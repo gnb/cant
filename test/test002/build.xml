@@ -1,0 +1,75 @@
+<?xml version="1.0"?>
+
+<!--
+  Test filesets using the the <enumerate> task
+  $Id: build.xml,v 1.1 2001-11-21 12:40:14 gnb Exp $
+-->
+
+<project name="test002" default="all" basedir=".">
+
+  <property name="test002.set" value="true"/>
+  <!-- "test002.unset" is not set -->
+
+  <target name="test1">
+    <enumerate>
+    	<!-- should match none TODO??? -->
+    	<fileset dir="d1" includes="*.c"/>
+    </enumerate>
+  </target>
+  
+  <target name="test1b">
+    <enumerate>
+    	<!-- should match none TODO??? -->
+    	<fileset dir="." includes="*.c"/>
+    </enumerate>
+  </target>
+
+  <target name="test2">
+    <enumerate>
+    	<!-- should match d1/a.c, d1/b.c -->
+    	<fileset dir="d1" includes="*/*.c"/>
+    </enumerate>
+  </target>
+
+  <target name="test3">
+    <enumerate>
+    	<!-- should match d1/a.c, d1/b.c, d1/d2/d3/e.c -->
+    	<fileset dir="d1" includes="**/*.c"/>
+    </enumerate>
+  </target>
+  
+  <target name="test3b">
+    <enumerate>
+    	<!-- should match d1/a.c, d1/b.c, d1/d2/d3/e.c -->
+    	<fileset dir="." includes="**/*.c"/>
+    </enumerate>
+  </target>
+  
+  <target name="test4">
+    <enumerate>
+    	<!-- should match none TODO??? -->
+    	<fileset dir="d1">
+	  <include name="*.c"/>
+	</fileset>
+    </enumerate>
+  </target>
+  
+  <target name="test5">
+    <enumerate>
+    	<!-- should match d1/a.c, d1/b.c -->
+    	<fileset dir="d1">
+	  <include name="*/*.c"/>
+	</fileset>
+    </enumerate>
+  </target>
+  
+  <target name="test6">
+    <enumerate>
+    	<!-- should match d1/a.c, d1/b.c, d1/d2/d3/e.c -->
+    	<fileset dir="d1">
+	  <include name="**/*.c"/>
+	</fileset>
+    </enumerate>
+  </target>
+  
+</project>
