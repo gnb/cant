@@ -28,7 +28,7 @@
 #include "queue.H"
 #endif
 
-CVSID("$Id: job.C,v 1.10 2002-04-21 04:01:40 gnb Exp $");
+CVSID("$Id: job.C,v 1.11 2002-04-21 06:07:01 gnb Exp $");
 
 
 static hashtable_t<const char*, job_t> *all_jobs;
@@ -232,6 +232,19 @@ job_t::add_saved_depends()
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
+#if DEBUG
+static char *
+format_time(const time_t *t)
+{
+    struct tm tm;
+    char buf[32];
+    
+    strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime_r(t, &tm));
+    return g_strdup(buf);
+}
+#endif
+
+
 job_t::state_t
 job_t::calc_new_state() const
 {
@@ -249,10 +262,36 @@ job_t::calc_new_state() const
 
     /* all deps are UPTODATE */
     
-    if (file_exists(name_) == 0)
-    	return UPTODATE;
+    time_t self_mtime = file_mtime(name_);
+    if (self_mtime < 0 && errno == ENOENT)
+    {
+#if DEBUG
+	log::infof("file \"%s\" doesn't exist\n", name_.data());
+#endif	
+    	return RUNNABLE;
+    }
     
-    return RUNNABLE;
+    for (iter = depends_down_.first() ; iter != 0 ; ++iter)
+    {
+    	job_t *down = *iter;
+	time_t down_mtime = file_mtime(down->name_);
+	
+	if (down_mtime >= self_mtime)
+	{
+#if DEBUG
+    	    string_var down_mtime_str = format_time(&down_mtime);
+    	    string_var self_mtime_str = format_time(&self_mtime);
+    	    log::infof("dependency \"%s\"[%s] newer than \"%s\"[%s]\n",
+	    	    	down->name_.data(),
+			down_mtime_str.data(),
+			name_.data(),
+			self_mtime_str.data());
+#endif	
+	    return RUNNABLE;
+	}
+    }
+    
+    return UPTODATE;
 }
 
 int
