@@ -20,7 +20,7 @@
 #include "cant.h"
 #include "xtask.h"
 
-CVSID("$Id: buildfile.c,v 1.22 2002-02-10 10:10:45 gnb Exp $");
+CVSID("$Id: buildfile.c,v 1.23 2002-02-11 05:32:36 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -171,6 +171,13 @@ parse_property(project_t *proj, xmlNode *node)
     char *name_e = 0;
     xmlAttr *attr;
     gboolean failed = FALSE;
+    condition_t cond;
+    gboolean doit = TRUE;
+    
+    condition_init(&cond);
+    if (parse_condition(&cond, node))
+	doit = condition_evaluate(&cond, project_get_props(proj));
+    condition_free(&cond);
 
     /* a lot hinges on whether attribute "name" is present */    
     name = xmlGetProp(node, "name");
@@ -205,22 +212,28 @@ parse_property(project_t *proj, xmlNode *node)
 	}
     	else if (value != 0)
 	{
-	    if (cantXmlGetBooleanProp(node, "append", FALSE))
-		project_append_property(proj, name_e, value);
-	    else
-		project_set_property(proj, name_e, value);
+	    if (doit)
+	    {
+		if (cantXmlGetBooleanProp(node, "append", FALSE))
+		    project_append_property(proj, name_e, value);
+		else
+		    project_set_property(proj, name_e, value);
+	    }
 	}
 	else if (location != 0)
 	{
-	    /* TODO: translate DOS format filenames */
-	    if (location[0] == '/')
-	    	project_set_property(proj, name_e, location);
-	    else
+	    if (doit)
 	    {
-	    	/* TODO: use file_normalise() */
-	    	char *abs = g_strconcat(proj->basedir, "/", location, 0);
-	    	project_set_property(proj, name_e, abs);
-		g_free(abs);
+		/* TODO: translate DOS format filenames */
+		if (location[0] == '/')
+	    	    project_set_property(proj, name_e, location);
+		else
+		{
+	    	    /* TODO: use file_normalise() */
+	    	    char *abs = g_strconcat(proj->basedir, "/", location, 0);
+	    	    project_set_property(proj, name_e, abs);
+		    g_free(abs);
+		}
 	    }
 	}
 	else if (refid != 0)
@@ -270,7 +283,8 @@ parse_property(project_t *proj, xmlNode *node)
 	}
 	else if (shellfile != 0)
 	{
-	    failed = !props_read_shellfile(proj->properties, shellfile);
+	    if (doit)
+		failed = !props_read_shellfile(proj->properties, shellfile);
 	}
 	else if (environment != 0)
 	{
@@ -304,7 +318,8 @@ parse_property(project_t *proj, xmlNode *node)
 	    !strcmp(attr->name, "shellfile") ||
 	    !strcmp(attr->name, "environment") ||
 	    !strcmp(attr->name, "classpath") ||
-	    !strcmp(attr->name, "classpathref"))
+	    !strcmp(attr->name, "classpathref") ||
+	    is_condition_attribute(attr->name))
 	    ;
 	else
 	{
