@@ -4,3 +4,7 @@ Makefile
 .deps
 builtin-tasks.h
 builtin-mappers.h
+*.bb
+*.bbg
+*.da
+*.gcov

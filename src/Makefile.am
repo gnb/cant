@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 # 
-# $Id: Makefile.am,v 1.15 2001-11-20 18:02:40 gnb Exp $
+# $Id: Makefile.am,v 1.16 2001-11-21 10:44:54 gnb Exp $
 #
 
 bin_PROGRAMS=	cant
@@ -82,7 +82,20 @@ builtin-mappers.h: $(MAPPER_SOURCES)
 	    sed -n -e 's|^mapper_ops_t[ 	][ 	]*\([a-z_][a-z_]*\).*$$|MAPPEROPS(\1)|p' < $$file >> $@ ;\
 	done
 
-CLEANFILES=	builtin-tasks.h builtin-mappers.h
+CLEANFILES=	builtin-tasks.h builtin-mappers.h \
+		*.bb *.bbg *.da *.gcov
 
 pkgdata_DATA=	globals.xml
 EXTRA_DIST=	$(pkgdata_DATA)
+
+
+####
+GCOV=		gcov
+GCOVFLAGS=	-b
+
+post-gcov:
+	for file in $(SOURCES) ; do \
+	    case "$$file" in \
+	    *.c) $(GCOV) $(GCOVFLAGS) $$file ;; \
+	    esac ;\
+	done
