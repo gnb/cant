@@ -19,6 +19,8 @@
 
 #include "cant.h"
 
+CVSID("$Id: task_enumerate.c,v 1.2 2001-11-06 09:10:30 gnb Exp $");
+
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static gboolean
@@ -35,7 +37,7 @@ enumerate_parse(task_t *task, xmlNode *node)
 	    
 	if (!strcmp(child->name, "fileset"))
 	{
-	    if ((fs = parse_fileset(task->project, child)) != 0)
+	    if ((fs = parse_fileset(task->project, child, "dir")) != 0)
 	    	list = g_list_append(list, fs);
 	}
     }

@@ -26,6 +26,8 @@ struct props_s
     GHashTable *values;
 };
 
+CVSID("$Id: props.c,v 1.2 2001-11-06 09:10:30 gnb Exp $");
+
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 props_t *

@@ -19,6 +19,8 @@
 
 #include "cant.h"
 
+CVSID("$Id: task.c,v 1.2 2001-11-06 09:10:30 gnb Exp $");
+
 static GHashTable *task_ops_all;
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -95,8 +97,7 @@ task_execute(task_t *task)
     gboolean ret = TRUE;
 
     /* TODO: filename, linenumber?? */
-    log_push_context(task->ops->description != 0 ?
-    	    	     task->ops->description : task->ops->name);
+    log_push_context(task->name);
         
     if (task->ops->execute != 0 && !(*task->ops->execute)(task))
     {

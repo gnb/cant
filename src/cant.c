@@ -20,6 +20,8 @@
 #define _DEFINE_GLOBALS 1
 #include "cant.h"
 
+CVSID("$Id: cant.c,v 1.2 2001-11-06 09:10:30 gnb Exp $");
+
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static gboolean find_flag = FALSE;

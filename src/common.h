@@ -55,5 +55,14 @@
     
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
+#if defined(__ELF__) && defined(__GNUC__)
+#define _CVSID(u,s) __asm__ (".ident \"" s "\"" )
+#else
+#define _CVSID(u,s) static const char * const __cvsid##u[2] = {(s), (const char*)__cvsid}
+#endif
+#define CVSID(s) _CVSID(,s)
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
 
 #endif /* _common_h_ */

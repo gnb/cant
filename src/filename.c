@@ -21,6 +21,8 @@
 #include <sys/stat.h>
 #include <dirent.h>
 
+CVSID("$Id: filename.c,v 1.2 2001-11-06 09:10:30 gnb Exp $");
+
 #ifndef __set_errno
 #define __set_errno(v)	 errno = (v)
 #endif

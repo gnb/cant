@@ -32,9 +32,11 @@ typedef struct
     gboolean result:1;
 } copy_private_t;
 
+CVSID("$Id: task_copy.c,v 1.2 2001-11-06 09:10:30 gnb Exp $");
+
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void copy_copy(task_t *);
+static void copy_delete(task_t *);
 
 static gboolean
 copy_parse(task_t *task, xmlNode *node)
@@ -65,7 +67,7 @@ copy_parse(task_t *task, xmlNode *node)
 	
 	if (!strcmp(child->name, "fileset"))
 	{
-    	    if ((fs = parse_fileset(task->project, child)) != 0)
+    	    if ((fs = parse_fileset(task->project, child, "dir")) != 0)
 		dp->filesets = g_list_append(dp->filesets, fs);
 	}
     }
@@ -73,7 +75,7 @@ copy_parse(task_t *task, xmlNode *node)
     if (dp->file == 0 && dp->directory == 0 && dp->filesets == 0)
     {
     	parse_error("At least one of \"file\", \"dir\" or \"<fileset>\" must be present\n");
-	copy_copy(task);
+	copy_delete(task);
 	return FALSE;
     }
 
@@ -164,13 +166,13 @@ copy_delete(task_t *task)
 {
     copy_private_t *dp = (copy_private_t *)task->private;
     
-    strcopy(dp->file);
-    strcopy(dp->directory);
+    strdelete(dp->file);
+    strdelete(dp->directory);
     
     /* copy filesets */
     while (dp->filesets != 0)
     {
-    	fileset_copy((fileset_t *)dp->filesets->data);
+    	fileset_delete((fileset_t *)dp->filesets->data);
     	dp->filesets = g_list_remove_link(dp->filesets, dp->filesets);
     }
     

@@ -20,6 +20,8 @@
 #include "cant.h"
 #include <time.h>
 
+CVSID("$Id: task_tstamp.c,v 1.2 2001-11-06 09:10:30 gnb Exp $");
+
 typedef struct
 {
     char *property;

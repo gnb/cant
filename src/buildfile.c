@@ -20,6 +20,8 @@
 #include "cant.h"
 #include <parser.h>
 
+CVSID("$Id: buildfile.c,v 1.2 2001-11-06 09:10:30 gnb Exp $");
+
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 /* static xmlParserCtxt *parser_context; */

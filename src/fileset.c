@@ -20,6 +20,8 @@
 #include "cant.h"
 #include <dirent.h>
 
+CVSID("$Id: fileset.c,v 1.2 2001-11-06 09:10:30 gnb Exp $");
+
 typedef enum { FS_IN, FS_EX, FS_UNKNOWN } fs_result_t;
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

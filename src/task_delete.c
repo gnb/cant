@@ -31,6 +31,8 @@ typedef struct
     gboolean result:1;
 } delete_private_t;
 
+CVSID("$Id: task_delete.c,v 1.2 2001-11-06 09:10:30 gnb Exp $");
+
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static void delete_delete(task_t *);
@@ -64,7 +66,7 @@ delete_parse(task_t *task, xmlNode *node)
 	
 	if (!strcmp(child->name, "fileset"))
 	{
-    	    if ((fs = parse_fileset(task->project, child)) != 0)
+    	    if ((fs = parse_fileset(task->project, child, "dir")) != 0)
 		dp->filesets = g_list_append(dp->filesets, fs);
 	}
     }
