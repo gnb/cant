@@ -20,103 +20,95 @@
 #include "cant.H"
 #include "job.H"
 
-CVSID("$Id: target.C,v 1.6 2002-04-12 13:07:24 gnb Exp $");
+CVSID("$Id: target.C,v 1.7 2002-04-12 14:50:18 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-target_t *
-target_new(void)
+target_t::target_t()
 {
-    target_t *targ;
-    
-    targ = new(target_t);
-    
-    return targ;
 }
 
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
-
-void
-target_delete(target_t *targ)
+target_t::~target_t()
 {
-    targ->tasks.delete_all();
-    strdelete(targ->name);
-    strdelete(targ->description);
-	
-    targ->depends.remove_all();
-	
-    delete targ;
+    tasks_.delete_all();
+    strdelete(name_);
+    strdelete(description_);
+    depends_.remove_all();
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 void
-target_set_name(target_t *targ, const char *s)
+target_t::set_name(const char *s)
 {
-    strassign(targ->name, s);
+    strassign(name_, s);
 }
 
 void
-target_set_description(target_t *targ, const char *s)
+target_t::set_description(const char *s)
 {
-    strassign(targ->description, s);
+    strassign(description_, s);
 }
 
 void
-target_set_is_defined(target_t *targ, gboolean b)
+target_t::set_is_defined(gboolean b)
 {
     if (b)
-    	targ->flags |= T_DEFINED;
+    	flags_ |= T_DEFINED;
     else
-    	targ->flags &= ~T_DEFINED;
+    	flags_ &= ~T_DEFINED;
+}
+
+void
+target_t::set_project(project_t *proj)
+{
+    project_  = proj;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 void
-target_add_depend(target_t *targ, target_t *dep)
+target_t::add_depend(target_t *dep)
 {
-    dep->flags |= T_DEPENDED_ON;
-    targ->depends.append(dep);
+    dep->flags_ |= T_DEPENDED_ON;
+    depends_.append(dep);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 void
-target_add_task(target_t *targ, task_t *task)
+target_t::add_task(task_t *task)
 {
-    targ->tasks.append(task);
-    task->attach(targ);
+    tasks_.append(task);
+    task->attach(this);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 gboolean
-target_execute(target_t *targ)
+target_t::execute()
 {
     list_iterator_t<target_t> diter;
     list_iterator_t<task_t> titer;
 
-    if (!targ->condition.evaluate(
-    	    	    	    project_get_props(targ->project)))
+    if (!condition_.evaluate(
+    	    	    	    project_get_props(project_)))
 	return TRUE;	    /* disabled target: trivially successful */
     
-    log_tree_context_t context(targ->name);
+    log_tree_context_t context(name_);
     log::infof("\n");
     
     /* TODO: check if finished first */
 
     /* go to depends first */
-    for (diter = targ->depends.first() ; diter != 0 ; ++diter)
+    for (diter = depends_.first() ; diter != 0 ; ++diter)
     {
-    	target_t *dep = *diter;
-	
-	if (!target_execute(dep))
+	if (!(*diter)->execute())
 	    return FALSE;
     }
     
     /* now handle this target's tasks */
-    for (titer = targ->tasks.first() ; titer != 0 ; ++titer)
+    for (titer = tasks_.first() ; titer != 0 ; ++titer)
     {
     	task_t *task = *titer;
 	

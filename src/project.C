@@ -20,7 +20,7 @@
 #include "cant.H"
 #include "tok.H"
 
-CVSID("$Id: project.C,v 1.9 2002-04-12 13:07:24 gnb Exp $");
+CVSID("$Id: project.C,v 1.10 2002-04-12 14:50:18 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -52,7 +52,7 @@ project_new(project_t *parent)
 static gboolean
 project_delete_one_target(const char *key, target_t *value, void *userdata)
 {
-    target_delete(value);
+    delete value;
     return TRUE;    /* so remove it already */
 }
 
@@ -194,17 +194,17 @@ project_find_target(project_t *proj, const char *name)
 void
 project_remove_target(project_t *proj, target_t *targ)
 {
-    proj->targets->remove(targ->name);
-    targ->project = 0;
+    proj->targets->remove(targ->name());
+    targ->set_project(0);
 }
 
 void
 project_add_target(project_t *proj, target_t *targ)
 {
     assert(targ != 0);
-    assert(targ->name != 0);
-    proj->targets->insert(targ->name, targ);
-    targ->project = proj;
+    assert(targ->name() != 0);
+    proj->targets->insert(targ->name(), targ);
+    targ->set_project(proj);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -332,7 +332,7 @@ project_execute_target_by_name(project_t *proj, const char *name)
     	log::errorf("no such target \"%s\"\n", name);
     	return FALSE;
     }
-    return target_execute(targ);
+    return targ->execute();
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

@@ -20,7 +20,7 @@
 #include "cant.H"
 #include "xtask.H"
 
-CVSID("$Id: buildfile.C,v 1.10 2002-04-12 14:28:21 gnb Exp $");
+CVSID("$Id: buildfile.C,v 1.11 2002-04-12 14:50:18 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -1250,17 +1250,17 @@ add_depends(project_t *proj, target_t *targ, const char *str)
 	
 #if DEBUG
     	fprintf(stderr, "add_depends: \"%s\" depends on \"%s\"\n",
-	    	    targ->name, x);
+	    	    targ->name(), x);
 #endif
     	if ((dep = project_find_target(proj, x)) == 0)
 	{
 	    /* handle forward references */
-	    dep = target_new();
-	    target_set_name(dep, x);
+	    dep = new target_t();
+	    dep->set_name(x);
 	    project_add_target(proj, dep);
 	}
 	
-	target_add_depend(targ, dep);
+	targ->add_depend(dep);
     }
     
     g_free(buf);
@@ -1292,13 +1292,13 @@ parse_target(project_t *proj, xml_node_t *node)
     
     if ((targ = project_find_target(proj, name)) == 0)
     {
-	targ = target_new();
-	target_set_name(targ, name);
+	targ = new target_t();
+	targ->set_name(name);
 	project_add_target(proj, targ);
     }
     else
     {
-    	if (target_is_defined(targ))
+    	if (targ->is_defined())
 	{
 	    parse_node_error(node, "Target \"%s\" already defined\n", name);
 	    g_free(name);
@@ -1306,12 +1306,12 @@ parse_target(project_t *proj, xml_node_t *node)
 	}
     }
     g_free(name);
-    target_set_is_defined(targ, TRUE);
+    targ->set_is_defined(TRUE);
     
-    if (!parse_condition(&targ->condition, node))
+    if (!parse_condition(&targ->condition_, node))
     {
     	project_remove_target(proj, targ);
-    	target_delete(targ);
+    	delete targ;
 	return FALSE;
     }
 
@@ -1327,7 +1327,7 @@ parse_target(project_t *proj, xml_node_t *node)
     	if (!strcmp(attr->get_name(), "name"))
 	    /* not an error */;
     	else if (!strcmp(attr->get_name(), "description"))
-	    target_set_description(targ, value);
+	    targ->set_description(value);
     	else if (!strcmp(attr->get_name(), "depends"))
 	    add_depends(proj, targ, value);
     	else if (is_condition_attribute(attr->get_name()))
@@ -1344,8 +1344,8 @@ parse_target(project_t *proj, xml_node_t *node)
     	if (child->get_type() == XML_ELEMENT_NODE)
 	{
     	    task_t *task;
-	    if ((task = parse_task(targ->project, child)) != 0)
-		target_add_task(targ, task);
+	    if ((task = parse_task(targ->project(), child)) != 0)
+		targ->add_task(task);
 	}
     }
     
@@ -1359,9 +1359,10 @@ check_one_target(const char *key, target_t *targ, void *userdata)
 {
     gboolean *failedp = (gboolean *)userdata;
     
-    if (target_is_depended_on(targ) && !target_is_defined(targ))
+    if (targ->is_depended_on() && !targ->is_defined())
     {
-    	parse_node_error(0, "Target \"%s\" is depended on but never defined\n", targ->name);
+    	parse_node_error(0, "Target \"%s\" is depended on but never defined\n",
+	    	    	targ->name());
 	*failedp = TRUE;
     }
 }

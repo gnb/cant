@@ -35,6 +35,7 @@
 #include "list.H"
 #include "task.H"
 #include "taglist.H"
+#include "target.H"
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 /*
@@ -61,20 +62,6 @@ struct project_t
     
     props_t *fixed_properties;	/* e.g. "basedir" which can't be overridden */
     props_t *properties;    	/* mutable properties from <property> element */
-};
-
-#define T_DEFINED   	    (1<<0)  	/* defined with <target> element */
-#define T_DEPENDED_ON	    (1<<1)  	/* referenced in at least one `depends' attribute */
-
-struct target_t
-{
-    char *name;
-    char *description;
-    project_t *project;
-    unsigned flags;
-    list_t<target_t> depends;
-    condition_t condition;
-    list_t<task_t> tasks;
 };
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -141,21 +128,6 @@ fileset_t *project_find_fileset(project_t *, const char *id);
 #define project_expand(proj, str) \
     project_get_props((proj))->expand((str))
 gboolean project_execute_target_by_name(project_t *, const char *);
-
-/* target.c */
-target_t *target_new(void);
-void target_delete(target_t *);
-void target_set_name(target_t *, const char *name);
-void target_set_description(target_t *, const char *description);
-void target_add_task(target_t *, task_t *task);
-gboolean target_execute(target_t *targ);
-void target_add_depend(target_t *targ, target_t *dep);
-#define target_is_defined(targ) \
-    ((targ)->flags & T_DEFINED)
-void target_set_is_defined(target_t *targ, gboolean b);
-#define target_is_depended_on(targ) \
-    ((targ)->flags & T_DEPENDED_ON)
-
 
 /* process.c */
 gboolean process_run(strarray_t *command, strarray_t *env, const char *dir);
