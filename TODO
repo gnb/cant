@@ -188,3 +188,4 @@ x  Improve the taglist implementation so that tagexp_t can
 x  When a log context is pushed without any messages being emitted in
    it, and a new log context is pushed, emit an empty message just to
    show what the intervening log context was.
+x  Allow <foreach> task to take <fileset> children
