@@ -19,7 +19,7 @@
 
 #include "cant.H"
 
-CVSID("$Id: task_enumerate.C,v 1.6 2002-04-12 14:28:21 gnb Exp $");
+CVSID("$Id: task_enumerate.C,v 1.7 2002-04-13 02:30:18 gnb Exp $");
 
 
 class enumerate_task_t : public task_t
@@ -69,7 +69,7 @@ exec()
 	strarray_t *sa = new strarray_t;
 	int i;
 	
-	fs->gather_mapped(project_get_props(project_), sa, 0);
+	fs->gather_mapped(project_->properties(), sa, 0);
     	sa->sort(0);
 	
 	log::infof("{\n");

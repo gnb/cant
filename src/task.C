@@ -19,7 +19,7 @@
 
 #include "cant.H"
 
-CVSID("$Id: task.C,v 1.6 2002-04-12 13:07:24 gnb Exp $");
+CVSID("$Id: task.C,v 1.7 2002-04-13 02:30:18 gnb Exp $");
 
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -141,7 +141,7 @@ task_t::execute_subtasks()
 char *
 task_t::expand(const char *str) const
 {
-    return project_expand(project_, str);
+    return project_->expand(str);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

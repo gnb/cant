@@ -20,7 +20,7 @@
 #include "cant.H"
 #include <time.h>
 
-CVSID("$Id: task_tstamp.C,v 1.5 2002-04-12 14:28:21 gnb Exp $");
+CVSID("$Id: task_tstamp.C,v 1.6 2002-04-13 02:30:18 gnb Exp $");
 
 class tstamp_format_t
 {
@@ -147,7 +147,7 @@ tstamp_format_t::execute(project_t *proj, struct tm *tm)
     
     strftime(buf, sizeof(buf), cpattern_, tm);
     log::infof("%s=\"%s\"\n", property_, buf);
-    project_set_property(proj, property_, buf);
+    proj->set_property(property_, buf);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

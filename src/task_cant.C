@@ -20,7 +20,7 @@
 #include "cant.H"
 #include <time.h>
 
-CVSID("$Id: task_cant.C,v 1.3 2002-04-12 13:07:24 gnb Exp $");
+CVSID("$Id: task_cant.C,v 1.4 2002-04-13 02:30:18 gnb Exp $");
 
 class cant_task_t : public task_t
 {
@@ -111,16 +111,16 @@ exec()
 	buildfile_e = g_strconcat(dir_e, "/build.xml", 0);
     buildfile_e = file_normalise_m(buildfile_e, 0);
 	
-    proj = read_buildfile(buildfile_e,
-	    	    (inherit_all_ ? project_ : project_globals));
+    proj = read_buildfile(buildfile_e, (inherit_all_ ? project_ : 0));
     if (proj == 0)
     {
     	g_free(dir_e);
 	g_free(buildfile_e);
 	return FALSE;
     }
-    
-    strassign(proj->basedir, dir_e);
+
+    // TODO: double check that _PATHUP etc are right 
+    proj->set_basedir(dir_e);
     g_free(dir_e);
     
 #if DEBUG
@@ -137,7 +137,7 @@ exec()
     target_e = expand(target_);
     strnullnorm(target_e);
     if (target_e == 0)
-    	target_e = g_strdup(project_->default_target);
+    	target_e = g_strdup(project_->default_target());
 
     /*
      * Now actually execute the target in the sub-project.
@@ -145,13 +145,13 @@ exec()
     if (verbose)
 	log::infof("buildfile %s\n", buildfile_e);
     
-    file_push_dir(proj->basedir);
-    ret = project_execute_target_by_name(proj, target_e);
+    file_push_dir(proj->basedir());
+    ret = proj->execute_target_by_name(target_e);
     file_pop_dir();
     
     g_free(target_e);
     g_free(buildfile_e);
-    project_delete(proj);
+    delete proj;
     
     return ret;
 }

@@ -20,7 +20,7 @@
 #include "cant.H"
 #include "job.H"
 
-CVSID("$Id: target.C,v 1.7 2002-04-12 14:50:18 gnb Exp $");
+CVSID("$Id: target.C,v 1.8 2002-04-13 02:30:18 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -91,8 +91,7 @@ target_t::execute()
     list_iterator_t<target_t> diter;
     list_iterator_t<task_t> titer;
 
-    if (!condition_.evaluate(
-    	    	    	    project_get_props(project_)))
+    if (!condition_.evaluate(project_->properties()))
 	return TRUE;	    /* disabled target: trivially successful */
     
     log_tree_context_t context(name_);

@@ -36,33 +36,7 @@
 #include "task.H"
 #include "taglist.H"
 #include "target.H"
-
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
-/*
- * Data Structures
- */
- 
-
-
-struct project_t
-{
-    char *name;
-    char *description;
-    char *filename;
-    char *default_target;
-    char *basedir;
-    project_t *parent;	    	/* inherits tscope, props etc */
-    
-    hashtable_t<const char*, target_t> *targets;
-    hashtable_t<const char*, fileset_t> *filesets;   	/* <fileset>s in project scope */
-    hashtable_t<char*, taglist_t> *taglists;   	/* taglists in project scope */
-    
-    hashtable_t<const char*, tl_def_t> *tl_defs;   	/* all taglistdefs */
-    task_scope_t *tscope;   	/* scope for taskdefs */
-    
-    props_t *fixed_properties;	/* e.g. "basedir" which can't be overridden */
-    props_t *properties;    	/* mutable properties from <property> element */
-};
+#include "project.H"
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 /*
@@ -79,7 +53,6 @@ struct project_t
 
 EXTERN char *argv0;
 EXTERN gboolean verbose;
-EXTERN project_t *project_globals;
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 /*
@@ -99,35 +72,8 @@ extern taglist_t *parse_taglist(project_t *proj, xml_node_t *node);
 extern fileset_t *parse_fileset(project_t *, xml_node_t *, const char *dirprop);	/* for e.g. <delete> */
 mapper_t *parse_mapper(project_t *proj, xml_node_t *node);
 extern task_t *parse_task(project_t *, xml_node_t *);	/* for recursives e.g. <condition> */
+extern project_t *read_project(const char *filename, project_t *parent, gboolean isglobal);
 extern project_t *read_buildfile(const char *filename, project_t *parent);
-
-/*project.c */
-project_t *project_new(project_t *parent);
-void project_delete(project_t *);
-void project_set_name(project_t *, const char *name);
-void project_set_description(project_t *, const char *description);
-void project_set_default_target(project_t *, const char *s);
-void project_set_basedir(project_t *, const char *s);
-void project_set_filename(project_t *, const char *s);
-void project_override_properties(project_t *proj, props_t *props);
-target_t *project_find_target(project_t *, const char *name);
-void project_add_target(project_t*, target_t*);
-void project_remove_target(project_t *proj, target_t *targ);
-tl_def_t *project_find_tl_def(const project_t *proj, const char *name);
-void project_add_tl_def(project_t *proj, tl_def_t *tld);
-void project_remove_tl_def(project_t *proj, tl_def_t *tld);
-taglist_t *project_find_taglist(project_t *proj, const char *name_space, const char *id);
-void project_add_taglist(project_t*, taglist_t*);
-void project_remove_taglist(project_t *proj, taglist_t *);
-const char *project_get_property(project_t *, const char *name);
-void project_set_property(project_t *, const char *name, const char *value);
-void project_append_property(project_t *, const char *name, const char *value);
-void project_add_fileset(project_t *, fileset_t *);
-fileset_t *project_find_fileset(project_t *, const char *id);
-#define project_get_props(proj)     ((proj)->fixed_properties)
-#define project_expand(proj, str) \
-    project_get_props((proj))->expand((str))
-gboolean project_execute_target_by_name(project_t *, const char *);
 
 /* process.c */
 gboolean process_run(strarray_t *command, strarray_t *env, const char *dir);

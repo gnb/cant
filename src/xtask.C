@@ -20,7 +20,7 @@
 #include "xtask.H"
 #include "job.H"
 
-CVSID("$Id: xtask.C,v 1.11 2002-04-12 14:28:21 gnb Exp $");
+CVSID("$Id: xtask.C,v 1.12 2002-04-13 02:30:18 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -28,7 +28,7 @@ xtask_t::xtask_t(task_class_t *tclass, project_t *proj)
  :  task_t(tclass, proj)
 {
     /* TODO: delay attachment to project? */
-    properties_ = new props_t(project_get_props(project_));
+    properties_ = new props_t(project_->properties());
 }
 
 xtask_t::~xtask_t()
@@ -112,7 +112,7 @@ xtask_t::build_command(strarray_t *command)
 	    exp = properties_->expand(xa->data.arg);
 	    strnullnorm(exp);
 	    if (exp != 0)
-	    	command->appendm(file_normalise_m(exp, project_->basedir));
+	    	command->appendm(file_normalise_m(exp, project_->basedir()));
 	    break;
 	    
 	case xtask_class_t::XT_FILESET:    /* <fileset> child */

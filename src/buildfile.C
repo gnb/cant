@@ -20,7 +20,7 @@
 #include "cant.H"
 #include "xtask.H"
 
-CVSID("$Id: buildfile.C,v 1.11 2002-04-12 14:50:18 gnb Exp $");
+CVSID("$Id: buildfile.C,v 1.12 2002-04-13 02:30:18 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -105,14 +105,14 @@ parse_property(project_t *proj, xml_node_t *node)
     gboolean doit = TRUE;
     
     if (parse_condition(&cond, node))
-	doit = cond.evaluate(project_get_props(proj));
+	doit = cond.evaluate(proj->properties());
 
     /* a lot hinges on whether attribute "name" is present */    
     name = node->get_attribute("name");
 
     if (name != 0)
     {
-	name_e = project_expand(proj, name);
+	name_e = proj->expand(name);
 	strnullnorm(name_e);
     }
 
@@ -143,9 +143,9 @@ parse_property(project_t *proj, xml_node_t *node)
 	    if (doit)
 	    {
 		if (node->get_boolean_attribute("append", FALSE))
-		    project_append_property(proj, name_e, value);
+		    proj->append_property(name_e, value);
 		else
-		    project_set_property(proj, name_e, value);
+		    proj->set_property(name_e, value);
 	    }
 	}
 	else if (location != 0)
@@ -154,12 +154,12 @@ parse_property(project_t *proj, xml_node_t *node)
 	    {
 		/* TODO: translate DOS format filenames */
 		if (location[0] == '/')
-	    	    project_set_property(proj, name_e, location);
+	    	    proj->set_property(name_e, location);
 		else
 		{
 	    	    /* TODO: use file_normalise() */
-	    	    char *abs = g_strconcat(proj->basedir, "/", location, 0);
-	    	    project_set_property(proj, name_e, abs);
+	    	    char *abs = g_strconcat(proj->basedir(), "/", location, 0);
+	    	    proj->set_property(name_e, abs);
 		    g_free(abs);
 		}
 	    }
@@ -212,7 +212,7 @@ parse_property(project_t *proj, xml_node_t *node)
 	else if (shellfile != 0)
 	{
 	    if (doit)
-		failed = !proj->properties->read_shellfile(shellfile);
+		failed = !proj->read_property_shellfile(shellfile);
 	}
 	else if (environment != 0)
 	{
@@ -415,7 +415,7 @@ parse_taglist(project_t *proj, xml_node_t *node)
     fprintf(stderr, "Parsing taglist \"%s\"\n", name_space);
 #endif
 
-    if ((tldef = project_find_tl_def(proj, name_space)) == 0)
+    if ((tldef = proj->find_tl_def(name_space)) == 0)
     {
     	parse_node_error(node, "Unknown taglist type \"%s\"\n", name_space);
 	return 0;
@@ -432,7 +432,7 @@ parse_taglist(project_t *proj, xml_node_t *node)
 	    return 0;
 	}
 	
-	if ((tl = project_find_taglist(proj, name_space, buf)) == 0)
+	if ((tl = proj->find_taglist(name_space, buf)) == 0)
 	{
 	    /* TODO: order dependency */
 	    parse_node_error(node, "Cannot find taglist \"%s\" to satisfy \"refid\"\n", buf);
@@ -534,14 +534,14 @@ parse_project_taglist(project_t *proj, xml_node_t *node)
     if ((tl = parse_taglist(proj, node)) == 0)
     	return FALSE;
 	
-    if (project_find_taglist(proj, tl->name_space(), tl->id()) != 0)
+    if (proj->find_taglist(tl->name_space(), tl->id()) != 0)
     {
     	parse_node_error(node, "Duplicate taglist %s::%s\n", tl->name_space(), tl->id());
 	tl->unref();	    // should delete
 	return FALSE;
     }
 
-    project_add_taglist(proj, tl);
+    proj->add_taglist(tl);
     return TRUE;
 }
 
@@ -719,7 +719,7 @@ parse_xtaskdef(project_t *proj, xml_node_t *node)
     }
     
     /* TODO: handle duplicate registrations cleanly */
-    proj->tscope->add(xtclass);
+    proj->add_task_class(xtclass);
     return TRUE;
 }
 
@@ -815,7 +815,7 @@ parse_taglistdef(project_t *proj, xml_node_t *node)
     }    
 
     /* TODO: handle duplicate registrations cleanly */
-    project_add_tl_def(proj, tldef);
+    proj->add_tl_def(tldef);
     return TRUE;
 }
 
@@ -853,7 +853,7 @@ parse_fileset(project_t *proj, xml_node_t *node, const char *dirprop)
 	    return 0;
 	}
 	
-	if ((fs = project_find_fileset(proj, buf)) == 0)
+	if ((fs = proj->find_fileset(buf)) == 0)
 	{
 	    /*
     	     * TODO: order dependency.... May need to scan the project
@@ -885,8 +885,8 @@ parse_fileset(project_t *proj, xml_node_t *node, const char *dirprop)
 	    return 0;
 	}
 
-    	buf2 = project_expand(proj, buf);
-	if ((fs = project_find_fileset(proj, buf2)) == 0)
+    	buf2 = proj->expand(buf);
+	if ((fs = proj->find_fileset(buf2)) == 0)
 	{
 	    /*
     	     * TODO: order dependency.... May need to scan the project
@@ -1019,7 +1019,7 @@ parse_project_fileset(project_t *proj, xml_node_t *node)
     	return FALSE;
     }
     /* TODO: detect duplicate fileset ids */
-    project_add_fileset(proj, fs);
+    proj->add_fileset(fs);
     return TRUE;
 }
 
@@ -1131,7 +1131,7 @@ parse_task(project_t *proj, xml_node_t *node)
     fprintf(stderr, "parse_task: parsing task \"%s\"\n", node->get_name());
 #endif
 
-    if ((tclass = proj->tscope->find(node->get_name())) == 0)
+    if ((tclass = proj->find_task_class(node->get_name())) == 0)
     {
     	parse_node_error(node, "Unknown task \"%s\"\n", node->get_name());
 	return 0;
@@ -1252,12 +1252,12 @@ add_depends(project_t *proj, target_t *targ, const char *str)
     	fprintf(stderr, "add_depends: \"%s\" depends on \"%s\"\n",
 	    	    targ->name(), x);
 #endif
-    	if ((dep = project_find_target(proj, x)) == 0)
+    	if ((dep = proj->find_target(x)) == 0)
 	{
 	    /* handle forward references */
 	    dep = new target_t();
 	    dep->set_name(x);
-	    project_add_target(proj, dep);
+	    proj->add_target(dep);
 	}
 	
 	targ->add_depend(dep);
@@ -1290,11 +1290,11 @@ parse_target(project_t *proj, xml_node_t *node)
     	return FALSE;
     }
     
-    if ((targ = project_find_target(proj, name)) == 0)
+    if ((targ = proj->find_target(name)) == 0)
     {
 	targ = new target_t();
 	targ->set_name(name);
-	project_add_target(proj, targ);
+	proj->add_target(targ);
     }
     else
     {
@@ -1310,7 +1310,7 @@ parse_target(project_t *proj, xml_node_t *node)
     
     if (!parse_condition(&targ->condition_, node))
     {
-    	project_remove_target(proj, targ);
+    	proj->remove_target(targ);
     	delete targ;
 	return FALSE;
     }
@@ -1354,33 +1354,20 @@ parse_target(project_t *proj, xml_node_t *node)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void
-check_one_target(const char *key, target_t *targ, void *userdata)
-{
-    gboolean *failedp = (gboolean *)userdata;
-    
-    if (targ->is_depended_on() && !targ->is_defined())
-    {
-    	parse_node_error(0, "Target \"%s\" is depended on but never defined\n",
-	    	    	targ->name());
-	*failedp = TRUE;
-    }
-}
-
 static project_t *
 parse_project(xml_node_t *node, project_t *parent)
 {
     project_t *proj;
     xml_iterator_t<xml_node_t> iter;
-    gboolean globals = (parent == 0);
+    gboolean globals = !strcmp(node->get_name(), "globals");
     gboolean failed = FALSE;
    
-    proj = project_new(parent);
+    proj = new project_t(parent);
     
     if (globals)
     {
-    	project_set_name(proj, "globals");
-	project_set_basedir(proj, ".");
+    	proj->set_name("globals");
+	proj->set_basedir(".");
     }
     else
     {
@@ -1392,11 +1379,11 @@ parse_project(xml_node_t *node, project_t *parent)
     	    char *value = attr->get_value();
 
     	    if (!strcmp(attr->get_name(), "name"))
-		project_set_name(proj, value);
+		proj->set_name(value);
     	    else if (!strcmp(attr->get_name(), "default"))
-		project_set_default_target(proj, value);
+		proj->set_default_target(value);
     	    else if (!strcmp(attr->get_name(), "basedir"))
-		project_set_basedir(proj, value);
+		proj->set_basedir(value);
 	    else
 	    {
 		attr->error_unknown_attribute();
@@ -1405,7 +1392,7 @@ parse_project(xml_node_t *node, project_t *parent)
 
     	    g_free(value);
 	}
-	if (proj->default_target == 0)
+	if (proj->default_target() == 0)
 	{
 	    node->error_required_attribute("default");
 	    failed = TRUE;
@@ -1431,7 +1418,7 @@ parse_project(xml_node_t *node, project_t *parent)
 	    failed |= !parse_taglistdef(proj, child);
 	else if (!globals && !strcmp(child->get_name(), "target"))
 	    failed |= !parse_target(proj, child);
-	else if (project_find_tl_def(proj, child->get_name()) != 0)
+	else if (proj->find_tl_def(child->get_name()) != 0)
 	    failed |= !parse_project_taglist(proj, child);
 	else
 	{
@@ -1441,12 +1428,13 @@ parse_project(xml_node_t *node, project_t *parent)
 	}
     }
 
-    if (!globals)    
-	proj->targets->foreach(check_one_target, &failed);
+    if (!globals)
+	if (!proj->check_dangling_targets())
+	    failed = TRUE;
     
     if (failed)
     {
-    	project_delete(proj);
+    	delete proj;
     	proj = 0;
     }
     
@@ -1457,11 +1445,12 @@ parse_project(xml_node_t *node, project_t *parent)
 
 
 project_t *
-read_buildfile(const char *filename, project_t *parent)
+read_project(const char *filename, project_t *parent, gboolean isglobal)
 {
     xmlDoc *doc;
     xml_node_t *root;
     project_t *proj;
+    log_file_context_t context(filename, 0);
     
 #if DEBUG
     fprintf(stderr, "Reading file \"%s\"\n", filename);
@@ -1469,8 +1458,8 @@ read_buildfile(const char *filename, project_t *parent)
 
     if ((doc = cantXmlParseFile(filename)) == 0)
     {
-    	/* TODO: print error message */
-	log::errorf("Failed to load file \"%s\"\n", filename);
+    	/* TODO: print xml error message */
+	log::errorf("Failed to load buildfile\n");
 	return 0;
     }
         
@@ -1479,13 +1468,13 @@ read_buildfile(const char *filename, project_t *parent)
 
     if (root == 0)
     {
-    	parse_node_error(0, "No elements in buildfile\n");
+    	log::errorf("No elements in buildfile\n");
 	xmlFreeDoc(doc);
 	xml_node_t::info_clear();
 	return 0;
     }
     
-    if (strcmp(root->get_name(), (parent == 0 ? "globals" : "project")))
+    if (strcmp(root->get_name(), (isglobal ? "globals" : "project")))
     {
     	root->error_unexpected_element();
 	xmlFreeDoc(doc);
@@ -1495,14 +1484,13 @@ read_buildfile(const char *filename, project_t *parent)
 
     proj = parse_project(root, parent);
     if (proj != 0)
-	project_set_filename(proj, filename);
+	proj->set_filename(filename);
     
     if (log::message_count(log::ERROR) > 0)
     {
-    	log::errorf("%s: found %d errors\n", filename,
-	    	    	log::message_count(log::ERROR));
+    	log::errorf("found %d errors\n", log::message_count(log::ERROR));
 	if (proj != 0)
-	    project_delete(proj);
+	    delete proj;
 	xmlFreeDoc(doc);
 	xml_node_t::info_clear();
 	return 0;
@@ -1512,6 +1500,12 @@ read_buildfile(const char *filename, project_t *parent)
     xml_node_t::info_clear();
     
     return proj;
+}
+
+project_t *
+read_buildfile(const char *filename, project_t *parent)
+{
+    return read_project(filename, parent, /*isglobal*/FALSE);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

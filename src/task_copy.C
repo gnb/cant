@@ -19,7 +19,7 @@
 
 #include "cant.H"
 
-CVSID("$Id: task_copy.C,v 1.6 2002-04-12 14:28:21 gnb Exp $");
+CVSID("$Id: task_copy.C,v 1.7 2002-04-13 02:30:18 gnb Exp $");
 
 class copy_task_t : public task_t
 {
@@ -331,7 +331,7 @@ exec()
     /* execute for <fileset> children */
     
     for (iter = filesets_.first() ; iter != 0 ; ++iter)
-	(*iter)->apply(project_get_props(project_), copy_one, this);
+	(*iter)->apply(project_->properties(), copy_one, this);
     
     strdelete(exp_todir_);
 

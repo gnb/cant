@@ -17,34 +17,40 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "cant.H"
+#include "project.H"
+#include "estring.H"
+#include "filename.H"
 #include "tok.H"
 
-CVSID("$Id: project.C,v 1.10 2002-04-12 14:50:18 gnb Exp $");
+CVSID("$Id: project.C,v 1.11 2002-04-13 02:30:18 gnb Exp $");
+
+project_t *project_t::globals_;
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-project_t *
-project_new(project_t *parent)
+project_t::project_t(project_t *parent)
 {
-    project_t *proj;
+    if (globals_ == 0)
+    {
+    	// Can't create any projects unless there's a globals_
+	// so first project created becomes globals_.
+    	assert(parent == 0);
+	globals_ = this;
+    }
+    else if (parent == 0)
+	parent = globals_;
+    parent_ = parent;
     
-    proj = new(project_t);
+    targets_ = new hashtable_t<const char *, target_t>;
+    filesets_ = new hashtable_t<const char*, fileset_t>;
+    taglists_ = new hashtable_t<char*, taglist_t>;
+    tl_defs_ = new hashtable_t<const char*, tl_def_t>;
+    tscope_ = new task_scope_t(parent == 0 ? task_scope_t::builtins : parent->tscope_);
     
-    proj->parent = parent;
-    
-    proj->targets = new hashtable_t<const char *, target_t>;
-    proj->filesets = new hashtable_t<const char*, fileset_t>;
-    proj->taglists = new hashtable_t<char*, taglist_t>;
-    proj->tl_defs = new hashtable_t<const char*, tl_def_t>;
-    proj->tscope = new task_scope_t(parent == 0 ? task_scope_t::builtins : parent->tscope);
-    
-    proj->properties = new props_t((parent == 0 ? 0 : parent->properties));
-    proj->fixed_properties = new props_t(proj->properties);
+    properties_ = new props_t((parent == 0 ? 0 : parent->properties_));
+    fixed_properties_ = new props_t(properties_);
 
-    proj->fixed_properties->set("ant.version", VERSION);
-    	
-    return proj;
+    fixed_properties_->set("ant.version", VERSION);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -78,145 +84,164 @@ project_delete_one_tl_def(const char *key, tl_def_t *value, void *userdata)
     return TRUE;    /* so remove it already */
 }
 
-void
-project_delete(project_t *proj)
+project_t::~project_t()
 {
-    strdelete(proj->name);
-    strdelete(proj->description);
+    strdelete(name_);
+    strdelete(description_);
     
-    proj->targets->foreach_remove(project_delete_one_target, 0);
-    delete proj->targets;
-    delete proj->tscope;
+    targets_->foreach_remove(project_delete_one_target, 0);
+    delete targets_;
+    delete tscope_;
     
-    proj->filesets->foreach_remove(project_unref_one_fileset, 0);
-    delete proj->filesets;
+    filesets_->foreach_remove(project_unref_one_fileset, 0);
+    delete filesets_;
     
-    proj->tl_defs->foreach_remove(project_delete_one_tl_def, 0);
-    delete proj->tl_defs;
+    tl_defs_->foreach_remove(project_delete_one_tl_def, 0);
+    delete tl_defs_;
     
-    proj->taglists->foreach_remove(project_delete_one_taglist, 0);
-    delete proj->taglists;
+    taglists_->foreach_remove(project_delete_one_taglist, 0);
+    delete taglists_;
     
-    delete proj->properties;
-    delete proj->fixed_properties;
+    delete properties_;
+    delete fixed_properties_;
     
-    g_free(proj);
+    if (globals_ == this)
+    	globals_ = 0;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 void
-project_set_name(project_t *proj, const char *s)
+project_t::set_name(const char *s)
 {
-    strassign(proj->name, s);
-    proj->fixed_properties->set("ant.project.name", proj->name);
+    strassign(name_, s);
+    fixed_properties_->set("ant.project.name", name_);
 }
 
 void
-project_set_description(project_t *proj, const char *s)
+project_t::set_description(const char *s)
 {
-    strassign(proj->description, s);
+    strassign(description_, s);
 }
 
 void
-project_set_default_target(project_t *proj, const char *s)
+project_t::set_default_target(const char *s)
 {
-    strassign(proj->default_target, s);
+    strassign(default_target_, s);
 }
 
 /*
  * Setup the magical variables _PATHUP and _PATHDOWN
  */
-static void
-project_update_magic_paths(project_t *proj)
+void
+project_t::update_magic_paths()
 {
     const char *d;
     estring path;
-    tok_t tok(file_normalise(proj->basedir, 0), "/");
+    tok_t tok(file_normalise(basedir_, 0), "/");
 
     /* TODO: We need something like a file_denormalise() */
     
     while ((d = tok.next()) != 0)
 	path.append_string((!strcmp(d, ".") ? "./" : "../"));
     
-    project_set_property(proj, "_pathup", path.data());
-    project_set_property(proj, "topdir", path.data());
+    set_property("_pathup", path.data());
+    set_property("topdir", path.data());
     
     path.truncate();
-    path.append_string(proj->basedir);
+    path.append_string(basedir_);
     if (path.length())
     	path.append_char('/');
-    project_set_property(proj, "_pathdown", path.data());
+    set_property("_pathdown", path.data());
 }
 
 
 void
-project_set_basedir(project_t *proj, const char *s)
+project_t::set_basedir(const char *s)
 {
-    if (proj->parent != 0)
+    if (parent_ != 0)
     {
-	strdelete(proj->basedir);
-	proj->basedir = file_normalise(s, proj->parent->basedir);
+	strdelete(basedir_);
+	basedir_ = file_normalise(s, parent_->basedir_);
     }
     else
     {
-    	strassign(proj->basedir, s);
+    	strassign(basedir_, s);
     }
-    proj->fixed_properties->set("basedir", proj->basedir);
-    project_update_magic_paths(proj);
+    fixed_properties_->set("basedir", basedir_);
+    update_magic_paths();
 }
 
 void
-project_set_filename(project_t *proj, const char *s)
+project_t::set_filename(const char *s)
 {
-    strassign(proj->filename, s);
-
-    proj->fixed_properties->setm("ant.file",
-    	    	file_normalise(proj->filename, 0));
+    strassign(filename_, s);
+    fixed_properties_->setm("ant.file", file_normalise(filename_, 0));
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 void
-project_override_properties(project_t *proj, props_t *props)
+project_t::override_properties(props_t *props)
 {
-    proj->properties->copy_contents(props);
+    properties_->copy_contents(props);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 target_t *
-project_find_target(project_t *proj, const char *name)
+project_t::find_target(const char *name) const
 {
-    return proj->targets->lookup(name);
+    return targets_->lookup(name);
 }
 
 void
-project_remove_target(project_t *proj, target_t *targ)
+project_t::remove_target(target_t *targ)
 {
-    proj->targets->remove(targ->name());
+    targets_->remove(targ->name());
     targ->set_project(0);
 }
 
 void
-project_add_target(project_t *proj, target_t *targ)
+project_t::add_target(target_t *targ)
 {
     assert(targ != 0);
     assert(targ->name() != 0);
-    proj->targets->insert(targ->name(), targ);
-    targ->set_project(proj);
+    targets_->insert(targ->name(), targ);
+    targ->set_project(this);
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+task_class_t *
+project_t::find_task_class(const char *name) const
+{
+    return tscope_->find(name);
+}
+
+void
+project_t::add_task_class(task_class_t *tclass)
+{
+    tscope_->add(tclass);
+}
+
+void
+project_t::remove_task_class(task_class_t *tclass)
+{
+    tscope_->remove(tclass);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 tl_def_t *
-project_find_tl_def(const project_t *proj, const char *name)
+project_t::find_tl_def(const char *name) const
 {
     tl_def_t *tldef;
+    const project_t *proj;
     
-    for ( ; proj != 0 ; proj = proj->parent)
+    for (proj = this ; proj != 0 ; proj = proj->parent_)
     {
-    	if ((tldef = proj->tl_defs->lookup(name)) != 0)
+    	if ((tldef = proj->tl_defs_->lookup(name)) != 0)
 	    return tldef;
     }
     
@@ -224,15 +249,15 @@ project_find_tl_def(const project_t *proj, const char *name)
 }
 
 void
-project_add_tl_def(project_t *proj, tl_def_t *tldef)
+project_t::add_tl_def(tl_def_t *tldef)
 {
-    proj->tl_defs->insert(tldef->name_space(), tldef);
+    tl_defs_->insert(tldef->name_space(), tldef);
 }
 
 void
-project_remove_tl_def(project_t *proj, tl_def_t *tldef)
+project_t::remove_tl_def(tl_def_t *tldef)
 {
-    proj->tl_defs->remove(tldef->name_space());
+    tl_defs_->remove(tldef->name_space());
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -241,14 +266,15 @@ project_remove_tl_def(project_t *proj, tl_def_t *tldef)
     g_strconcat((name_space), "::", (id), 0)
 
 taglist_t *
-project_find_taglist(project_t *proj, const char *name_space, const char *id)
+project_t::find_taglist(const char *name_space, const char *id) const
 {
     char *key = build_taglist_key(name_space, id);
     taglist_t *tl;
+    const project_t *proj;
     
-    for ( ; proj != 0 ; proj = proj->parent)
+    for (proj = this ; proj != 0 ; proj = proj->parent_)
     {
-    	if ((tl = proj->taglists->lookup(key)) != 0)
+    	if ((tl = proj->taglists_->lookup(key)) != 0)
 	    break;
     }
     
@@ -257,25 +283,25 @@ project_find_taglist(project_t *proj, const char *name_space, const char *id)
 }
 
 void
-project_add_taglist(project_t *proj, taglist_t *tl)
+project_t::add_taglist(taglist_t *tl)
 {
     char *key = build_taglist_key(tl->name_space(), tl->id());
     
-    proj->taglists->insert(key, tl);
+    taglists_->insert(key, tl);
 }
 
 void
-project_remove_taglist(project_t *proj, taglist_t *tl)
+project_t::remove_taglist(taglist_t *tl)
 {
     char *key = build_taglist_key(tl->name_space(), tl->id());
     char *okey = 0;
     taglist_t *ovalue = 0;
     
-    proj->taglists->lookup_extended(key, &okey, &ovalue);
+    taglists_->lookup_extended(key, &okey, &ovalue);
     assert(okey != 0);
     assert(tl == ovalue);
     
-    proj->taglists->remove(key);
+    taglists_->remove(key);
 
     g_free(key);
     g_free(okey);
@@ -283,51 +309,83 @@ project_remove_taglist(project_t *proj, taglist_t *tl)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-const char *
-project_get_property(project_t *proj, const char *name)
+void
+project_t::set_property(const char *name, const char *value)
 {
-    return proj->fixed_properties->get(name);
+    properties_->set(name, value);
 }
 
 void
-project_set_property(project_t *proj, const char *name, const char *value)
+project_t::set_propertym(const char *name, char *value)
 {
-    proj->properties->set(name, value);
+    properties_->setm(name, value);
 }
 
 void
-project_append_property(project_t *proj, const char *name, const char *value)
+project_t::append_property(const char *name, const char *value)
 {
-    const char *oldval = proj->properties->get(name);
+    const char *oldval = properties_->get(name);
     if (oldval == 0)
-	proj->properties->set(name, value);
+	properties_->set(name, value);
     else
-	proj->properties->setm(name, g_strconcat(oldval, value, 0));
+	properties_->setm(name, g_strconcat(oldval, value, 0));
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-void
-project_add_fileset(project_t *proj, fileset_t *fs)
+fileset_t *
+project_t::find_fileset(const char *id) const
 {
-    assert(fs->id() != 0);
-    proj->filesets->insert(fs->id(), fs);
+    return filesets_->lookup(id);
 }
 
-fileset_t *
-project_find_fileset(project_t *proj, const char *id)
+void
+project_t::add_fileset(fileset_t *fs)
 {
-    return proj->filesets->lookup(id);
+    assert(fs->id() != 0);
+    filesets_->insert(fs->id(), fs);
+}
+
+void
+project_t::remove_fileset(fileset_t *fs)
+{
+    filesets_->remove(fs->id());
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+static void
+check_one_target(const char *key, target_t *targ, void *userdata)
+{
+    gboolean *successp = (gboolean *)userdata;
+    
+    if (targ->is_depended_on() && !targ->is_defined())
+    {
+    	log::errorf("Target \"%s\" is depended on but never defined\n",
+	    	    	targ->name());
+	*successp = FALSE;
+    }
+}
+
+
+gboolean
+project_t::check_dangling_targets() const
+{
+    gboolean success = TRUE;
+    
+    targets_->foreach(check_one_target, &success);
+    
+    return success;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 gboolean
-project_execute_target_by_name(project_t *proj, const char *name)
+project_t::execute_target_by_name(const char *name)
 {
     target_t *targ;
     
-    if ((targ = project_find_target(proj, name)) == 0)
+    if ((targ = find_target(name)) == 0)
     {
     	log::errorf("no such target \"%s\"\n", name);
     	return FALSE;

@@ -21,7 +21,7 @@
 #include "cant.H"
 #include "job.H"
 
-CVSID("$Id: cant.C,v 1.9 2002-04-12 13:07:24 gnb Exp $");
+CVSID("$Id: cant.C,v 1.10 2002-04-13 02:30:18 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -158,11 +158,11 @@ build_commandline_targets(project_t *proj)
     GList *iter;
     
     if (command_targets == 0)
-    	return project_execute_target_by_name(proj, proj->default_target);
+    	return proj->execute_target_by_name(proj->default_target());
 	
     for (iter = command_targets ; iter != 0 ; iter = iter->next)
     {
-    	if (!project_execute_target_by_name(proj, (const char *)iter->data))
+    	if (!proj->execute_target_by_name((const char *)iter->data))
 	    return FALSE;
     }
     
@@ -477,6 +477,7 @@ int
 main(int argc, char **argv)
 {
     project_t *proj;
+    project_t *globals;
     int ret;
 
     log_simple_context_t context(file_basename_c(argv[0]));
@@ -488,8 +489,11 @@ main(int argc, char **argv)
     if (!job_t::init(parallelism))
     	return 1;
 
-    project_globals = read_buildfile(globals_file, /*parent*/0);
-    if (project_globals == 0)
+    // First project read automatically becomes project_t::globals_
+    // We use the pointer return here only to detect failure to load
+    // and then later for cleanup.
+    globals = read_project(globals_file, /*parent*/0, /*isglobals*/TRUE);
+    if (globals == 0)
     {
     	log::errorf("Can't read globals file \"%s\"\n", globals_file);
 	exit(1);
@@ -501,17 +505,17 @@ main(int argc, char **argv)
 	exit(1);
     }
 
-    if ((proj = read_buildfile(buildfile, project_globals)) == 0)
+    if ((proj = read_buildfile(buildfile, /*parent*/0)) == 0)
     {
     	log::errorf("Can't read buildfile \"%s\"\n", buildfile);
 	exit(1);
     }
 
     if (command_defines != 0)
-	project_override_properties(proj, command_defines);
+	proj->override_properties(command_defines);
     	
 #if DEBUG
-    dump_project(project_globals);
+    dump_project(globals);
     dump_project(proj);
 #endif
     
@@ -528,8 +532,8 @@ main(int argc, char **argv)
     hack_mapper_test();
 #endif
 
-    project_delete(proj);
-    project_delete(project_globals);
+    delete proj;
+    delete globals;
         
     return ret;
 }
