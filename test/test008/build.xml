@@ -2,7 +2,7 @@
 
 <!-- 
   Test the "echo" task
-  $Id: build.xml,v 1.1 2001-11-19 01:19:43 gnb Exp $
+  $Id: build.xml,v 1.2 2002-02-08 08:30:47 gnb Exp $
 -->
 
 <project name="test006" default="test" basedir=".">
@@ -26,6 +26,12 @@ before and after as well.
     <echo message="Foo" file="wfile"/>
     <echo message="Bar" file="afile" newline="false"/>
     <echo message="Baz" file="afile" append="true"/>
+  </target>
+
+  <target name="test-loop">
+    <foreach variable="foo" values="bar,baz,quux">
+	<echo message="$(foo)"/>
+    </foreach>
   </target>
 
 </project>
