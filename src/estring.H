@@ -24,13 +24,6 @@
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-#ifdef __GNUC__
-#define _printf_fmt(fmtidx,firsta) \
-    __attribute (( format(printf, fmtidx, firsta) ))
-#else
-#define _printf_fmt(fmtidx,firsta)
-#endif
-
 class estring
 {
 private:
@@ -105,8 +98,6 @@ public:
     void truncate();
     void truncate_to(unsigned int len);
 };
-
-#undef _printf_fmt
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 

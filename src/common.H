@@ -89,6 +89,14 @@
 #endif
 #define CVSID(s) _CVSID(,s)
 
+
+#ifdef __GNUC__
+#define _printf_fmt(fmtidx,firsta) \
+    __attribute (( format(printf, fmtidx, firsta) ))
+#else
+#define _printf_fmt(fmtidx,firsta)
+#endif
+
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 extern void *operator new(size_t sz);
