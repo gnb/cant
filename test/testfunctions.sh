@@ -1,7 +1,7 @@
 #
 # Common functions for CANT test harness
 #
-# $Id: testfunctions.sh,v 1.1 2001-11-21 09:35:28 gnb Exp $
+# $Id: testfunctions.sh,v 1.2 2002-02-11 06:29:10 gnb Exp $
 #
 
 CANT="../../src/cant"
@@ -155,6 +155,12 @@ check_file_executable ()
 {
     vmessage "Checking that file $1 is executable"
     test -x "$1" || failed
+}
+
+check_file_contents ()
+{
+    vmessage "Checking file $1 against file $2"
+    vdiff "$2" "$1"
 }
 
 run_prog ()
