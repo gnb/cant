@@ -56,4 +56,7 @@ int strarray_split_to(strarray_t *sa, const char *str, const char *sep);
 int strarray_split_tom(strarray_t *sa, char *str, const char *sep);
 
 
+void strarray_sort(strarray_t *sa,
+    	    	    int (*compare)(const char **, const char **)/*0=strcmp*/);
+
 #endif /* _strarray_h_ */
