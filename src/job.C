@@ -21,16 +21,15 @@
 #include "thread.H"
 #include "filename.H"
 #include "hashtable.H"
+#include "savedep.H"
 
 #if !THREADS_NONE
 #include "thread.H"
 #include "queue.H"
 #endif
 
-CVSID("$Id: job.C,v 1.9 2002-04-13 12:30:42 gnb Exp $");
+CVSID("$Id: job.C,v 1.10 2002-04-21 04:01:40 gnb Exp $");
 
-
-extern int process_run(strarray_t *command, strarray_t *env, const char *dir);
 
 static hashtable_t<const char*, job_t> *all_jobs;
 static list_t<job_t> runnable_jobs;
@@ -68,26 +67,24 @@ job_op_t::~job_op_t()
 {
 }
 
+strarray_t *
+job_op_t::extracted_dependencies() const
+{
+    return 0;
+}
+
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-command_job_op_t::command_job_op_t(
-    strarray_t *command,
-    strarray_t *env,
-    log_message_t *logmsg)
+command_job_op_t::command_job_op_t(log_message_t *logmsg, runner_t *runner)
 {
-    command_ = command;
-    env_ = env;
+    runner_ = runner;
     logmessage_ = logmsg;
-    directory_ = file_top_dir();
 }
 
 command_job_op_t::~command_job_op_t()
 {
-    if (command_ != 0)
-	delete command_;
-    if (env_ != 0)
-	delete env_;
-	
+    if (runner_ != 0)
+	delete runner_;
     if (logmessage_ != 0)
 	delete logmessage_;
 }
@@ -97,13 +94,19 @@ command_job_op_t::execute()
 {
     if (logmessage_ != 0)
     	logmessage_->emit();
-    return process_run(command_, env_, directory_);
+    return runner_->run();
 }
 
 char *
 command_job_op_t::describe() const
 {
-    return command_->join(" ");
+    return runner_->describe();
+}
+
+strarray_t *
+command_job_op_t::extracted_dependencies() const
+{
+    return runner_->extracted_dependencies();
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -190,6 +193,7 @@ job_t::add(const char *name, job_op_t *op)
     return job;
 }
 
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 void
 job_t::add_depend(const char *depname)
@@ -205,6 +209,25 @@ job_t::add_depend(const char *depname)
     /* setup depends links */
     depends_down_.append(dep);
     dep->depends_up_.append(this);
+}
+
+
+static void
+add_one_savedep(
+    const char *from,
+    const char *to,
+    savedep_t::quality_t q,
+    void *closure)
+{
+    job_t *job = (job_t *)closure;
+    
+    job->add_depend(to);
+}
+
+void
+job_t::add_saved_depends()
+{
+    savedep_t::instance()->from_apply(name_, add_one_savedep, this);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -389,13 +412,17 @@ job_t::finish_job(job_t *job)
 		(job->result_ ? "success" : "failure"));
 #endif
     job->set_state((job->result_ ? UPTODATE : FAILED));
+
+    /* Remember the extracted dependencies for next time */    
+    strarray_t *deps = job->op_->extracted_dependencies();
+    if (deps != 0)
+	savedep_t::instance()->add(job->name_, deps, savedep_t::EXTRACTED);
 }
 
 void
 job_t::start_job(job_t *job)
 {
     job->set_state(RUNNING);
-    start_queue->put(job);
 }
 
 gboolean
@@ -415,10 +442,11 @@ job_t::main_thread()
 	while ((job = finish_queue->tryget()) != 0)
 	    finish_job(job);	    /* may make some runnable */
 
-    	if (runnable_jobs.head() != 0)
+    	if ((job = runnable_jobs.head()) != 0)
 	{
 	    /* Start the first runnable job */
-	    start_job(runnable_jobs.head());
+	    start_job(job);
+	    start_queue->put(job);
 	}
 	else
 	{
@@ -468,9 +496,9 @@ job_t::scalar()
 #if DEBUG
     	fprintf(stderr, "scalar: starting job \"%s\"\n", job->name());
 #endif    
-	job->set_state(RUNNING);
+	start_job(job);
 	job->result_ = job->op_->execute();
-	job->set_state((job->result_ ? UPTODATE : FAILED));
+	finish_job(job);
     }
 
 #if DEBUG

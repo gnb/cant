@@ -44,7 +44,7 @@ public:
 	
     	virtual gboolean command_add(const xtask_t *, strarray_t *) const = 0;
 #if DEBUG
-	virtual void dump() const;
+	virtual void dump() const = 0;
 #endif
     };
 
@@ -73,6 +73,7 @@ private:
     list_t<mapper_t> mappers_;	/* list of mapper_t: args to files */
     list_t<mapper_t> dep_mappers_; /* list of mapper_t: depfiles to targfiles */
     string_var dep_target_;
+    string_var runmode_;
     
     gboolean foreach_:1;
 
@@ -99,7 +100,8 @@ public:
     	dep_mappers_.append(ma);
     }
 
-
+    const char *runmode() const { return runmode_; }
+    void set_runmode(const char *s) { runmode_ = s; }
 
     
 private:

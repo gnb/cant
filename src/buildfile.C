@@ -20,7 +20,7 @@
 #include "cant.H"
 #include "xtask.H"
 
-CVSID("$Id: buildfile.C,v 1.12 2002-04-13 02:30:18 gnb Exp $");
+CVSID("$Id: buildfile.C,v 1.13 2002-04-21 04:01:40 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -578,6 +578,12 @@ parse_xtaskdef(project_t *proj, xml_node_t *node)
     buf = node->get_attribute("logmessage");
     xtclass->set_logmessage(buf);
     g_free(buf);
+
+    if ((buf = node->get_attribute("runmode")) != 0)
+    {
+	xtclass->set_runmode(buf);
+	g_free(buf);
+    }
 
     xtclass->set_is_fileset(node->get_boolean_attribute("fileset", FALSE));
     

@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 # 
-# $Id: Makefile.am,v 1.34 2002-04-13 12:30:42 gnb Exp $
+# $Id: Makefile.am,v 1.35 2002-04-21 04:01:40 gnb Exp $
 #
 
 bin_PROGRAMS=	cant
@@ -41,6 +41,10 @@ MAPPER_SOURCES=	\
 		mapper_regexp.C \
 		mapper_null.C
 
+RUNNER_SOURCES=	\
+		runner_simple.C \
+		runner_depfifo.C 
+
 cant_SOURCES=	common.H thread.H cant.H \
 		cant.C buildfile.C \
 		project.H project.C \
@@ -57,17 +61,22 @@ cant_SOURCES=	common.H thread.H cant.H \
 		globber.H globber.C \
 		fileset.H fileset.C \
 		mapper.H mapper.C \
+		runner.H runner.C \
+		savedep.H savedep.C \
+		depfile.H depfile.C \
 		condition.H condition.C \
 		pattern.H pattern.C \
 		xml.H xml.C \
-		common.C process.C \
+		common.C \
+		fifo_pool.H fifo_pool.C \
 		strarray.H strarray.C \
 		hashtable.H hashtable.C \
 		list.H \
 		queue.H queue.C \
 		job.H job.C \
 		$(TASK_SOURCES) \
-		$(MAPPER_SOURCES)
+		$(MAPPER_SOURCES) \
+		$(RUNNER_SOURCES)
 INCLUDES=	$(GLIB_CFLAGS) $(LIBXML_CFLAGS) $(THREADS_CFLAGS)
 cant_LDADD=	$(GLIB_LIBS) $(LIBXML_LIBS) $(THREADS_LIBS)
 CPPFLAGS=	-DPKGDATADIR="\"$(pkgdatadir)\"" -DDEBUG=$(DEBUG)
@@ -94,7 +103,14 @@ builtin-mappers.H: $(MAPPER_SOURCES)
 	    sed -n -e 's|^[ 	]*MAPPER_DEFINE_CLASS[ 	]*([ 	]*\([a-z_][a-z_]*\).*$$|MAPPER_CLASS(\1)|p' < $$file >> $@ ;\
 	done
 
-CLEANFILES=	builtin-tasks.H builtin-mappers.H \
+runner.o: builtin-runners.H
+builtin-runners.H: $(RUNNER_SOURCES)
+	$(RM) $@
+	for file in $(RUNNER_SOURCES) ; do \
+	    sed -n -e 's|^[ 	]*RUNNER_DEFINE_CLASS[ 	]*([ 	]*\([a-z_][a-z_]*\).*$$|RUNNER_CLASS(\1)|p' < $$file >> $@ ;\
+	done
+
+CLEANFILES=	builtin-tasks.H builtin-mappers.H builtin-runners.H \
 		*.bb *.bbg *.da *.gcov
 
 pkgdata_DATA=	globals.xml

@@ -17,35 +17,39 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef _cant_thread_h_
-#define _cant_thread_h_ 1
+#ifndef _depfile_h_
+#define _depfile_h_ 1
 
 #include "common.H"
+#include "estring.H"
+#include "string_var.H"
 
-#if THREADS_POSIX
-
-#include <pthread.h>
-#include <semaphore.h>
-
-/* Trivial threads portability layer */
-typedef sem_t	    	    	cant_sem_t;
-typedef pthread_mutex_t	    	cant_mutex_t;
-typedef pthread_t   	    	cant_thread_t;
-
-#define cant_sem_init(s, v) 	sem_init((s), 0, (v))
-#define cant_sem_wait(s)    	sem_wait((s))
-#define cant_sem_trywait(s)    	(sem_trywait((s)) == 0)
-#define cant_sem_post(s)    	sem_post((s))
-#define cant_sem_destroy(s)    	sem_destroy((s))
-
-#define cant_mutex_init(m) 	pthread_mutex_init((m), 0)
-#define cant_mutex_lock(m)    	pthread_mutex_lock((m))
-#define cant_mutex_unlock(m)    pthread_mutex_unlock((m))
-
-#define cant_thread_create(th,fn,arg) \
-    	(pthread_create((th), 0, (fn), (arg)) ? -1 : 0)
-
-#endif	/* THREADS_POSIX */
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+ 
+class depfile_reader_t
+{
+private:
+    int mygetc(FILE *fp);
+    gboolean read_word(FILE *fp, estring &e, char delim);
+    int read_char(FILE *fp);
 
 
-#endif /* _cant_thread_h_ */
+protected:    
+    string_var filename_;
+    unsigned int lineno_;
+
+    virtual void begin_read();
+    virtual void open_error();
+    virtual void syntax_error();
+    virtual void add_dep(const char *from, const char *to) = 0;
+    virtual void end_read();
+    
+public:
+    depfile_reader_t(const char *filename);
+    virtual ~depfile_reader_t();
+
+    gboolean read();
+};
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+#endif /* _depfile_h_ */

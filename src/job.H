@@ -25,6 +25,7 @@
 #include "list.H"
 #include "log.H"
 #include "string_var.H"
+#include "runner.H"
 
 class job_op_t
 {
@@ -35,6 +36,7 @@ public:
     
     virtual gboolean execute() = 0;
     virtual char *describe() const = 0;
+    virtual strarray_t *extracted_dependencies() const;
 };
 
 /*
@@ -45,17 +47,16 @@ class command_job_op_t : public job_op_t
 {
 private:
     /* TODO: need to make a snapshot of log context */
-    strarray_t *command_;
-    strarray_t *env_;
     log_message_t *logmessage_;
-    string_var directory_;
+    runner_t *runner_;
 
     gboolean execute();
     char *describe() const;
+    strarray_t *extracted_dependencies() const;
 
 public:
     /* ctor */
-    command_job_op_t(strarray_t *command, strarray_t *env, log_message_t *logmsg);
+    command_job_op_t(log_message_t *logmsg, runner_t *runner);
     /* dtor */
     ~command_job_op_t();
 };
@@ -131,6 +132,9 @@ public:
     
     /* make this job depend on another job name */
     void add_depend(const char *depname);
+
+    /* add all dependencies from savedep */
+    void add_saved_depends();
 
     /* wait for all pending jobs, run this op and destroy it */
     static gboolean immediate(job_op_t *);

@@ -20,8 +20,9 @@
 #define _DEFINE_GLOBALS 1
 #include "cant.H"
 #include "job.H"
+#include "savedep.H"
 
-CVSID("$Id: cant.C,v 1.13 2002-04-13 12:30:32 gnb Exp $");
+CVSID("$Id: cant.C,v 1.14 2002-04-21 04:01:40 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -177,6 +178,8 @@ cant_t::~cant_t()
 	delete globals_;
     command_targets.remove_all();
     task_scope_t::cleanup_builtins();
+    delete fifo_pool_t::instance();
+    delete savedep_t::instance();
     file_pop_all();
 }
 
@@ -187,6 +190,9 @@ cant_t::initialise()
 {
     task_scope_t::initialise_builtins();
     mapper_t::initialise_builtins();
+    runner_t::initialise_builtins();
+    new fifo_pool_t("cant-fifo", parallelism);
+    new savedep_t("cant.state");
     if (!job_t::init(parallelism))
     	return FALSE;
 

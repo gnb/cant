@@ -1,0 +1,2 @@
+RUNNER_CLASS(simple)
+RUNNER_CLASS(depfifo)

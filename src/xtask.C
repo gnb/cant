@@ -20,7 +20,7 @@
 #include "xtask.H"
 #include "job.H"
 
-CVSID("$Id: xtask.C,v 1.15 2002-04-13 13:23:16 gnb Exp $");
+CVSID("$Id: xtask.C,v 1.16 2002-04-21 04:01:40 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -146,6 +146,8 @@ xtask_t::execute_command()
     if (!targfile.is_null())
 	properties_->set("targfile", targfile);
 
+    runner_t *runner = runner_t::create(xtclass->runmode_);
+    runner->setup_properties(properties_);
 
     /* build the command from args and properties */
     command = new strarray_t;
@@ -164,21 +166,25 @@ xtask_t::execute_command()
     	logmsg = new log_message_t(properties_->expand(xtclass->logmessage_),
 	    	    	    	   /*addnl*/TRUE);
 
+    runner->set_command(command);
+    job_op_t *jobop = new command_job_op_t(logmsg, runner);
+
     if (targfile == 0)
     {
     	/* no dependency information -- job barrier, serialised */
-    	if (!job_t::immediate(new command_job_op_t(command, /*env*/0, logmsg)))
+    	if (!job_t::immediate(jobop))
 	    result_ = FALSE;
     }
     else
     {
     	/* have dependency information -- schedule job for later */
     	job_t *job;
-	int i;
+	unsigned int i;
 	
-	job = job_t::add(targfile, new command_job_op_t(command, /*env*/0, logmsg));
+	job = job_t::add(targfile, jobop);
 	for (i = 0 ; i < depfiles->len ; i++)
 	    job->add_depend(depfiles->nth(i));
+	job->add_saved_depends();
     }
 
     delete depfiles;
@@ -247,7 +253,7 @@ xtask_class_t::arg_t::~arg_t()
 
 	/* TODO: <arg arglistref=""> child */
 
-struct xtask_value_arg_t : public xtask_class_t::arg_t
+class xtask_value_arg_t : public xtask_class_t::arg_t
 {
 private:
     string_var value_;
@@ -280,7 +286,7 @@ public:
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 	    /* TODO: <env> child */
 
-struct xtask_line_arg_t : public xtask_class_t::arg_t
+class xtask_line_arg_t : public xtask_class_t::arg_t
 {
 private:
     string_var line_;
@@ -312,7 +318,7 @@ public:
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-struct xtask_file_arg_t : public xtask_class_t::arg_t
+class xtask_file_arg_t : public xtask_class_t::arg_t
 {
 private:
     string_var file_;
@@ -345,7 +351,7 @@ public:
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-struct xtask_fileset_arg_t : public xtask_class_t::arg_t
+class xtask_fileset_arg_t : public xtask_class_t::arg_t
 {
 private:
     fileset_t *fileset_;
@@ -379,7 +385,7 @@ public:
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-struct xtask_files_arg_t : public xtask_class_t::arg_t
+class xtask_files_arg_t : public xtask_class_t::arg_t
 {
 public:
     xtask_files_arg_t()
@@ -408,7 +414,7 @@ public:
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-struct xtask_tagexp_arg_t : public xtask_class_t::arg_t
+class xtask_tagexp_arg_t : public xtask_class_t::arg_t
 {
 private:
     tagexp_t *tagexp_;
@@ -444,6 +450,7 @@ xtask_class_t::xtask_class_t(const char *name)
 {
     name_ = name;
     property_map_ = new props_t(0);
+    runmode_ = "simple";
 }
 
 xtask_class_t::~xtask_class_t()

@@ -37,6 +37,8 @@
 #include "task.H"
 #include "taglist.H"
 #include "target.H"
+#include "runner.H"
+#include "fifo_pool.H"
 #include "project.H"
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -68,9 +70,6 @@ mapper_t *parse_mapper(project_t *proj, xml_node_t *node);
 extern task_t *parse_task(project_t *, xml_node_t *);	/* for recursives e.g. <condition> */
 extern project_t *read_project(const char *filename, project_t *parent, gboolean isglobal);
 extern project_t *read_buildfile(const char *filename, project_t *parent);
-
-/* process.c */
-gboolean process_run(strarray_t *command, strarray_t *env, const char *dir);
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 #endif /* _cant_h_ */
