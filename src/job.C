@@ -27,38 +27,14 @@
 #include "queue.H"
 #endif
 
-CVSID("$Id: job.C,v 1.4 2002-03-29 16:33:50 gnb Exp $");
-
-
-typedef enum
-{
-    UNKNOWN,
-    RUNNABLE,
-    RUNNING,
-    UPTODATE,
-    FAILED,
-    
-    NUM_STATES
-} job_state_t;
-
-struct job_s
-{
-    char *name;
-    unsigned int serial;    	/* for preserving order */
-    job_state_t state;
-    GList *depends_up;	    	/* job_t's that depend on me */
-    GList *depends_down;     	/* job_t's I depend on */
-    job_ops_t *ops;
-    void *userdata;
-    gboolean result;
-};
+CVSID("$Id: job.C,v 1.5 2002-03-29 17:57:11 gnb Exp $");
 
 
 extern int process_run(strarray_t *command, strarray_t *env, const char *dir);
 
 static hashtable_t<const char*, job_t> *all_jobs;
 static GList *runnable_jobs;
-static int state_count[NUM_STATES];
+int job_t::state_count_[job_t::NUM_STATES];
 
 #if !THREADS_NONE
 /*
@@ -82,107 +58,83 @@ static queue_t<job_t> *finish_queue;
 static unsigned int num_workers;
 #endif
 
-typedef struct
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+job_op_t::job_op_t()
 {
-    /* TODO: need to make a snapshot of log context */
-    strarray_t *command;
-    strarray_t *env;
-    logmsg_t *logmessage;
-    char *directory;
-} job_process_private_t;
+}
+
+job_op_t::~job_op_t()
+{
+}
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static gboolean
-job_process_execute(void *userdata)
+command_job_op_t::command_job_op_t(
+    strarray_t *command,
+    strarray_t *env,
+    logmsg_t *logmsg)
 {
-    job_process_private_t *jpp = (job_process_private_t *)userdata;
-    
-    if (jpp->logmessage != 0)
-    	logmsg_emit(jpp->logmessage);
-    return process_run(jpp->command, jpp->env, jpp->directory);
+    command_ = command;
+    env_ = env;
+    logmessage_ = logmsg;
+    directory_ = g_strdup(file_top_dir());
 }
 
-static char *
-job_process_describe(void *userdata)
+command_job_op_t::~command_job_op_t()
 {
-    job_process_private_t *jpp = (job_process_private_t *)userdata;
-
-    return jpp->command->join(" ");
-}
-
-static void
-job_process_delete(void *userdata)
-{
-    job_process_private_t *jpp = (job_process_private_t *)userdata;
-
-    if (jpp->command != 0)
-	delete jpp->command;
-    if (jpp->env != 0)
-	delete jpp->env;
-    strdelete(jpp->directory);
+    if (command_ != 0)
+	delete command_;
+    if (env_ != 0)
+	delete env_;
+    strdelete(directory_);
 	
-    if (jpp->logmessage != 0)
-	logmsg_delete(jpp->logmessage);
-	
-    g_free(jpp);    
+    if (logmessage_ != 0)
+	logmsg_delete(logmessage_);
 }
 
-static job_ops_t job_process_ops = 
+gboolean
+command_job_op_t::execute()
 {
-    job_process_execute,
-    job_process_describe,
-    job_process_delete
-};
-
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
-
-static job_t *
-job_new(const char *name)
-{
-    job_t *job;
-    
-    job = g_new0(job_t, 1);
-    
-    strassign(job->name, name);
-    job->state = UNKNOWN;
-    state_count[UNKNOWN]++;
-    
-    all_jobs->insert(job->name, job);
-
-    return job;
+    if (logmessage_ != 0)
+    	logmsg_emit(logmessage_);
+    return process_run(command_, env_, directory_);
 }
 
-static void
-job_delete(job_t *job)
+char *
+command_job_op_t::describe() const
 {
-    if (job->ops != 0 && job->ops->dtor != 0)
-    	(*job->ops->dtor)(job->userdata);
-
-    strdelete(job->name);
-    state_count[job->state]--;
-    
-    while (job->depends_up != 0)
-    	job->depends_up = g_list_remove_link(job->depends_up, job->depends_up);
-    while (job->depends_down != 0)
-    	job->depends_down = g_list_remove_link(job->depends_down, job->depends_down);
-
-    g_free(job);
+    return command_->join(" ");
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static job_t *
-job_find(const char *name)
+job_t::job_t(const char *name)
 {
-    return all_jobs->lookup(name);
+    strassign(name_, name);
+    state_ = UNKNOWN;
+    state_count_[UNKNOWN]++;
+    
+    all_jobs->insert(name_, this);
+}
+
+job_t::~job_t()
+{
+    if (op_ != 0)
+    	delete op_;
+
+    strdelete(name_);
+    state_count_[state_]--;
+    
+    listclear(depends_up_);
+    listclear(depends_down_);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 #if DEBUG
 
-static const char *
-job_state_name(const job_t *job)
+const char *
+job_t::state_name(job_t::state_t state)
 {
     static const char *names[] = 
     {
@@ -192,31 +144,29 @@ job_state_name(const job_t *job)
 	"UPTODATE",
 	"FAILED"
     };
-    return names[job->state];
+    return names[state];
 }
 
-static char *
-job_describe(const job_t *job)
+char *
+job_t::describe() const
 {
-    if (job->ops == 0)
+    if (job->op_ == 0)
     	return g_strdup("-undefined-");
-    if (job->ops->describe == 0)
-    	return g_strdup("-undescribed-");
-    return (*job->ops->describe)(job->userdata);
+    return job->op_->describe();
 }
 
 #endif
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 job_t *
-job_add(const char *name, job_ops_t *ops, void *userdata)
+job_t::add(const char *name, job_op_t *op)
 {
     job_t *job;
     static unsigned int serial = 0;
 
-    if ((job = job_find(name)) != 0)
+    if ((job = all_jobs->lookup(name)) != 0)
     {
-    	if (job->ops != 0)
+    	if (job->op_ != 0)
 	{
 	    fprintf(stderr, "Duplicate job \"%s\"\n", name);
 	    return 0;
@@ -224,18 +174,17 @@ job_add(const char *name, job_ops_t *ops, void *userdata)
     }
     else
     {
-	job = job_new(name);
+	job = new job_t(name);
     }
 	
-    job->serial = ++serial;
-    job->ops = ops;
-    job->userdata = userdata;
+    job->serial_ = ++serial;
+    job->op_ = op;
     
 #if DEBUG
     {
-    	char *str = job_describe(job);
+    	char *str = job->describe();
     	fprintf(stderr, "job_add: serial=%u name=\"%s\" description=\"%s\"\n",
-	    	    job->serial, job->name, str);
+	    	    job->serial_, job->name_, str);
 	g_free(str);
     }
 #endif
@@ -244,103 +193,85 @@ job_add(const char *name, job_ops_t *ops, void *userdata)
 }
 
 
-job_t *
-job_add_command(
-    const char *name, 
-    strarray_t *command,
-    strarray_t *env,
-    logmsg_t *logmessage)
-{
-    job_process_private_t *jpp;
-    
-    jpp = new(job_process_private_t);
-    jpp->command = command;
-    jpp->env = env;
-    jpp->logmessage = logmessage;
-    jpp->directory = g_strdup(file_top_dir());
-    
-    return job_add(name, &job_process_ops, jpp);
-}
-
 void
-job_add_depend(job_t *job, const char *depname)
+job_t::add_depend(const char *depname)
 {
     job_t *dep;
     
-    if ((dep = job_find(depname)) == 0)
+    if ((dep = all_jobs->lookup(depname)) == 0)
     {
     	/* create an undefined job for later definition */
-	dep = job_new(depname);
+	dep = new job_t(depname);
     }
     
     /* setup depends links */
-    job->depends_down = g_list_append(job->depends_down, dep);
-    dep->depends_up = g_list_append(dep->depends_up, job);
+    depends_down_ = g_list_append(depends_down_, dep);
+    dep->depends_up_ = g_list_append(dep->depends_up_, this);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static job_state_t
-job_calc_new_state(job_t *job)
+job_t::state_t
+job_t::calc_new_state() const
 {
     GList *iter;
     
-    for (iter = job->depends_down ; iter != 0 ; iter = iter->next)
+    for (iter = depends_down_ ; iter != 0 ; iter = iter->next)
     {
     	job_t *down = (job_t *)iter->data;
 	
-	if (down->state == FAILED)
+	if (down->state_ == FAILED)
 	    return FAILED;
-	if (down->state != UPTODATE)
+	if (down->state_ != UPTODATE)
 	    return UNKNOWN;
     }
 
     /* all deps are UPTODATE */
     
-    if (file_exists(job->name) == 0)
+    if (file_exists(name_) == 0)
     	return UPTODATE;
     
     return RUNNABLE;
 }
 
-static int
-job_compare_by_serial(gconstpointer c1, gconstpointer c2)
+int
+job_t::compare_by_serial(gconstpointer c1, gconstpointer c2)
 {
     const job_t *j1 = (const job_t*)c1;
     const job_t *j2 = (const job_t*)c2;
     
-    if (j1->serial > j2->serial)
+    if (j1->serial_ > j2->serial_)
     	return 1;
-    if (j1->serial < j2->serial)
+    if (j1->serial_ < j2->serial_)
     	return -1;
     return 0;
 }
 
-static void
-job_set_state(job_t *job, job_state_t newstate)
+void
+job_t::set_state(job_t::state_t newstate)
 {
     GList *iter;
 
-    if (job->state == newstate)
+    if (state_ == newstate)
     	return;     /* nothing to see here, move along */
 	
     /* runnable_jobs keeps track of all RUNNABLE jobs in serial order */
     if (newstate == RUNNABLE)
-	runnable_jobs = g_list_insert_sorted(runnable_jobs, job,
-	    	    	    	    	     job_compare_by_serial);
-    if (job->state == RUNNABLE)
-	runnable_jobs = g_list_remove(runnable_jobs, job);
+	runnable_jobs = g_list_insert_sorted(runnable_jobs, this,
+	    	    	    	    	     compare_by_serial);
+    if (state_ == RUNNABLE)
+	runnable_jobs = g_list_remove(runnable_jobs, this);
 
     /* keep track of how many jobs are in each state */
-    state_count[newstate]++;
-    state_count[job->state]--;
+    state_count_[newstate]++;
+    state_count_[state_]--;
 
     /* actually update the state variable */
-    job->state = newstate;
+    state_ = newstate;
     
 #if DEBUG
     fprintf(stderr, "Main: job \"%s\" becomes %s\n",
-    	    	    job->name, job_state_name(job));
+    	    	    name_, state_name(state_));
 #endif
 
     /* propagate the state change up the dependency graph */
@@ -349,11 +280,11 @@ job_set_state(job_t *job, job_state_t newstate)
     case FAILED:
     case UPTODATE:
     case UNKNOWN:
-	for (iter = job->depends_up ; iter != 0 ; iter = iter->next)
+	for (iter = depends_up_ ; iter != 0 ; iter = iter->next)
 	{
     	    job_t *up = (job_t *)iter->data;
 
-	    job_set_state(up, job_calc_new_state(up));
+	    up->set_state(up->calc_new_state());
 	}
 	break;
     default:
@@ -363,25 +294,19 @@ job_set_state(job_t *job, job_state_t newstate)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void
-job_initialise_one(const char *key, job_t *job, void *userdata)
+void
+job_t::initialise_one(const char *key, job_t *job, void *userdata)
 {
-    if (job->depends_down == 0)
+    if (job->depends_down_ == 0)
     {
-    	if (job->ops == 0 && file_exists(job->name) < 0)
+    	if (job->op_ == 0 && file_exists(job->name_) < 0)
 	{
-	    fprintf(stderr, "No rule to make \"%s\"\n", job->name);
-	    job_set_state(job, FAILED);
+	    fprintf(stderr, "No rule to make \"%s\"\n", job->name_);
+	    job->set_state(FAILED);
 	}
 	else
-	    job_set_state(job, UPTODATE);
+	    job->set_state(UPTODATE);
     }
-}
-
-static void
-job_initialise_states(void)
-{
-    all_jobs->foreach(job_initialise_one, 0);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -389,36 +314,36 @@ job_initialise_states(void)
 #if DEBUG
 
 static void
-job_dump(const job_t *job)
+job_t::dump() const
 {
     char *desc;
     GList *iter;
     
-    desc = job_describe(job);
+    desc = describe(job);
     fprintf(stderr, "    job 0x%08lx {\n\tserial = %u\n\tname = \"%s\"\n\tstate = %s\n\tdescription = \"%s\"\n\tdepends_down =",
-    	       (unsigned long)job,
-	       job->serial,
-	       job->name,
+    	       (unsigned long)this,
+	       serial_,
+	       name_,
 	       job_state_name(job),
 	       desc);
-    for (iter = job->depends_down ; iter != 0 ; iter = iter->next)
+    for (iter = depends_down_ ; iter != 0 ; iter = iter->next)
     {
     	job_t *down = (job_t *)iter->data;
 	
-	fprintf(stderr, " \"%s\"", down->name);
+	fprintf(stderr, " \"%s\"", down->name_);
     }
     fprintf(stderr, "\n    }\n");
     g_free(desc);
 }
 
 static void
-job_dump_one(const char *key, job_t *value, void *userdata)
+job_dump_one(const char *key, job_t *job, void *userdata)
 {
-    job_dump(value);
+    job->dump();
 }
 
 void
-job_dump_all(void)
+job_t::dump_all()
 {
     fprintf(stderr, "all_jobs = \n");
     all_jobs->foreach(job_dump_one, 0);
@@ -430,8 +355,8 @@ job_dump_all(void)
 
 #if !THREADS_NONE
 
-static void *
-worker_thread(void *arg)
+void *
+job_t::worker_thread(void *arg)
 {
     job_t *job;
 #if DEBUG
@@ -449,11 +374,11 @@ worker_thread(void *arg)
 
     	/* run the job */
 #if DEBUG
-	fprintf(stderr, "Worker%d: starting job \"%s\"\n", threadno, job->name);
+	fprintf(stderr, "Worker%d: starting job \"%s\"\n", threadno, job->name_);
 #endif
-	job->result = (*job->ops->execute)(job->userdata);
+	job->result_ = job->op_->execute();
 #if DEBUG
-	fprintf(stderr, "Worker%d: finished job \"%s\"\n", threadno, job->name);
+	fprintf(stderr, "Worker%d: finished job \"%s\"\n", threadno, job->name_);
 #endif
 	
 	/* put the finished job on the queue back to the main thread */
@@ -461,36 +386,36 @@ worker_thread(void *arg)
     }
 }
 
-static void
-finish_job(job_t *job)
+void
+job_t::finish_job(job_t *job)
 {
 #if DEBUG
     fprintf(stderr, "Main: received finished job \"%s\", %s\n",
     	    	job->name,
 		(job->result ? "success" : "failure"));
 #endif
-    job_set_state(job, (job->result ? UPTODATE : FAILED));
+    job->set_state((job->result_ ? UPTODATE : FAILED));
 }
 
-static void
-start_job(job_t *job)
+void
+job_t::start_job(job_t *job)
 {
-    job_set_state(job, RUNNING);
+    job->set_state(RUNNING);
     start_queue->put(job);
 }
 
-static gboolean
-main_thread(void)
+gboolean
+job_t::main_thread()
 {
     job_t *job;
         
 #if DEBUG
     fprintf(stderr, "Main: starting\n");
 #endif
-    while ((state_count[UNKNOWN] > 0 ||
-            state_count[RUNNABLE] > 0 ||
-            state_count[RUNNING] > 0 ) &&
-	   state_count[FAILED] == 0)
+    while ((state_count_[UNKNOWN] > 0 ||
+            state_count_[RUNNABLE] > 0 ||
+            state_count_[RUNNING] > 0 ) &&
+	   state_count_[FAILED] == 0)
     {
     	/* Handle any finished jobs, to keep the finish queue short */
 	while ((job = finish_queue->tryget()) != 0)
@@ -508,12 +433,12 @@ main_thread(void)
 	}
     }
 
-    if (state_count[FAILED] > 0)
+    if (state_count_[FAILED] > 0)
     {
 #if DEBUG
 	fprintf(stderr, "Main: waiting for jobs to finish\n");
 #endif
-	while (state_count[RUNNING] > 0)
+	while (state_count_[RUNNING] > 0)
 	    finish_job(finish_queue->get());
 #if DEBUG
 	fprintf(stderr, "Main: all jobs finished\n");
@@ -523,139 +448,109 @@ main_thread(void)
 #if DEBUG
     fprintf(stderr, "Main: finishing\n");
 #endif
-    return (state_count[FAILED] == 0);
+    return (state_count_[FAILED] == 0);
 }
 
 #endif /* !THREADS_NONE */
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static gboolean
-scalar(void)
+gboolean
+job_t::scalar()
 {
     job_t *job;
         
 #if DEBUG
     fprintf(stderr, "scalar: starting\n");
 #endif
-    while ((state_count[UNKNOWN] > 0 ||
-            state_count[RUNNABLE] > 0 ) &&
-	   state_count[FAILED] == 0)
+    while ((state_count_[UNKNOWN] > 0 ||
+            state_count_[RUNNABLE] > 0 ) &&
+	   state_count_[FAILED] == 0)
     {
-    	assert(state_count[RUNNABLE] > 0);
+    	assert(state_count_[RUNNABLE] > 0);
 	assert(runnable_jobs != 0);
 	
 	/* Perform the first runnable job */
 	job = (job_t *)runnable_jobs->data;
 #if DEBUG
-    	fprintf(stderr, "scalar: starting job \"%s\"\n", job->name);
+    	fprintf(stderr, "scalar: starting job \"%s\"\n", job->name_);
 #endif    
-	job_set_state(job, RUNNING);
-	job->result = (*job->ops->execute)(job->userdata);
-	job_set_state(job, (job->result ? UPTODATE : FAILED));
+	job->set_state(RUNNING);
+	job->result_ = job->op_->execute();
+	job->set_state((job->result_ ? UPTODATE : FAILED));
     }
 
 #if DEBUG
     fprintf(stderr, "scalar: finishing\n");
 #endif
-    return (state_count[FAILED] == 0);
+    return (state_count_[FAILED] == 0);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 gboolean
-job_immediate(job_ops_t *ops, void *userdata)
+job_t::immediate(job_op_t *op)
 {
     gboolean result = FALSE;
     
     /* be a job barrier */
-    if (job_run())
+    if (run())
     {
 	/* execute the command immediately */
-	result = (*ops->execute)(userdata);
+	result = op->execute();
     }
 
     /* clean up immediately */
-    if (ops->dtor != 0)
-    	(*ops->dtor)(userdata);
-    
-    return result;
-}
-
-gboolean
-job_immediate_command(
-    strarray_t *command,
-    strarray_t *env,
-    logmsg_t *logmessage)
-{
-    gboolean result = FALSE;
-    
-    /* be a job barrier */
-    if (job_run())
-    {
-	/* execute the command immediately */
-	if (logmessage != 0)
-	{
-	    logmsg_emit(logmessage);
-	    logmsg_delete(logmessage);
-	}
-	result = process_run(command, env, file_top_dir());
-    }
-    
-    /* clean up immediately */
-    delete command;
-    if (env != 0)
-	delete env;
+    delete op;
     
     return result;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static gboolean
-job_clear_one(const char *key, job_t *value, void *userdata)
+gboolean
+job_t::clear_one(const char *key, job_t *value, void *userdata)
 {
-    job_delete(value);
+    delete value;
     return TRUE;    /* remove me */
 }
 
 void
-job_clear(void)
+job_t::clear()
 {
-    all_jobs->foreach_remove(job_clear_one, 0);
+    all_jobs->foreach_remove(clear_one, 0);
     
-    while (runnable_jobs != 0)
-    	runnable_jobs = g_list_remove_link(runnable_jobs, runnable_jobs);
+    listclear(runnable_jobs);
 
-    assert(state_count[UNKNOWN] == 0);
-    assert(state_count[RUNNABLE] == 0);
-    assert(state_count[RUNNING] == 0);
-    assert(state_count[FAILED] == 0);
-    assert(state_count[UPTODATE] == 0);
+    assert(state_count_[UNKNOWN] == 0);
+    assert(state_count_[RUNNABLE] == 0);
+    assert(state_count_[RUNNING] == 0);
+    assert(state_count_[FAILED] == 0);
+    assert(state_count_[UPTODATE] == 0);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 gboolean
-job_pending(void)
+job_t::pending()
 {
     return (all_jobs->size() > 0);
 }
 
 
 gboolean
-job_run(void)
+job_t::run()
 {
     gboolean res = FALSE;
 
-    if (!job_pending())
+    if (!pending())
     	return TRUE;	    /* no jobs: trivially true */
 	
-    job_initialise_states();
+    all_jobs->foreach(initialise_one, 0);
 #if DEBUG
-    job_dump_all();
+    dump_all();
 #endif
 
-    if (state_count[FAILED] == 0)
+    if (state_count_[FAILED] == 0)
     {
 #if !THREADS_NONE
 	if (num_workers > 1)
@@ -665,7 +560,7 @@ job_run(void)
 	res = scalar();
     }
     
-    job_clear();
+    clear();
     
     return res;
 }
@@ -673,7 +568,7 @@ job_run(void)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 gboolean
-job_init(unsigned int nw)
+job_t::init(unsigned int nw)
 {
 #if !THREADS_NONE
     num_workers = nw;

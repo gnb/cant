@@ -20,7 +20,7 @@
 #include "xtask.H"
 #include "job.H"
 
-CVSID("$Id: xtask.C,v 1.2 2002-03-29 13:57:32 gnb Exp $");
+CVSID("$Id: xtask.C,v 1.3 2002-03-29 17:57:11 gnb Exp $");
 
 typedef struct
 {
@@ -216,7 +216,7 @@ xtask_execute_command(task_t *task)
     if (targfile == 0)
     {
     	/* no dependency information -- job barrier, serialised */
-    	if (!job_immediate_command(command, /*env*/0, logmsg))
+    	if (!job_t::immediate(new command_job_op_t(command, /*env*/0, logmsg)))
 	    xp->result = FALSE;
     }
     else
@@ -225,9 +225,9 @@ xtask_execute_command(task_t *task)
     	job_t *job;
 	int i;
 	
-	job = job_add_command(targfile, command, /*env*/0, logmsg);
+	job = job_t::add(targfile, new command_job_op_t(command, /*env*/0, logmsg));
 	for (i = 0 ; i < depfiles->len ; i++)
-	    job_add_depend(job, depfiles->nth(i));
+	    job->add_depend(depfiles->nth(i));
     }
 
     strdelete(targfile);

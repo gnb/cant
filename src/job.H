@@ -24,27 +24,115 @@
 #include "strarray.H"
 #include "log.H"
 
-typedef struct job_s job_t;
-typedef struct job_ops_s job_ops_t;
-
-struct job_ops_s
+class job_op_t
 {
-    gboolean (*execute)(void *userdata);
-    char *(*describe)(void *userdata);
-    void (*dtor)(void *userdata);
+private:
+public:
+    job_op_t();
+    virtual ~job_op_t();
+    
+    virtual gboolean execute() = 0;
+    virtual char *describe() const = 0;
 };
 
-gboolean job_init(unsigned int num_workers);
-job_t *job_add(const char *name, job_ops_t *ops, void *userdata);
-job_t *job_add_command(const char *name, strarray_t *command, strarray_t *env,
-    	    	       logmsg_t *logmsg);
-void job_add_depend(job_t *job, const char *depname);
-gboolean job_pending(void);
-void job_clear(void);
-gboolean job_run(void);
-gboolean job_immediate(job_ops_t *ops, void *userdata);
-gboolean job_immediate_command(strarray_t *command, strarray_t *env,
-    	    	    	       logmsg_t *logmsg);
+/*
+ * Most common case is a job which runs a UNIX command
+ * constructed from taglists or other means.
+ */
+class command_job_op_t : public job_op_t
+{
+private:
+    /* TODO: need to make a snapshot of log context */
+    strarray_t *command_;
+    strarray_t *env_;
+    logmsg_t *logmessage_;
+    char *directory_;
+
+    gboolean execute();
+    char *describe() const;
+
+public:
+    /* ctor */
+    command_job_op_t(strarray_t *command, strarray_t *env, logmsg_t *logmsg);
+    /* dtor */
+    ~command_job_op_t();
+};
+
+class job_t
+{
+private:
+    enum state_t
+    {
+	UNKNOWN,
+	RUNNABLE,
+	RUNNING,
+	UPTODATE,
+	FAILED,
+
+	NUM_STATES
+    };
+    
+    char *name_;
+    unsigned int serial_;    	/* for preserving order */
+    state_t state_;
+    GList *depends_up_;	    	/* job_t's that depend on me */
+    GList *depends_down_;     	/* job_t's I depend on */
+    job_op_t *op_;
+    gboolean result_;
+    
+    static int state_count_[NUM_STATES];
+
+    void set_state(state_t);
+    state_t calc_new_state() const;
+
+    static int compare_by_serial(gconstpointer c1, gconstpointer c2);
+    static void initialise_one(const char *key, job_t *job, void *userdata);
+    static gboolean clear_one(const char *key, job_t *value, void *userdata);
+#if !THREADS_NONE
+    static void *worker_thread(void *arg);
+    static void finish_job(job_t *);
+    static void start_job(job_t *);
+    static gboolean main_thread();
+#endif
+    static gboolean scalar();
+    
+#if DEBUG
+    void dump() const;
+    static void dump_all();
+    static const char *state_name(state_t state);
+    char *describe() const;
+#endif
+
+    /* ctor */
+    job_t(const char *name);
+    /* dtor */
+    ~job_t();
+    
+public:
+
+    /* call this once at start of programs to start worker threads */
+    static gboolean init(unsigned int num_workers);
+    
+    /* return count of pending jobs */
+    static gboolean pending();
+    
+    /* shut down all pending jobs */
+    static void clear();
+    
+    /* execute all jobs */
+    static gboolean run();
+
+    /* add a pending job */
+    static job_t *add(const char *name, job_op_t *);
+    
+    /* make this job depend on another job name */
+    void add_depend(const char *depname);
+
+    /* wait for all pending jobs, run this op and destroy it */
+    static gboolean immediate(job_op_t *);
+    
+    friend class shut_mr_silly_compiler;
+};
 
 
 #endif /* _cant_job_h_ */

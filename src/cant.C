@@ -21,7 +21,7 @@
 #include "cant.H"
 #include "job.H"
 
-CVSID("$Id: cant.C,v 1.1 2002-03-29 12:36:25 gnb Exp $");
+CVSID("$Id: cant.C,v 1.2 2002-03-29 17:57:11 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -498,7 +498,7 @@ main(int argc, char **argv)
     
     task_initialise_builtins();
     mapper_initialise_builtins();
-    if (!job_init(parallelism))
+    if (!job_t::init(parallelism))
     	return 1;
 
     project_globals = read_buildfile(globals_file, /*parent*/0);

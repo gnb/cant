@@ -20,7 +20,7 @@
 #include "cant.H"
 #include "job.H"
 
-CVSID("$Id: target.C,v 1.1 2002-03-29 12:36:26 gnb Exp $");
+CVSID("$Id: target.C,v 1.2 2002-03-29 17:57:11 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -108,13 +108,13 @@ target_execute(target_t *targ)
 	
 	if (!task_execute(task))
 	{
-	    job_clear();
+	    job_t::clear();
 	    log_pop_context();
 	    return FALSE;
 	}
     }
     
-    job_run();
+    job_t::run();
     
     log_pop_context();
     return TRUE;
