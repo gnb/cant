@@ -1,17 +1,73 @@
+Fri Nov 16 10:00:46 2001  Greg Banks <gnb@alphalink.com.au>
+	* Release 0.0.6
+
+	* Xtaskdefs are now per-project instead of global.
+	* Projects can inherit taskdefs and properties from parent projects.
+	All projects inherit from a global project read from globals.xml.
+
+	* Improvements to argument parsing: added some GNU-style options.
+	* Added --verbose option which prints commands instead of log messages.
+	* Added --version option.
+	* Mentioned --help in its own output.
+	
+	* Added --enable-debug to configure script.
+
+	* Centralised code for handling "if" and "unless" attributes on
+	various elements, so its now done cleanly and consistently.
+	* Added "matches", "matchesregex" and "matchsensitive" attributes to
+	conditionals, to allow conditionals to be more finely tuned.
+	* Actually implemented conditionals on targets.
+
+	* Centralised reporting of unknown and missing required attributes
+	during buildfile parse.
+
+	* Fileset_t interface now const correct.
+	* Props_t interface now const-correct.
+	* Provided a const-correct pattern_match_c(); the downside is that
+	it doesn't support groups.
+
+	* Fileset_t's still read includes and excludes files every time
+	they're queried, but now they don't pointlessly store the data
+	between queries.
+	* Fileset_t's now get a props_t to expand variables at the latest
+	possible time (i.e. fileset_apply()) instead of at creation,
+	which solves some variable scope problems with xtasks.
+	* Added fileset_gather_mapped() based on some code from xtask.c
+	* Removed fileset_gather() which was not used.
+
+	* Extended log interface to allow log messages to be saved for
+	later emission.
+	* Log messages for delayed jobs now display correct scope.
+	* Renamed logperror() log_perror().
+	
+	* Split off various new headers from cant.h
+
+	* Moved target execution code to target.c.
+	
+	* The <delete> task will admit to its presence even if the verbose
+	attribute is off.
+	
+	* Made xtask_arg_t data structure cleaner.
+
 Tue Nov 13 15:56:13 2001  Greg Banks <gnb@alphalink.com.au>
-	* everything: 0.0.5.  Implemented parallelising job
-	scheduling backed, and connected that to xtasks.
+
+	* Release 0.0.5.
+	* Implemented parallelising job scheduling backed.
+	* Xtasks use job scheduling.
 
 Tue Nov  6 07:40:31 2001  Greg Banks <gnb@alphalink.com.au>
 
-	* everything: 0.0.2.  Implemented fileset, and some more
-	tasks.  Checked into CVS.
+	* Release 0.0.2.
+	* Implemented fileset.
+	* Implemented some more tasks.
+	* First CVS checkin.
 
 Sat Nov  3 19:26:13 2001  Greg Banks <gnb@alphalink.com.au>
 
-	* everything: initial version, 0.0.1.  Parses build.xml files
-	into C structures, and does basic property manipulation.
-	Automake infrastructure.
+	* Release 0.0.1.
+	* Parses build.xml files into C structures.
+	* Does basic property manipulation.
+	* Automake infrastructure.
 
 	
 
