@@ -21,7 +21,7 @@
 #include "tok.h"
 #include <time.h>
 
-CVSID("$Id: task_cant.c,v 1.2 2002-02-08 07:41:00 gnb Exp $");
+CVSID("$Id: task_cant.c,v 1.3 2002-02-11 05:34:05 gnb Exp $");
 
 typedef struct
 {
@@ -103,7 +103,7 @@ cant_setup_magical_paths(project_t *proj)
     estring path;
     tok_t tok;
 
-    tok_init(&tok, proj->basedir, "/");
+    tok_init_m(&tok, file_normalise(proj->basedir, 0), "/");
     estring_init(&path);
     
     /* TODO: We need something like a file_denormalise() */
@@ -147,6 +147,7 @@ cant_execute(task_t *task)
     strnullnorm(buildfile_e);
     if (buildfile_e == 0)
 	buildfile_e = g_strconcat(dir_e, "/build.xml", 0);
+    buildfile_e = file_normalise_m(buildfile_e, 0);
 	
     proj = read_buildfile(buildfile_e,
 	    	    (cp->inherit_all ? task->target->project : project_globals));
