@@ -19,7 +19,7 @@
 
 #include "xml.h"
 
-CVSID("$Id: xml.c,v 1.2 2001-11-06 09:10:30 gnb Exp $");
+CVSID("$Id: xml.c,v 1.3 2001-11-06 14:08:57 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -34,10 +34,12 @@ cantXmlGetBooleanProp(xmlNode *node, const char *name, gboolean deflt)
 	
     res = deflt;
     if (!strcasecmp(value, "true") ||
-    	!strcasecmp(value, "yes"))
+    	!strcasecmp(value, "yes") ||
+    	!strcasecmp(value, "off"))
     	res = TRUE;
     else if (!strcasecmp(value, "false") ||
-    	     !strcasecmp(value, "no"))
+    	     !strcasecmp(value, "no") ||
+    	     !strcasecmp(value, "off"))
     	res = FALSE;
     else
     	parse_error("attribute \"%s\" should be one of \"true\" or \"false\"\n", name);
