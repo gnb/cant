@@ -1,0 +1,28 @@
+#!/bin/sh
+#
+# $Id: runtest,v 1.1 2002-04-21 05:58:34 gnb Exp $
+#
+
+. ../testfunctions.sh
+
+dep_test ()
+{
+    VALUE="$1"
+    
+    start_test "dependencies"
+    
+    sleep 2
+    /bin/rm -f a.h
+    echo "#define MESSAGE \"$VALUE\"" > a.h
+    
+    cant all
+    
+    check_file_executable foo
+    
+    run_prog ./foo "$VALUE"
+}
+
+/bin/rm -rf *.o foo
+dep_test "Hello World"
+dep_test "Bye Cruel World"
+dep_test "Hello Again"

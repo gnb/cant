@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+
+<!-- $Id: build.xml,v 1.1 2002-04-21 05:58:34 gnb Exp $ -->
+
+<project name="test005" default="all" basedir=".">
+
+  <!-- The C source files for the foo program -->
+  <fileset id="foo-sources" dir="." includes="a.c"/>
+  
+  <target name="all">
+    <compile refid="foo-sources"/>
+    <link program="foo" refid="foo-sources"/>
+  </target>
+
+  <target name="install">
+    <copy file="foo" todir="${bindir}"/>
+  </target>
+
+  <target name="clean">
+    <delete>
+      <fileset dir=".">
+	<include name="foo"/>
+	<include name="*.o"/>
+      </fileset>
+    </delete>
+  </target>
+
+</project>
