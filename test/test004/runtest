@@ -1,0 +1,20 @@
+#!/bin/sh
+#
+# $Id: runtest,v 1.1 2001-11-21 12:58:10 gnb Exp $
+#
+
+. ../testfunctions.sh
+
+basic_build_test ()
+{
+    start_test "basic build"
+    
+    /bin/rm -rf *.o foo libfoo.a
+    cant all
+    
+    check_file_executable foo
+    
+    run_prog ./foo
+}
+
+basic_build_test
