@@ -67,6 +67,8 @@ public:
     {
     	char *d = data_;
 	data_ = 0;
+	length_ = 0;
+	available_ = 0;
 	return d;
     }
     
