@@ -19,7 +19,7 @@
 
 #include "log.H"
 
-CVSID("$Id: log.C,v 1.3 2002-04-13 09:24:49 gnb Exp $");
+CVSID("$Id: log.C,v 1.4 2002-04-13 12:26:29 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -268,7 +268,7 @@ log::infof(const char *fmt, ...)
 void
 log::perror(const char *filename)
 {
-    errorf("%s: %s", filename, strerror(errno));
+    errorf("%s: %s\n", filename, strerror(errno));
 }
 
 void
