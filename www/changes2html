@@ -1,6 +1,6 @@
 #!/usr/bin/awk -f
 #
-# $Id: changes2html,v 1.3 2001-11-16 12:55:42 gnb Exp $
+# $Id: changes2html,v 1.4 2001-11-16 13:12:53 gnb Exp $
 #
 # Awk script to convert a GNU ChangeLog into HTML for the Web page
 #
@@ -37,7 +37,14 @@ function start_item () {
 }
 function spacer () {
     if (in_item)
-    	print "<br>";
+    	print "<li style=\"list-style-type:none;\">&nbsp;";
+}
+function quote_meta (str) {
+    x = str;
+    x = gensub("&", "\\&amp;", "g", x);
+    x = gensub("<", "\\&lt;", "g", x);
+    x = gensub(">", "\\&gt;", "g", x);
+    return x;
 }
 /^[A-Z]/ {
     # Header lines
@@ -54,12 +61,12 @@ function spacer () {
 /^[ \t]+\*[ \t]+/ {
     # first line of record.
     start_item();
-    print gensub("^[ \t]+\\*[ \t]+", "", "g");
+    print quote_meta(gensub("^[ \t]+\\*[ \t]+", "", "g"));
     next;
 }
 {
     # subsequent line of record
-    print gensub("^[ \t]*", "", "g");
+    print quote_meta(gensub("^[ \t]*", "", "g"));
 }
 END {
     end_list();
