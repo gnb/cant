@@ -20,7 +20,7 @@
 #include "xtask.h"
 #include "job.h"
 
-CVSID("$Id: xtask.c,v 1.13 2001-11-19 01:18:07 gnb Exp $");
+CVSID("$Id: xtask.c,v 1.14 2001-11-19 01:35:34 gnb Exp $");
 
 typedef struct
 {
@@ -104,6 +104,16 @@ xtask_build_command(task_t *task, strarray_t *command)
 	    break;
 	    /* TODO: <env> child */
 	
+	case XT_FILE:	    /* <arg file=""> child */
+	    exp = props_expand(xp->properties, xa->data.arg);
+	    strnullnorm(exp);
+	    if (exp != 0)
+	    {
+	    	strarray_appendm(command, file_make_absolute(exp));
+		g_free(exp);
+	    }
+	    break;
+	    
 	case XT_FILESET:    /* <fileset> child */
     	    fileset_gather_mapped(xa->data.fileset, xp->properties,
 	    	    	    	  command, /*mappers*/0);
@@ -301,6 +311,7 @@ xtask_arg_delete(xtask_arg_t *xa)
     {
     case XT_VALUE:    	/* <arg value=""> child */
     case XT_LINE:    	/* <arg line=""> child */
+    case XT_FILE:    	/* <arg file=""> child */
 	strdelete(xa->data.arg);
     	break;
     case XT_FILESET:    /* <fileset> child */
@@ -389,6 +400,17 @@ xtask_ops_add_value(xtask_ops_t *xops, const char *s)
     xtask_arg_t *xa;
     
     xa = xtask_ops_add_arg(xops, XT_VALUE);
+    strassign(xa->data.arg, s);
+    
+    return xa;
+}
+
+xtask_arg_t *
+xtask_ops_add_file(xtask_ops_t *xops, const char *s)
+{
+    xtask_arg_t *xa;
+    
+    xa = xtask_ops_add_arg(xops, XT_FILE);
     strassign(xa->data.arg, s);
     
     return xa;

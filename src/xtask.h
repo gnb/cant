@@ -31,6 +31,7 @@ typedef enum
 {
     XT_VALUE,	    /* argument used directly, whitespace-safe */
     XT_LINE,	    /* argument is split on whitespace */
+    XT_FILE,	    /* agument is filename, to be canonicalised & absoluted. */
     XT_FILESET,     /* insert list of files from fileset child. */
     /* TODO: XT_FILELIST */
     /* TODO: XT_ENV */
@@ -72,6 +73,7 @@ xtask_ops_t *xtask_ops_new(const char *name);
 void xtask_ops_delete(xtask_ops_t *xops);
 xtask_arg_t *xtask_ops_add_line(xtask_ops_t *xops, const char *s);
 xtask_arg_t *xtask_ops_add_value(xtask_ops_t *xops, const char *s);
+xtask_arg_t *xtask_ops_add_file(xtask_ops_t *xops, const char *s);
 xtask_arg_t *xtask_ops_add_fileset(xtask_ops_t *xops, fileset_t *fs);
 xtask_arg_t *xtask_ops_add_files(xtask_ops_t *xops);
 void xtask_ops_add_attribute(xtask_ops_t *xops, const char *attr,

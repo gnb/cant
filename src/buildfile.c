@@ -20,7 +20,7 @@
 #include "cant.h"
 #include "xtask.h"
 
-CVSID("$Id: buildfile.c,v 1.14 2001-11-19 01:18:07 gnb Exp $");
+CVSID("$Id: buildfile.c,v 1.15 2001-11-19 01:35:34 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -332,8 +332,13 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
 	    	xa = xtask_ops_add_line(xops, buf);
 	    	xmlFree(buf);
 	    }
+	    else if ((buf = xmlGetProp(child, "file")) != 0)
+	    {
+	    	xa = xtask_ops_add_file(xops, buf);
+	    	xmlFree(buf);
+	    }
 	    else
-	    	parse_node_error(node, "One of \"line\" or \"value\" must be set\n");
+	    	parse_node_error(node, "One of \"line\", \"value\" or \"file\" must be set\n");
 	}
 	else if (!strcmp(child->name, "attr"))
 	{
