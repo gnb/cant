@@ -1,0 +1,6 @@
+MAPPEROPS(identity_ops)
+MAPPEROPS(flatten_ops)
+MAPPEROPS(merge_ops)
+MAPPEROPS(glob_ops)
+MAPPEROPS(regexp_ops)
+MAPPEROPS(null_ops)

@@ -16,49 +16,49 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 # 
-# $Id: Makefile.am,v 1.23 2002-02-11 06:28:19 gnb Exp $
+# $Id: Makefile.am,v 1.24 2002-03-29 12:36:25 gnb Exp $
 #
 
 bin_PROGRAMS=	cant
 
 TASK_SOURCES=	\
-		task_mkdir.c \
-		task_tstamp.c \
-		task_delete.c \
-		task_enumerate.c \
-		task_copy.c \
-		task_echo.c \
-		task_cant.c \
-		task_foreach.c \
-		task_redirect.c \
-		task_changedir.c
+		task_mkdir.C \
+		task_tstamp.C \
+		task_delete.C \
+		task_enumerate.C \
+		task_copy.C \
+		task_echo.C \
+		task_cant.C \
+		task_foreach.C \
+		task_redirect.C \
+		task_changedir.C
 
 MAPPER_SOURCES=	\
-		mapper_identity.c \
-		mapper_flatten.c \
-		mapper_merge.c \
-		mapper_glob.c \
-		mapper_regexp.c \
-		mapper_null.c
+		mapper_identity.C \
+		mapper_flatten.C \
+		mapper_merge.C \
+		mapper_glob.C \
+		mapper_regexp.C \
+		mapper_null.C
 
-cant_SOURCES=	common.h thread.h cant.h \
-		cant.c buildfile.c project.c target.c task.c \
-		taglist.c \
-		xtask.h xtask.c \
-		props.h props.c \
-		estring.h estring.c \
-		tok.h tok.c \
-		log.h log.c \
-		filename.h filename.c \
-		fileset.h fileset.c \
-		mapper.h mapper.c \
-		condition.h condition.c \
-		pattern.h pattern.c \
-		xml.h xml.c \
-		common.c process.c \
-		strarray.h strarray.c \
-		queue.h queue.c \
-		job.h job.c \
+cant_SOURCES=	common.H thread.H cant.H \
+		cant.C buildfile.C project.C target.C task.C \
+		taglist.C \
+		xtask.H xtask.C \
+		props.H props.C \
+		estring.H estring.C \
+		tok.H tok.C \
+		log.H log.C \
+		filename.H filename.C \
+		fileset.H fileset.C \
+		mapper.H mapper.C \
+		condition.H condition.C \
+		pattern.H pattern.C \
+		xml.H xml.C \
+		common.C process.C \
+		strarray.H strarray.C \
+		queue.H queue.C \
+		job.H job.C \
 		$(TASK_SOURCES) \
 		$(MAPPER_SOURCES)
 INCLUDES=	$(GLIB_CFLAGS) $(LIBXML_CFLAGS) $(THREADS_CFLAGS)
@@ -72,22 +72,22 @@ else
 DEBUG=0
 endif
 
-task.o: builtin-tasks.h
+task.o: builtin-tasks.H
 
-builtin-tasks.h: $(TASK_SOURCES)
+builtin-tasks.H: $(TASK_SOURCES)
 	$(RM) $@
 	for file in $(TASK_SOURCES) ; do \
 	    sed -n -e 's|^task_ops_t[ 	][ 	]*\([a-z_][a-z_]*\).*$$|TASKOPS(\1)|p' < $$file >> $@ ;\
 	done
 
-mapper.o: builtin-mappers.h
-builtin-mappers.h: $(MAPPER_SOURCES)
+mapper.o: builtin-mappers.H
+builtin-mappers.H: $(MAPPER_SOURCES)
 	$(RM) $@
 	for file in $(MAPPER_SOURCES) ; do \
 	    sed -n -e 's|^mapper_ops_t[ 	][ 	]*\([a-z_][a-z_]*\).*$$|MAPPEROPS(\1)|p' < $$file >> $@ ;\
 	done
 
-CLEANFILES=	builtin-tasks.h builtin-mappers.h \
+CLEANFILES=	builtin-tasks.H builtin-mappers.H \
 		*.bb *.bbg *.da *.gcov
 
 pkgdata_DATA=	globals.xml
@@ -101,7 +101,7 @@ GCOVFLAGS=	-b -f
 post-gcov:
 	for file in $(SOURCES) ; do \
 	    case "$$file" in \
-	    *.c) echo "==> $$file" ; $(GCOV) $(GCOVFLAGS) $$file ;; \
+	    *.C) echo "==> $$file" ; $(GCOV) $(GCOVFLAGS) $$file ;; \
 	    esac ;\
 	done
 
@@ -115,9 +115,9 @@ pre-gcov:
 
 noinst_PROGRAMS=		normalise_test
 
-normalise_test_SOURCES=		normalise_test.c \
-				filename.h filename.c \
-				estring.h estring.c \
-				tok.h tok.c \
-				common.h common.c
+normalise_test_SOURCES=		normalise_test.C \
+				filename.H filename.C \
+				estring.H estring.C \
+				tok.H tok.C \
+				common.H common.C
 normalise_test_LDADD=		$(GLIB_LIBS)
