@@ -20,116 +20,93 @@
 #include "queue.H"
 #include "thread.H"
 
-CVSID("$Id: queue.C,v 1.1 2002-03-29 12:36:26 gnb Exp $");
+CVSID("$Id: queue.C,v 1.2 2002-03-29 16:33:50 gnb Exp $");
 
 #if !THREADS_NONE
 
-struct queue_s
-{
-    void **slots;  	    	/* queue slots */
-    unsigned putptr;
-    unsigned int getptr;
-    unsigned int maxlen;
-    cant_sem_t empty;    	/* counts empty slots */
-    cant_sem_t full;     	/* counts full slots */
-};
-
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-queue_t *
-queue_new(unsigned int maxlen)
+voidqueue_t::voidqueue_t(unsigned int maxlen)
 {
-    queue_t *q;
-    
-    if ((q = g_new0(queue_t, 1)) == 0)
-    	return 0;
-    if ((q->slots = g_new0(void*, maxlen)) == 0)
-    {
-    	g_free(q);
-    	return 0;
-    }
-    cant_sem_init(&q->empty, /*value*/maxlen);
-    cant_sem_init(&q->full, /*value*/0);
-    q->maxlen = maxlen;
-    
-    return q;
+    slots_ = new void*[maxlen];
+    cant_sem_init(&empty_, /*value*/maxlen);
+    cant_sem_init(&full_, /*value*/0);
+    maxlen_ = maxlen;
 }
 
-void
-queue_delete(queue_t *q)
+voidqueue_t::~voidqueue_t()
 {
     /* check for failure due to waiting threads */
-    cant_sem_destroy(&q->empty);
-    cant_sem_destroy(&q->full);
-    g_free(q->slots);
-    g_free(q);
+    cant_sem_destroy(&empty_);
+    cant_sem_destroy(&full_);
+    delete[] slots_;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void
-queue_put_unlocked(queue_t *q, void *item)
+void
+voidqueue_t::put_unlocked(void *item)
 {
-    q->slots[q->putptr] = item;
+    slots_[putptr_] = item;
     
-    if (++q->putptr == q->maxlen)
-    	q->putptr = 0;
+    if (++putptr_ == maxlen_)
+    	putptr_ = 0;
 }
 
 void
-queue_put(queue_t *q, void *item)
+voidqueue_t::put(void *item)
 {
-    cant_sem_wait(&q->empty);
-    queue_put_unlocked(q, item);
-    cant_sem_post(&q->full);
+    cant_sem_wait(&empty_);
+    put_unlocked(item);
+    cant_sem_post(&full_);
 }
 
 gboolean
-queue_tryput(queue_t *q, void *item)
+voidqueue_t::tryput(void *item)
 {
-    if (!cant_sem_trywait(&q->empty))
+    if (!cant_sem_trywait(&empty_))
     	return FALSE;
-    queue_put_unlocked(q, item);
-    cant_sem_post(&q->full);
+    put_unlocked(item);
+    cant_sem_post(&full_);
     return TRUE;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static void *
-queue_get_unlocked(queue_t *q)
+void *
+voidqueue_t::get_unlocked()
 {
     void *item;
     
-    item = q->slots[q->getptr];
+    item = slots_[getptr_];
     
-    if (++q->getptr == q->maxlen)
-    	q->getptr = 0;
+    if (++getptr_ == maxlen_)
+    	getptr_ = 0;
 	
     return item;
 }
 
 void *
-queue_get(queue_t *q)
+voidqueue_t::get()
 {
     void *item;
     
-    cant_sem_wait(&q->full);
-    item = queue_get_unlocked(q);
-    cant_sem_post(&q->empty);
+    cant_sem_wait(&full_);
+    item = get_unlocked();
+    cant_sem_post(&empty_);
     
     return item;
 }
 
 void *
-queue_tryget(queue_t *q)
+voidqueue_t::tryget()
 {
     void *item;
     
-    if (!cant_sem_trywait(&q->full))
+    if (!cant_sem_trywait(&full_))
     	return 0;
-    item = queue_get_unlocked(q);
-    cant_sem_post(&q->empty);
+    item = get_unlocked();
+    cant_sem_post(&empty_);
     
     return item;
 }

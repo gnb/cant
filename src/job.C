@@ -27,7 +27,7 @@
 #include "queue.H"
 #endif
 
-CVSID("$Id: job.C,v 1.3 2002-03-29 16:12:31 gnb Exp $");
+CVSID("$Id: job.C,v 1.4 2002-03-29 16:33:50 gnb Exp $");
 
 
 typedef enum
@@ -67,7 +67,7 @@ static int state_count[NUM_STATES];
  * make decisions about downstream jobs at the latest
  * possible time.  Both put and get operations block.
  */
-static queue_t *start_queue;
+static queue_t<job_t> *start_queue;
 
 /*
  * Finish queue is used to return finished jobs and their
@@ -77,7 +77,7 @@ static queue_t *start_queue;
  * put operation should never block; both blocking and non-
  * blocking get operations are used at various times.
  */
-static queue_t *finish_queue;
+static queue_t<job_t> *finish_queue;
 
 static unsigned int num_workers;
 #endif
@@ -445,7 +445,7 @@ worker_thread(void *arg)
     for (;;)
     {
     	/* block until a job is available from the main thread */
-    	job = (job_t *)queue_get(start_queue);
+    	job = start_queue->get();
 
     	/* run the job */
 #if DEBUG
@@ -457,7 +457,7 @@ worker_thread(void *arg)
 #endif
 	
 	/* put the finished job on the queue back to the main thread */
-	queue_put(finish_queue, job);
+	finish_queue->put(job);
     }
 }
 
@@ -476,7 +476,7 @@ static void
 start_job(job_t *job)
 {
     job_set_state(job, RUNNING);
-    queue_put(start_queue, job);
+    start_queue->put(job);
 }
 
 static gboolean
@@ -493,7 +493,7 @@ main_thread(void)
 	   state_count[FAILED] == 0)
     {
     	/* Handle any finished jobs, to keep the finish queue short */
-	while ((job = (job_t *)queue_tryget(finish_queue)) != 0)
+	while ((job = finish_queue->tryget()) != 0)
 	    finish_job(job);	    /* may make some runnable */
 
     	if (runnable_jobs != 0)
@@ -504,7 +504,7 @@ main_thread(void)
 	else
 	{
 	    /* Wait for something to finish to give us more runnables. */
-	    finish_job((job_t *)queue_get(finish_queue));
+	    finish_job(finish_queue->get());
 	}
     }
 
@@ -514,7 +514,7 @@ main_thread(void)
 	fprintf(stderr, "Main: waiting for jobs to finish\n");
 #endif
 	while (state_count[RUNNING] > 0)
-	    finish_job((job_t *)queue_get(finish_queue));
+	    finish_job(finish_queue->get());
 #if DEBUG
 	fprintf(stderr, "Main: all jobs finished\n");
 #endif
@@ -682,8 +682,8 @@ job_init(unsigned int nw)
 	unsigned int i;
 	cant_thread_t thr;
 
-	start_queue = queue_new(1);
-	finish_queue = queue_new(num_workers + /*len(start_queue)*/1 + /*paranoia*/1);
+	start_queue = new queue_t<job_t>(1);
+	finish_queue = new queue_t<job_t>(num_workers + /*len(start_queue)*/1 + /*paranoia*/1);
 
 	/*
 	 * TODO: start worker threads on demand, i.e. when there

@@ -24,19 +24,80 @@
 
 #if !THREADS_NONE
 
-typedef struct queue_s	    queue_t;
+#include "thread.H"
 
-queue_t *queue_new(unsigned int maxlen);
-void queue_delete(queue_t *);
+// thread-safe producer-consumer queue
+class voidqueue_t
+{
+private:
+    void **slots_;  	    	/* queue slots */
+    unsigned putptr_;
+    unsigned int getptr_;
+    unsigned int maxlen_;
+    cant_sem_t empty_;    	/* counts empty slots */
+    cant_sem_t full_;     	/* counts full slots */
 
-/* Blocking put and get */
-void queue_put(queue_t *, void *);
-void *queue_get(queue_t *);
+    void put_unlocked(void *);
+    void *get_unlocked();
 
-/* Non-blocking put and get */
-gboolean queue_tryput(queue_t *, void *);
-/* Returns 0 if queue empty */
-void *queue_tryget(queue_t *);
+public:
+    /* ctor */
+    voidqueue_t(unsigned int maxlen);
+    /* dtor */
+    ~voidqueue_t();
+
+    /* Blocking put and get */
+    void put(void *);
+    void *get();
+
+    /* Non-blocking put and get */
+    gboolean tryput(void *);
+    /* Returns 0 if queue empty */
+    void *tryget();
+};
+
+// typesafe template wrapper for voidqueue
+template<class T> class queue_t
+{
+private:
+    voidqueue_t queue_;
+    
+public:
+    /* ctor */
+    queue_t(unsigned int maxlen)
+     :  queue_(maxlen)
+    {
+    }
+    
+    /* dtor */
+    ~queue_t()
+    {
+    }
+
+    /* Blocking put and get */
+    void put(T *t)
+    {
+    	queue_.put((void *)t);
+    }
+    
+    T *get()
+    {
+    	return (T *)queue_.get();
+    }
+
+    /* Non-blocking put and get */
+    gboolean tryput(T *t)
+    {
+    	return queue_.tryput((void *)t);
+    }
+    
+    /* Returns 0 if queue empty */
+    T *tryget()
+    {
+    	return (T *)queue_.tryget();
+    }
+};
+
 
 #endif /* !THREADS_NONE */
 
