@@ -19,7 +19,7 @@
 
 #include "log.H"
 
-CVSID("$Id: log.C,v 1.2 2002-04-12 13:07:24 gnb Exp $");
+CVSID("$Id: log.C,v 1.3 2002-04-13 09:24:49 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -181,7 +181,8 @@ log_tree_context_t::format()
     char *buf, *p;
     int i;
     
-    format_ancestors(stderr); 	// HACK
+    if (next_ != 0)
+	next_->format_ancestors(stderr);    //stderr=HACK
 
     len = strlen(INDENT_STR)*depth_ + 4 + strlen(name_);
     p = buf = new char[len];

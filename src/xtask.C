@@ -20,7 +20,7 @@
 #include "xtask.H"
 #include "job.H"
 
-CVSID("$Id: xtask.C,v 1.12 2002-04-13 02:30:18 gnb Exp $");
+CVSID("$Id: xtask.C,v 1.13 2002-04-13 09:25:26 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -204,9 +204,10 @@ xtask_t::execute_command()
     
     
     if (verbose)
-    	logmsg = new log_message_t(command->join(" "));
+    	logmsg = new log_message_t(command->join(" "), /*addnl*/TRUE);
     else if (xtclass->logmessage_ != 0)
-    	logmsg = new log_message_t(properties_->expand(xtclass->logmessage_));
+    	logmsg = new log_message_t(properties_->expand(xtclass->logmessage_),
+	    	    	    	   /*addnl*/TRUE);
 
     if (targfile == 0)
     {
