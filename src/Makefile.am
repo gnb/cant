@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 # 
-# $Id: Makefile.am,v 1.1 2001-11-06 07:40:32 gnb Exp $
+# $Id: Makefile.am,v 1.2 2001-11-06 09:03:23 gnb Exp $
 #
 
 bin_PROGRAMS=	cant
@@ -47,3 +47,5 @@ builtins.h: $(TASK_SOURCES)
 	for file in $(TASK_SOURCES) ; do \
 	    sed -n -e 's|^task_ops_t[ 	][ 	]*\([a-z_][a-z_]*\).*$$|TASKOPS(\1)|p' < $$file >> $@ ;\
 	done
+
+CLEANFILES=	builtins.h
