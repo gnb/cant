@@ -1,6 +1,6 @@
 
 # Pages which provide backwards compatibility for old URLs
-PAGES=		index.html download.html changelog.html
+PAGES=		index.html download.html tutorial.html changelog.html
 IMAGES=		cant_banner.gif fm.mini.jpg gimp.gif \
 		valid-html40.gif borderl.gif borderr.gif
 BINARIES:=	$(shell m4 list-binaries.m4)	
@@ -15,7 +15,7 @@ all:: $(PAGES)
 
 changelog.html: _changelist.html changes2html
 $(PAGES): _styles.html _common.m4 _copyright.html toc.html.in
-download.html: version.m4 _download.m4
+tutorial.html download.html: version.m4
 
 _changelist.html: ../ChangeLog
 	./changes2html < $< > $@

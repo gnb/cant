@@ -1,0 +1,368 @@
+define(TITLE,CANT Tutorial)dnl
+include(_common.m4)dnl
+BEGINHEAD
+include(_styles.html)
+ENDHEAD
+BEGINBODY
+
+include(version.m4)
+
+<h2>Introduction</h2>
+
+<p>
+So you want to learn how to use CANT?  Excellent!  This page
+will help you work through using CANT to build basic C programs.
+</p>
+
+<p>
+You will need a relatively modern Linux (or possibly other UNIX)
+machine, some knowledge of C/UNIX development and XML syntax, an
+ANSI C compiler, and an hour or two.
+</p>
+
+<p>
+This tutorial is written for version CANT version LATEST_VERSION.
+</p>
+
+<h2>Get The Source</h2>
+
+<p>
+The first step is to download the latest CANT source from the
+<a href="download.html">Download Page</a>.  Build it and
+install it according to the instructions in the <i>INSTALL</i> file
+(it's very straightforward, and familiar if you've ever built GNU
+packages from source).  This should result in a executable
+<i>/usr/local/bin/cant</i> and some other files.
+</p>
+
+<p>
+Now, get the source for the tutorial examples
+<a href="cant-tutorial-LATEST_VERSION.tar.gz">here</a> and extract
+it.  For the purposes of this tutorial, we'll assume you've
+extracted the tutorial tarball in your home directory, resulting
+in the directory <i>~/cant-tutorial-LATEST_VERSION/</i> being
+created.
+</p>
+
+<h2>Simple C Program</h2>
+
+<p>
+We'll start by seeing how CANT can be used to build a simple
+C program, consisting of two source files and no libraries.
+This is the bare minimum to demonstrate seperate compilation.
+</p>
+
+<p>
+Change to the first example directory:
+<p>
+
+<pre class="example">
+me@mybox % cd ~/cant-tutorial-LATEST_VERSION/example1
+</pre>
+
+<h3>Taking a Look Around</h3>
+
+<p>
+Let's take a look at the example directory.  You'll see two C source
+files, <i>a.c</i> and <i>b.c</i>, and a file <i>build.xml</i>.  This
+last is the <b>buildfile</b> for CANT: a file of instructions on how
+to build the software, analagous to the <i>Makefile</i>
+you're used to.
+</p>
+
+<p>
+Take a look at <i>build.xml</i> in a text editor, and you'll
+see that the `format' is quite different from a <i>Makefile</i>.
+For a start, buildfiles use XML formatting, which means whitespace
+is a lot less significant and balancing <b>&lt;elements&gt;</b> is a
+whole lot more significant.  If, like me, you've had to track down a
+build problem only to discover it was a missing magical TAB
+character in a <i>Makefile</i>, you'll welcome this change.
+</p>
+
+<p>
+Once you get used to the format differences, you'll notice some
+logical similarities with <i>Makefile</i>s.  Like a <i>Makefile</i>,
+a buildfile contains a set of targets with names like <i>all</i>,
+<i>install</i>, <i>clean</i>.  Another similarity is that targets
+can depend on each other; in the example the <i>install</i> target
+depends on the <i>all</i> target.  Also, there is a default target
+which is used when you don't specify a target; in the example
+<i>all</i> is the default target.
+</p>
+
+<p>
+However, CANT's targets are subtly different:  they are not filenames.
+In fact they live in a different name space entirely.  For example,
+with CANT you can have both a target named <i>install</i> and also
+build a program named <i>install</i>.
+</p>
+
+<p>
+Like <i>Makefile</i>s, CANT targets are associated with a sequence
+of operations which are executed to cause the target to be updated,
+e.g. to compile a C source file into an object file.  In <i>Makefile</i>s
+these are UNIX shell commands constructed by expanding make variables.
+CANT however uses <b>tasks</b>, XML-formatted objects which describe
+the operations to be performed at a high level.  CANT tasks may or
+may not invoke UNIX commandline programs to do the actual work; the
+details are hidden.
+</p>
+
+<p>
+The <i>install</i> target in the example uses the <i>copy</i>
+task to copy the generated executable into the <i>/usr/local/bin</i>
+directory.  This task happens to be implemented internally in CANT.
+A <i>Makefile</i> doing the same job would invoke the <i>/usr/bin/install</i>
+program or the <i>/bin/cp</i> program.
+</p>
+
+<p>
+Other tasks, for example the <i>compile</i> and <i>link</i>
+tasks used by the <i>all</i> target in the example, do in fact invoke UNIX
+commandline programs to do their work.  Unlike Make however, this is done
+directly to the system call level and not by invoking a <i>/bin/sh</i>
+shell.  This is a key design feature of CANT, one which seperates CANT from
+Make.  It's not only faster, but more importantly it removes almost all
+the whitespace, metacharacter and quoting hassle that goes with doing
+anything non-trivial with Make. For example, have you ever had to pass
+<i>-DMACRO="string"</i> on the C compiler commandline with Make?
+</p>
+
+
+<h3>Running CANT</h3>
+
+<p>
+Enough looking, time for some action!  Run CANT with no arguments:
+</p>
+
+<pre class="example">
+me@mybox % cant
+  [all] 
+    [compile] Compiling a.c
+    [compile] Compiling b.c
+    [link] Linking foo
+</pre>
+
+<p>
+You should now see a brand new executable <i>foo</i> in
+the current directory.
+</p>
+
+<p>
+As you can see, CANT shows you the targets that are being executed
+(<i>all</i>, the default target) and for each target, the tasks
+that make up that target (<i>compile</i> and <i>link</i>).  Let's
+try another target, <i>clean</i>:
+</p>
+
+<pre class="example">
+me@mybox % cant clean
+  [clean] 
+    [delete] a.o
+    [delete] b.o
+    [delete] foo
+</pre>
+
+<p>
+This time the <i>clean</i> target has been executed, which contained
+the <i>delete</i> task, which deleted the object files and executable
+built earlier.  Let's try one more:
+</p>
+
+<pre class="example">
+me@mybox % cant install
+  [install] 
+    [all] 
+      [compile] Compiling a.c
+      [compile] Compiling b.c
+      [link] Linking foo
+    [copy] foo -> /usr/local/bin/foo
+</pre>
+
+<p>
+Here you can see, bacause the <i>install</i> target depends the
+<i>all</i> target, CANT executes the <i>all</i> target before executing
+the <i>copy</i> task which is specified by the <i>install</i> target.
+Because the <i>foo</i> executable was deleted earlier, to execute the <i>all</i>
+target CANT needs to compile and link.  If you build the <i>install</i>
+target again:
+</p>
+
+<pre class="example">
+me@mybox % cant install
+  [install] 
+    [all] 
+    [copy] foo -> /usr/local/bin/foo
+</pre>
+
+<p>
+You can see that this time, because <i>foo</i> already exists, it's
+just copied and not recompiled.
+</p>
+
+
+<h3>The Buildfile in Detail</h3>
+
+<p>
+Let's go back and take a more detailed look at the buildfile, and see
+how it controls the build process.  The root element of all buildfiles
+is <i>project</i>.
+</p>
+
+<pre class="source">
+&lt;project name="example1" default="all" basedir="."&gt;
+...
+&lt;/project&gt;
+</pre>
+
+<p>
+The required attribute <i>default</i> specifies the default target
+for the buildfile.  The <i>basedir</i> attribute is required but currently not
+used.
+</p>
+
+<p>
+A <i>project</i> can contain several different elements, but the
+example uses only the most basic, <i>fileset</i> and <i>target</i>.
+The <i>fileset</i> element defines a <b>fileset</b>, which describes
+the result of a set of filename filters applied recursively to all
+the files underneath a base directory.
+</p>
+
+<pre class="source">
+  &lt;fileset id="foo-sources" dir="." includes="a.c,b.c"/&gt;
+</pre>
+
+<p>
+This fileset contains the files named <i>a.c</i> and <i>b.c</i>
+in the current directory.  The <i>id</i> attribute registers
+the fileset under the name <i>foo-sources</i>, so that it can
+be referred to later.  This element is roughly equivalent to
+the Make variable assignment:
+</p>
+
+<pre class="source">
+foo-sources = a.c b.c
+</pre>
+
+<p>
+One subtle difference is that if <i>a.c</i> doesn't exist, it's
+omitted from the fileset but not from the Make variable.  Filesets
+are also far more general and can be used to safely hold filenames
+which contain spaces and other dangerous characters, or live over
+multiple directories, or can't be predicted at buildfile writing time.
+</p>
+
+<p>
+The next
+element in the buildfile is a <i>target</i> element which defines
+the <i>all</i> target.
+</p>
+
+<pre class="source">
+  &lt;target name="all"&gt;
+    &lt;compile refid="foo-sources"/&gt;
+    &lt;link program="foo" refid="foo-sources"/&gt;
+  &lt;/target&gt;
+</pre>
+
+<p>
+The <i>compile</i> task takes a set of C source filenames and
+compiles them, each seperately to it's own object file.  The
+<i>refid</i> attribute tells <i>compile</i> to look at the
+pre-defined <i>foo-sources</i> fileset for the set of filenames.
+</p>
+
+<p>
+The <i>link</i> task takes a set of C source filenames and
+links their corresponding object files into an executable.  The
+name of the executable is set by the <i>program</i> attribute,
+and the <i>refid</i> attribute tells <i>link</i> to look at the
+pre-defined <i>foo-sources</i> fileset for the set of filenames.
+</p>
+
+<p>
+Note that the <i>compile</i> and <i>link</i> tasks are actually
+filesets too!  You can give them all the attributes and child
+elements which you can give a fileset.  For example, the <i>all</i>
+target could have been written, somewhat less generally:
+</p>
+
+<pre class="source">
+  &lt;target name="all"&gt;
+    &lt;compile dir="." includes="a.c,b.c"/&gt;
+    &lt;link program="foo" dir="." includes="a.c,b.c"/&gt;
+  &lt;/target&gt;
+</pre>
+
+<p>
+Now, let's take a look at the <i>install</i> target.
+</p>
+
+<pre class="source">
+  &lt;target name="install" depends="all"&gt;
+    &lt;copy file="foo" todir="${bindir}"/&gt;
+  &lt;/target&gt;
+</pre>
+
+<p>
+The <i>depends</i> attribute is a comma-seperated list of
+target names on which this target depends; you saw the
+practical result of this earlier.  The <i>copy</i> task,
+seen here in one of its simplest forms, specifies that
+the <i>foo</i> file needs to be copied to the directory
+<i>${bindir}</i>.
+</p>
+
+<p>
+But, you say, this looks like shell variable syntax!  In fact
+it just looks like shell variable syntax and isn't really.
+Instead of a variable, it's called a <b>property</b>; the
+expansion is performed entirely by CANT and the shell is
+not involved; and finally environment variables are not
+available this way.  We will see more of properties soon,
+all you need to know now is that <i>${bindir}</i> will
+expand to <i>/usr/local/bin</i>.
+</p>
+
+<p>
+Finally, let's look at the <i>clean</i> target.
+</p>
+
+<pre class="source">
+  &lt;target name="clean"&gt;
+    &lt;delete verbose="yes"&gt;
+      &lt;fileset dir="." includes="foo,*.o"/&gt;
+    &lt;/delete&gt;
+  &lt;/target&gt;
+</pre>
+
+<p>
+The <i>delete</i> task does what you would expect, which
+is to take a set of filenames and delete them.  A slight
+wrinkle is that unlike <i>compile</i>, <i>delete</i> is
+not a fileset itself but takes one or more <i>fileset</i>
+child elements.  Also you can see a new fileset feature:
+wildcards.  This fileset matches the filename <i>foo</i>
+in the current directory and all filenames in the current
+directory which end in <i>.o</i>.
+</p>
+
+<p>
+Now you know everything you need to be able to write your
+own simple buildfiles.  As an exercise, try adding an
+<i>uninstall</i> target which removes a previously
+installed <i>/usr/local/bin/foo</i>.  As a further exercise,
+try building your own Hello World program using CANT.
+</p>
+
+<!--
+TODO: debug, optimize properties
+TODO: standard GNU properties
+TODO: fileset details
+TODO: xtaskdef
+-->
+
+
+ENDBODY

@@ -1,0 +1,46 @@
+changecom(`/*',`*/')dnl
+define(BACKCOLOR,`#ffffff')dnl
+define(FORECOLOR,`#000000')dnl
+define(HILITECOLOR,`#e0e0e0')dnl
+define(FONTFAMILY,`verdana,arial,helvetica,sans-serif')dnl
+define(FIXEDFAMILY,`lucidatypewriter,lucidasanstypewriter,courier,monospace')dnl
+define(FONTSIZE0,`10pt')dnl
+define(FONTSIZE1,`12pt')dnl
+define(FONTSIZE2,`14pt')dnl
+define(FONTSIZE3,`18pt')dnl
+define(FONTSIZE4,`24pt')dnl
+dnl
+<STYLE TYPE="text/css">
+BODY { color: FORECOLOR; background: BACKCOLOR }
+H1 { font: bold FONTSIZE4 FONTFAMILY; }
+H2 { font: bold FONTSIZE3 FONTFAMILY; }
+H3 { font: bold FONTSIZE2 FONTFAMILY; }
+UL { font: FONTSIZE1 FONTFAMILY; }
+P { font: FONTSIZE1 FONTFAMILY; }
+P.small { font: FONTSIZE0 FONTFAMILY; }
+P B { font: bold FONTSIZE1 FONTFAMILY; }
+TD { font: FONTSIZE1 FONTFAMILY; }
+TD.navlink {
+  font: bold FONTSIZE2 FONTFAMILY;
+  text-align: center;
+}
+PRE { font: FONTSIZE1 FIXEDFAMILY; }
+PRE.example {
+  font: FONTSIZE1 FIXEDFAMILY;
+  background-color: HILITECOLOR;
+  border-style: solid;
+  border-color: BACKCOLOR;
+  border-width: 1pt;
+  padding: FONTSIZE0;
+  white-space: pre;
+}
+PRE.source {
+  font: FONTSIZE1 FIXEDFAMILY;
+  background-color: HILITECOLOR;
+  border-style: solid;
+  border-color: BACKCOLOR;
+  border-width: 1pt;
+  padding: FONTSIZE0;
+  white-space: pre;
+}
+</STYLE>

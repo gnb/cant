@@ -1,8 +1,8 @@
 
 define(NAVLINK,
 <TR>
-  <TD ALIGN="CENTER">
-    <B><FONT SIZE="+1">`ifelse($1,HTMLFILE,$2,<A HREF="$1">$2</A>)'</FONT></B><BR>
+  <TD CLASS="navlink">
+    `ifelse($1,HTMLFILE,$2,<A HREF="$1">$2</A>)'<BR>
   </TD>
 </TR>
 )
@@ -19,6 +19,7 @@ define(NAVLINK,
 	
 	NAVLINK(index.html,Features)
 	NAVLINK(download.html,Download)
+	NAVLINK(tutorial.html,Tutorial)
 	NAVLINK(changelog.html,Change Log)
 	
 	<TR>

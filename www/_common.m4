@@ -31,10 +31,11 @@ define(ENDBODY,
 <!-- <HR NOSHADE SIZE=4> -->
 <BR><BR>
 <CENTER>
-<P><FONT SIZE=-1>Last updated: DATE.<BR>
+<P CLASS="small">
+Last updated: DATE.<BR>
 &copy; 2001 Greg Banks. All Rights Reserved.<BR>
-Clipart &copy; <A HREF="http://www.arttoday.com/">ArtToday.com</A>
-</FONT></P>
+Ant theme clipart from <A HREF="http://www.arttoday.com/">ArtToday.com</A>
+</P>
 </CENTER>
 </BODY></HTML>
 )dnl

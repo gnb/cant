@@ -5,10 +5,11 @@ include(_styles.html)
 ENDHEAD
 BEGINBODY
 
-
 <P>
-CANT is a C implementation of the Apache/Jakarta project's
-ANT build tool, which uses a modern-style XML file format to build
+CANT is a C implementation of the
+<A HREF="http://jakarta.apache.org/">Apache/Jakarta</A> project's
+<A HREF="http://jakarta.apache.org/ant/index.html">ANT</A> build tool,
+which uses a modern-style XML file format to build
 Java projects.  Unlike ANT, CANT is written in C and intended
 for building C programs.  CANT is intended to be a replacement
 for GNU <I>make</I> and GNU <I>automake</I>.
