@@ -21,7 +21,7 @@
 #include "tok.h"
 #include <time.h>
 
-CVSID("$Id: task_foreach.c,v 1.1 2002-02-08 07:46:08 gnb Exp $");
+CVSID("$Id: task_foreach.c,v 1.2 2002-02-11 02:14:29 gnb Exp $");
 
 typedef struct
 {
@@ -96,6 +96,8 @@ foreach_execute(task_t *task)
 	 * For now, this variable goes into the project scope.
 	 */
 	props_set(task->project->properties, var_e, val);
+	if (verbose)
+	    logf("%s = %s\n", var_e, val);
 	
 	for (iter = fp->subtasks ; iter != 0 ; iter = iter->next)
 	{
