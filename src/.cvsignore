@@ -2,3 +2,4 @@ cant
 Makefile.in
 Makefile
 .deps
+builtins.h
