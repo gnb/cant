@@ -1,36 +1,23 @@
 #!/bin/sh
 #
-# $Id: runtest,v 1.1 2001-11-19 01:37:25 gnb Exp $
+# $Id: runtest,v 1.2 2001-11-21 09:35:28 gnb Exp $
 #
-CANT="${CANT:-../../src/cant} --globals-file globals.xml"
 
-TMP=cant$$.stderr
-trap "/bin/rm -f $TMP" 0
-
-failed ()
-{
-    echo "FAILED"
-    exit 1
-}
+. ../testfunctions.sh
 
 compile_test ()
 {
     VALUE="$1"
     EXPECTED="$2"
     
-    echo "================================================================"
-    echo "arg file test, value=$VALUE"
+    start_test "arg file"
     
     /bin/rm -rf *.o foo
-    $CANT all -Dtest009.abspath="$VALUE" --verbose >$TMP 2>&1 || failed
-    cat $TMP
+    cant all -D"test009.abspath=$VALUE" --verbose
     
-    test -x foo || failed
-    grep "$EXPECTED" $TMP >/dev/null || failed
+    check_file_executable foo
+    check_output_re "$EXPECTED"
 }
-
-
-#set -x
 
 compile_test no "\[compile\] gcc.* a.c"
 compile_test yes "\[compile\] gcc.*/test/test009/a.c"

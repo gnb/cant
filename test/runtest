@@ -1,0 +1,73 @@
+#!/bin/sh
+#
+# $Id: runtest,v 1.1 2001-11-21 09:35:28 gnb Exp $
+#
+
+VERBOSE=no
+CANT=
+TESTS=
+
+usage ()
+{
+    echo "Usage: runtest [--verbose] [--cant=cantexe] [tests...]"
+    exit 1
+}
+
+fatal ()
+{
+    echo "runtest: $*"
+    exit 1
+}
+
+add_test ()
+{
+    local testdir="$1"
+    local testdir2
+    
+    if [ ! -d $testdir ]; then
+    	testdir2=`printf "test%03d" $testdir`
+	test -d $testdir2 || fatal "neither directory $testdir nor $testdir2 exist"
+	testdir=$testdir2
+    fi
+    
+    test -x $testdir/runtest || fatal "no script in directory $testdir"
+
+    TESTS="$TESTS $testdir"
+}
+
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+    --verbose) VERBOSE=yes ;;
+    --cant=*) CANT=`echo "$1"|sed -e 's|^[^=]*=||'` ;;
+    --cant) CANT="$2" ; shift ;;
+    --help) usage ;;
+    -*) usage ;;
+    *) add_test "$1" ;;
+    esac
+    shift
+done
+
+test -z "$TESTS" && TESTS=`echo test???/runtest | sed -e 's|/runtest||g'`
+
+#echo TESTS=$TESTS
+#echo VERBOSE=$VERBOSE
+#echo CANT=$CANT
+#exit 1
+
+RTFLAGS=
+test $VERBOSE = yes && RTFLAGS="$RTFLAGS --verbose"
+test -z "$CANT" || RTFLAGS="$RTFLAGS --cant=\"$CANT\""
+
+failed ()
+{
+    echo "runtest: FAILED"
+    exit 1
+}
+
+for testdir in $TESTS _dummy ; do 
+    test $testdir = _dummy && continue
+        
+    echo "============================ $testdir ============================"
+    ( cd $testdir ; ./runtest $RTFLAGS || failed ) || failed
+done
