@@ -21,7 +21,7 @@
 #include "estring.h"
 #include "log.h"
 
-CVSID("$Id: pattern.c,v 1.8 2001-11-21 13:07:46 gnb Exp $");
+CVSID("$Id: pattern.c,v 1.9 2002-02-08 07:32:37 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -57,9 +57,14 @@ pattern_init(pattern_t *pat, const char *pattern, unsigned flags)
 
 	for ( ; *p ; p++)
 	{
-    	    if (p[0] == '*' && p[1] == '*')
+    	    if (p[0] == '*' && p[1] == '*' &&
+	    	(p == pattern || p[-1] == '/') &&
+		(p[2] == '\0' || p[2] == '/'))
 	    {
-		estring_append_string(&restr, "\\(.*\\)");
+	    	/* A directory component consisting entirely of "**" */
+		estring_append_string(&restr, "\\([^/]*/\\)*");
+		if (p[2] == '/')
+		    p++;
 		p++;
 	    }
 	    else if (*p == '*')
@@ -93,6 +98,7 @@ pattern_init(pattern_t *pat, const char *pattern, unsigned flags)
 	parse_error("\"%s\": %s\n", pattern, errbuf);
     }
     estring_free(&restr);
+    memset(&pat->groups, 0, sizeof(pat->groups));
     return (errcode == 0);
 }
 
