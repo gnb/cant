@@ -18,7 +18,7 @@ dnl You should have received a copy of the GNU General Public License
 dnl along with this program; if not, write to the Free Software
 dnl Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 dnl 
-dnl $Id: configure.in,v 1.1 2001-11-06 07:40:31 gnb Exp $
+dnl $Id: configure.in,v 1.2 2001-11-07 12:37:05 gnb Exp $
 dnl
 
 AC_INIT(README.cant)
@@ -31,7 +31,7 @@ sinclude(/usr/share/aclocal/missing.m4)dnl
 sinclude(/usr/share/aclocal/sanity.m4)dnl
 sinclude(/usr/share/aclocal/glib.m4)dnl
 sinclude(libxml.m4)dnl
-AM_INIT_AUTOMAKE(cant,0.0.1)
+AM_INIT_AUTOMAKE(cant,0.0.3)
 AM_CONFIG_HEADER(config.h)
 
 dnl Checks for programs.
