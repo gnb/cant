@@ -20,7 +20,7 @@
 #include "cant.H"
 #include "xtask.H"
 
-CVSID("$Id: buildfile.C,v 1.5 2002-04-06 11:20:26 gnb Exp $");
+CVSID("$Id: buildfile.C,v 1.6 2002-04-07 04:20:13 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -133,14 +133,14 @@ parse_condition(condition_t *cond, xmlNode *node)
     else
     {
     	if (if_attr != 0)
-	    condition_set_if(cond, if_attr);
+	    cond->set_if(if_attr);
     	else if (unless_attr != 0)
-	    condition_set_unless(cond, unless_attr);
+	    cond->set_unless(unless_attr);
 	    
 	if (matches_attr != 0)
-	    condition_set_matches(cond, matches_attr, case_sens);
+	    cond->set_matches(matches_attr, case_sens);
 	else if (matchesregex_attr != 0)
-	    condition_set_matches_regex(cond, matchesregex_attr, case_sens);
+	    cond->set_matches_regex(matchesregex_attr, case_sens);
 
     	res = TRUE; 	/* success!! */
     }
@@ -174,10 +174,8 @@ parse_property(project_t *proj, xmlNode *node)
     condition_t cond;
     gboolean doit = TRUE;
     
-    condition_init(&cond);
     if (parse_condition(&cond, node))
-	doit = condition_evaluate(&cond, project_get_props(proj));
-    condition_free(&cond);
+	doit = cond.evaluate(project_get_props(proj));
 
     /* a lot hinges on whether attribute "name" is present */    
     name = cantXmlGetProp(node, "name");

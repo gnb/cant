@@ -20,7 +20,7 @@
 #include "cant.H"
 #include "tok.H"
 
-CVSID("$Id: taglist.C,v 1.6 2002-04-06 11:34:39 gnb Exp $");
+CVSID("$Id: taglist.C,v 1.7 2002-04-07 04:22:31 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -312,7 +312,7 @@ taglist_gather(
     {
     	tl_item_t *tlitem = *iter;
 	
-	if (!condition_evaluate(&tlitem->condition, props))
+	if (!tlitem->condition.evaluate(props))
 	    continue;
 	
 	exps = te->exps->lookup(tlitem->tag);

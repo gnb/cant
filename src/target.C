@@ -20,7 +20,7 @@
 #include "cant.H"
 #include "job.H"
 
-CVSID("$Id: target.C,v 1.4 2002-04-06 04:16:38 gnb Exp $");
+CVSID("$Id: target.C,v 1.5 2002-04-07 04:22:52 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -42,11 +42,10 @@ target_delete(target_t *targ)
     targ->tasks.delete_all();
     strdelete(targ->name);
     strdelete(targ->description);
-    condition_free(&targ->condition);
 	
     targ->depends.remove_all();
 	
-    g_free(targ);
+    delete targ;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -98,7 +97,7 @@ target_execute(target_t *targ)
     list_iterator_t<target_t> diter;
     list_iterator_t<task_t> titer;
 
-    if (!condition_evaluate(&targ->condition,
+    if (!targ->condition.evaluate(
     	    	    	    project_get_props(targ->project)))
 	return TRUE;	    /* disabled target: trivially successful */
     

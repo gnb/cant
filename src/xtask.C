@@ -20,7 +20,7 @@
 #include "xtask.H"
 #include "job.H"
 
-CVSID("$Id: xtask.C,v 1.6 2002-04-06 11:32:34 gnb Exp $");
+CVSID("$Id: xtask.C,v 1.7 2002-04-07 04:23:06 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -88,7 +88,7 @@ xtask_t::build_command(strarray_t *command)
     {
     	xtask_class_t::arg_t *xa = *iter;
 
-    	if (!condition_evaluate(&xa->condition, properties_))
+    	if (!xa->condition.evaluate(properties_))
 	    continue;
 	
     	switch (xa->type)
@@ -284,7 +284,6 @@ xtask_t::exec()
 xtask_class_t::arg_t::arg_t(xtask_class_t::arg_type_t ty)
  :  type(ty)
 {
-    condition_init(&condition);
 }
 
 xtask_class_t::arg_t::~arg_t()
@@ -306,8 +305,6 @@ xtask_class_t::arg_t::~arg_t()
     	tagexp_delete(data.tagexp);
     	break;
     }
-    
-    condition_free(&condition);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
