@@ -23,7 +23,7 @@
 #include <dirent.h>
 #include <fcntl.h>
 
-CVSID("$Id: filename.c,v 1.7 2002-02-08 16:51:07 gnb Exp $");
+CVSID("$Id: filename.c,v 1.8 2002-02-10 10:10:37 gnb Exp $");
 
 #ifndef __set_errno
 #define __set_errno(v)	 errno = (v)
@@ -279,6 +279,42 @@ file_is_directory(const char *filename)
     	return -1;
     }
     
+    return 0;
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+int 
+file_rmdir(const char *filename)
+{
+    char *norm_filename;
+    
+    norm_filename = file_normalise(filename, 0);
+    if (rmdir(norm_filename) < 0)
+    {
+	int e = errno;
+	g_free(norm_filename);
+	__set_errno(e);
+	return -1;
+    }
+    g_free(norm_filename);
+    return 0;
+}
+
+int
+file_unlink(const char *filename)
+{
+    char *norm_filename;
+    
+    norm_filename = file_normalise(filename, 0);
+    if (unlink(norm_filename) < 0)
+    {
+	int e = errno;
+	g_free(norm_filename);
+	__set_errno(e);
+	return -1;
+    }
+    g_free(norm_filename);
     return 0;
 }
 
