@@ -1,0 +1,5 @@
+
+
+x  modify task_execute() to run all jobs at tasks marked barriers
+x  organise to mark most tasks as barriers!
+x  solve log context issue.
