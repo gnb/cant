@@ -114,6 +114,8 @@ public:
     fileset_t *fileset() const { return fileset_; }
     void set_fileset(fileset_t *fs);
     
+    project_t *project() const { return project_; }
+    
     // TODO: move into derived composite_task_t
     void add_subtask(task_t *subtask);
     

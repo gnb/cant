@@ -24,6 +24,8 @@
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
+class xtask_t;
+
 class xtask_class_t : public task_class_t
 {
 public:
@@ -33,41 +35,34 @@ public:
     const char *name() const;
     task_t *create_task(project_t *);
 
-    enum arg_type_t
-    {
-	XT_VALUE,	    /* argument used directly, whitespace-safe */
-	XT_LINE,	    /* argument is split on whitespace */
-	XT_FILE,	    /* agument is filename, to be canonicalised & absoluted. */
-	XT_FILESET,         /* insert list of files from fileset child. */
-	/* TODO: XT_FILELIST */
-	/* TODO: XT_ENV */
-	XT_FILES,	    /* insert list of files from task's own fileset */
-	XT_TAGEXPAND        /* expand tags from xtask's child taglists */
-    };
-
     struct arg_t
     {
-	arg_type_t type;
-
-	union
-	{
-	    char *arg;	    	/* for XT_VALUE, XT_LINE */
-	    fileset_t *fileset;     /* for XT_FILESET */
-	    tagexp_t *tagexp;   	/* for XT_TAGEXPAND */
-	} data;
-
 	condition_t condition;
 	
-	arg_t(arg_type_t);
-	~arg_t();
+	arg_t();
+	virtual ~arg_t();
+	
+    	virtual gboolean command_add(const xtask_t *, strarray_t *) const = 0;
+#if DEBUG
+	virtual void dump() const;
+#endif
     };
 
+
+    /* <arg line=""> argument is split on whitespace */
     arg_t *add_line(const char *s);
+    /* <arg value=""> argument used directly, whitespace-safe */
     arg_t *add_value(const char *s);
+    /* <arg file=""> agument is filename, to be canonicalised & absoluted. */
     arg_t *add_file(const char *s);
+    /* <fileset> insert list of files from fileset child. */
     arg_t *add_fileset(fileset_t *fs);
+    /* <files> insert list of files from task's own fileset */
     arg_t *add_files();
+    /* <tagexpand> expand tags from xtask's child taglists */
     arg_t *add_tagexpand(tagexp_t *te);
+    /* TODO: <filelist> */
+    /* TODO: <env> */
     
 private:
     string_var name_;
@@ -92,11 +87,13 @@ public:
 
     void add_attribute(const char *attr, const char *prop, gboolean required);
     void add_child(const char *name);
-    
+
+    const list_t<mapper_t> *mappers() const { return &mappers_; }    
     void add_mapper(mapper_t *ma)
     {
     	mappers_.append(ma);
     }
+    const list_t<mapper_t> *dep_mappers() const { return &dep_mappers_; }
     void add_dep_mapper(mapper_t *ma)
     {
     	dep_mappers_.append(ma);
@@ -106,7 +103,7 @@ public:
 
     
 private:
-    arg_t *add_arg(arg_type_t);
+    arg_t *add_arg(arg_t *xa);
 };
 
 
@@ -131,6 +128,12 @@ private:
 
     friend class xtask_class_t;
 public:
+
+    xtask_class_t *xtask_class() const
+    	{ return (xtask_class_t *)tclass_; /* downcast */ }
+
+    const props_t *properties() const { return properties_; }
+    const list_t<taglist_t> *taglists() const { return &taglists_; }
 };
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

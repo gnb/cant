@@ -20,7 +20,7 @@
 #include "xtask.H"
 #include "job.H"
 
-CVSID("$Id: xtask.C,v 1.14 2002-04-13 12:30:42 gnb Exp $");
+CVSID("$Id: xtask.C,v 1.15 2002-04-13 13:23:16 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -47,10 +47,9 @@ xtask_t::~xtask_t()
 gboolean
 xtask_t::generic_setter(const char *name, const char *value)
 {
-    xtask_class_t *xtclass = (xtask_class_t *)tclass_;	/* downcast */
     const char *propname;
     
-    if ((propname = xtclass->property_map_->get(name)) == 0)
+    if ((propname = xtask_class()->property_map_->get(name)) == 0)
     	return FALSE;
     properties_->set(propname, value);
     return TRUE;
@@ -76,7 +75,7 @@ xtask_t::generic_adder(xml_node_t *node)
 gboolean
 xtask_t::build_command(strarray_t *command)
 {
-    xtask_class_t *xtclass = (xtask_class_t *)tclass_;     /* downcast */
+    xtask_class_t *xtclass = xtask_class();
     list_iterator_t<xtask_class_t::arg_t> iter;
     string_var exp;
 
@@ -90,52 +89,13 @@ xtask_t::build_command(strarray_t *command)
     	if (!xa->condition.evaluate(properties_))
 	    continue;
 	
-    	switch (xa->type)
-	{
-	case xtask_class_t::XT_VALUE:	    /* <arg value=""> child */
-	    /* TODO: <arg arglistref=""> child */
-	    exp = properties_->expand(xa->data.arg);
-	    if (!exp.is_null())
-		command->appendm(exp.take());
-	    break;
-
-	case xtask_class_t::XT_LINE:	    /* <arg line=""> child */
-	    exp = properties_->expand(xa->data.arg);
-	    if (!exp.is_null())
-	    	command->split_tom(exp.take(), /*sep*/0);
-	    break;
-	    /* TODO: <env> child */
-	
-	case xtask_class_t::XT_FILE:	    /* <arg file=""> child */
-	    exp = properties_->expand(xa->data.arg);
-	    if (!exp.is_null())
-	    	command->appendm(file_normalise_m(exp.take(), project_->basedir()));
-	    break;
-	    
-	case xtask_class_t::XT_FILESET:    /* <fileset> child */
-    	    xa->data.fileset->gather_mapped(properties_,
-	    	    	    	  command, /*mappers*/0);
-	    break;
-
-	case xtask_class_t::XT_FILES:	    /* <files> child */
-	    if (fileset_ != 0)
-    	    	fileset_->gather_mapped(properties_,
-		    	    	      command, &xtclass->mappers_);
-	    break;
-	    
-	case xtask_class_t::XT_TAGEXPAND:  /* <tagexpand> child */
-	    taglist_t::list_gather(&taglists_, xa->data.tagexp,
-	    	    	    	properties_, command);
-	    break;
-	}
+	if (!xa->command_add(this, command))
+	    return FALSE;
     }
     
 #if DEBUG
-    {
-    	char *commstr = command->join("\" \"");
-	fprintf(stderr, "xtask_build_command: \"%s\"\n", commstr);
-	g_free(commstr);
-    }
+    string_var commstr = command->join("\" \"");
+    fprintf(stderr, "xtask_t::build_command: \"%s\"\n", commstr.data());
 #endif
 
     return TRUE;
@@ -146,7 +106,7 @@ xtask_t::build_command(strarray_t *command)
 gboolean
 xtask_t::execute_command()
 {
-    xtask_class_t *xtclass = (xtask_class_t *)tclass_;	/* downcast */
+    xtask_class_t *xtclass = xtask_class();
     log_message_t *logmsg = 0;
     strarray_t *command;
     strarray_t *depfiles;
@@ -239,7 +199,7 @@ xtask_t::execute_one(const char *filename, void *userdata)
 gboolean
 xtask_t::exec()
 {
-    xtask_class_t *xtclass = (xtask_class_t *)tclass_; /* downcast */
+    xtask_class_t *xtclass = xtask_class();
     
 #if DEBUG
     fprintf(stderr, "xtask_execute: executing \"%s\"\n", name());
@@ -275,31 +235,208 @@ xtask_t::exec()
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-xtask_class_t::arg_t::arg_t(xtask_class_t::arg_type_t ty)
- :  type(ty)
+xtask_class_t::arg_t::arg_t()
 {
 }
 
 xtask_class_t::arg_t::~arg_t()
 {
-    switch (type)
-    {
-    case XT_VALUE:    	/* <arg value=""> child */
-    case XT_LINE:    	/* <arg line=""> child */
-    case XT_FILE:    	/* <arg file=""> child */
-	strdelete(data.arg);
-    	break;
-    case XT_FILESET:    /* <fileset> child */
-	if (data.fileset != 0)
-    	    data.fileset->unref();
-    	break;
-    case XT_FILES:  	/* <files> child */
-    	break;
-    case XT_TAGEXPAND:	/* <tagexpand> child */
-    	delete data.tagexp;
-    	break;
-    }
 }
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+	/* TODO: <arg arglistref=""> child */
+
+struct xtask_value_arg_t : public xtask_class_t::arg_t
+{
+private:
+    string_var value_;
+    
+public:
+    xtask_value_arg_t(const char *s)
+     :  value_(s)
+    {
+    }
+    ~xtask_value_arg_t()
+    {
+    }
+    
+    gboolean command_add(const xtask_t *xtask, strarray_t *command) const
+    {
+	string_var exp = xtask->properties()->expand(value_);
+	if (!exp.is_null())
+	    command->appendm(exp.take());
+    	return TRUE;
+    }
+
+#if DEBUG
+    void dump() const
+    {
+    	fprintf(stderr, "VALUE=\"%s\"\n", value_.data());
+    }
+#endif
+};
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+	    /* TODO: <env> child */
+
+struct xtask_line_arg_t : public xtask_class_t::arg_t
+{
+private:
+    string_var line_;
+    
+public:
+    xtask_line_arg_t(const char *s)
+     :  line_(s)
+    {
+    }
+    ~xtask_line_arg_t()
+    {
+    }
+    
+    gboolean command_add(const xtask_t *xtask, strarray_t *command) const
+    {
+	string_var exp = xtask->properties()->expand(line_);
+	if (!exp.is_null())
+	    command->split_tom(exp.take(), /*sep*/0);
+    	return TRUE;
+    }
+
+#if DEBUG
+    void dump() const
+    {
+    	fprintf(stderr, "LINE=\"%s\"\n", line_.data());
+    }
+#endif
+};
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+struct xtask_file_arg_t : public xtask_class_t::arg_t
+{
+private:
+    string_var file_;
+    
+public:
+    xtask_file_arg_t(const char *s)
+     :  file_(s)
+    {
+    }
+    ~xtask_file_arg_t()
+    {
+    }
+    
+    gboolean command_add(const xtask_t *xtask, strarray_t *command) const
+    {
+	string_var exp = xtask->properties()->expand(file_);
+	if (!exp.is_null())
+	    command->appendm(file_normalise_m(exp.take(),
+	    	    	     xtask->project()->basedir()));
+    	return TRUE;
+    }
+
+#if DEBUG
+    void dump() const
+    {
+    	fprintf(stderr, "FILE=\"%s\"\n", file_.data());
+    }
+#endif
+};
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+struct xtask_fileset_arg_t : public xtask_class_t::arg_t
+{
+private:
+    fileset_t *fileset_;
+    
+public:
+    xtask_fileset_arg_t(fileset_t *fs)
+     :  fileset_(fs)
+    {
+	// TODO: ref()
+    }
+    ~xtask_fileset_arg_t()
+    {
+    	fileset_->unref();
+    }
+    
+    gboolean command_add(const xtask_t *xtask, strarray_t *command) const
+    {
+    	fileset_->gather_mapped(xtask->properties(), command, /*mappers*/0);
+    	return TRUE;
+    }
+
+#if DEBUG
+    void dump() const
+    {
+    	fprintf(stderr, "FILESET={\n");
+	fileset_->dump();
+	fprintf(stderr, "}\n");
+    }
+#endif
+};
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+struct xtask_files_arg_t : public xtask_class_t::arg_t
+{
+public:
+    xtask_files_arg_t()
+    {
+    }
+    ~xtask_files_arg_t()
+    {
+    }
+    
+    gboolean command_add(const xtask_t *xtask, strarray_t *command) const
+    {
+	if (xtask->fileset() != 0)
+    	    xtask->fileset()->gather_mapped(xtask->properties(),
+		    	    		    command,
+					    xtask->xtask_class()->mappers());
+    	return TRUE;
+    }
+
+#if DEBUG
+    void dump() const
+    {
+    	fprintf(stderr, "FILES\n");
+    }
+#endif
+};
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+struct xtask_tagexp_arg_t : public xtask_class_t::arg_t
+{
+private:
+    tagexp_t *tagexp_;
+    
+public:
+    xtask_tagexp_arg_t(tagexp_t *te)
+     :  tagexp_(te)
+    {
+    }
+    ~xtask_tagexp_arg_t()
+    {
+    	delete tagexp_;
+    }
+    
+    gboolean command_add(const xtask_t *xtask, strarray_t *command) const
+    {
+	taglist_t::list_gather(xtask->taglists(), tagexp_,
+	    	    	    xtask->properties(), command);
+    	return TRUE;
+    }
+
+#if DEBUG
+    void dump() const
+    {
+    	fprintf(stderr, "tagexp=\n");
+    }
+#endif
+};
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -334,77 +471,46 @@ xtask_class_t::create_task(project_t *proj)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 xtask_class_t::arg_t *
-xtask_class_t::add_arg(xtask_class_t::arg_type_t type)
+xtask_class_t::add_arg(xtask_class_t::arg_t *xa)
 {
-    arg_t *xa;
-    
-    xa = new arg_t(type);
-    
     args_.append(xa);
-    
     return xa;
 }
 
 xtask_class_t::arg_t *
 xtask_class_t::add_line(const char *s)
 {
-    arg_t *xa;
-    
-    xa = add_arg(XT_LINE);
-    strassign(xa->data.arg, s);
-    
-    return xa;
+    return add_arg(new xtask_line_arg_t(s));
 }
 
 xtask_class_t::arg_t *
 xtask_class_t::add_value(const char *s)
 {
-    arg_t *xa;
-    
-    xa = add_arg(XT_VALUE);
-    strassign(xa->data.arg, s);
-    
-    return xa;
+    return add_arg(new xtask_value_arg_t(s));
 }
 
 xtask_class_t::arg_t *
 xtask_class_t::add_file(const char *s)
 {
-    arg_t *xa;
-    
-    xa = add_arg(XT_FILE);
-    strassign(xa->data.arg, s);
-    
-    return xa;
+    return add_arg(new xtask_file_arg_t(s));
 }
 
 xtask_class_t::arg_t *
 xtask_class_t::add_fileset(fileset_t *fs)
 {
-    arg_t *xa;
-    
-    xa = add_arg(XT_FILESET);
-    xa->data.fileset = fs;
-    // TODO: ref()
-    
-    return xa;
+    return add_arg(new xtask_fileset_arg_t(fs));
 }
 
 xtask_class_t::arg_t *
 xtask_class_t::add_files()
 {
-    return add_arg(XT_FILES);
+    return add_arg(new xtask_files_arg_t());
 }
 
 xtask_class_t::arg_t *
 xtask_class_t::add_tagexpand(tagexp_t *te)
 {
-    xtask_class_t::arg_t *xa;
-    
-    xa = add_arg(XT_TAGEXPAND);
-    xa->data.tagexp = te;
-    
-    return xa;
+    return add_arg(new xtask_tagexp_arg_t(te));
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
