@@ -21,7 +21,7 @@
 #include "cant.h"
 #include "job.h"
 
-CVSID("$Id: cant.c,v 1.15 2001-11-21 16:31:34 gnb Exp $");
+CVSID("$Id: cant.c,v 1.16 2002-02-04 04:59:56 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -31,8 +31,6 @@ static GList *command_targets;     /* targets specified on the commandline */
 static char *buildfile = "build.xml";
 static unsigned parallelism = 1;
 static char *globals_file = PKGDATADIR "/globals.xml";
-
-static project_t *project_globals;
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 #define PATTERN_TEST 0
