@@ -31,7 +31,7 @@ typedef struct
     gboolean result:1;
 } delete_private_t;
 
-CVSID("$Id: task_delete.c,v 1.10 2002-02-08 07:42:29 gnb Exp $");
+CVSID("$Id: task_delete.c,v 1.11 2002-02-10 10:12:23 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -137,7 +137,7 @@ delete_post_parse(task_t *task)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static gboolean
-delete_delete_one(const char *filename, void *userdata)
+delete_delete_one(const char *filename/*unnormalised*/, void *userdata)
 {
     task_t *task = (task_t *)userdata;
     delete_private_t *dp = (delete_private_t *)task->private;
@@ -146,31 +146,33 @@ delete_delete_one(const char *filename, void *userdata)
     if (dp->verbose)
     	logf("%s\n", filename);
 	
-    /* TODO: apply proj->basedir */
-
     if (file_is_directory(filename) == 0)
     {
     	r = file_apply_children(filename, delete_delete_one, task);
-	
+
 	if (r < 0)
 	{
 	    log_perror(filename);
 	}
 	else if (r == 1)
 	{
-	    if (dp->include_empty_dirs && rmdir(filename) < 0 && !dp->quiet)
+	    if (dp->include_empty_dirs && file_rmdir(filename) < 0)
 	    {
-		log_perror(filename);
-		dp->result = FALSE;
+	    	if (!dp->quiet)
+		    log_perror(filename);
+		if (dp->fail_on_error)
+		    dp->result = FALSE;
     	    }
 	}	    
     }
     else
     {
-	if (unlink(filename) < 0 && !dp->quiet)
+	if (file_unlink(filename) < 0)
 	{
-	    log_perror(filename);
-	    dp->result = FALSE;
+	    if (!dp->quiet)
+		log_perror(filename);
+	    if (dp->fail_on_error)
+		dp->result = FALSE;
 	}
     }
         
