@@ -19,7 +19,7 @@
 
 #include "cant.h"
 
-CVSID("$Id: project.c,v 1.11 2002-02-04 05:15:49 gnb Exp $");
+CVSID("$Id: project.c,v 1.12 2002-02-08 07:33:57 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -56,9 +56,9 @@ project_delete_one_target(gpointer key, gpointer value, gpointer userdata)
 }
 
 static gboolean
-project_delete_one_fileset(gpointer key, gpointer value, gpointer userdata)
+project_unref_one_fileset(gpointer key, gpointer value, gpointer userdata)
 {
-    fileset_delete((fileset_t *)value);
+    fileset_unref((fileset_t *)value);
     return TRUE;    /* so remove it already */
 }
 
@@ -86,7 +86,7 @@ project_delete(project_t *proj)
     g_hash_table_destroy(proj->targets);
     tscope_delete(proj->tscope);
     
-    g_hash_table_foreach_remove(proj->filesets, project_delete_one_fileset, 0);
+    g_hash_table_foreach_remove(proj->filesets, project_unref_one_fileset, 0);
     g_hash_table_destroy(proj->filesets);
     
     g_hash_table_foreach_remove(proj->tl_defs, project_delete_one_tl_def, 0);
@@ -264,6 +264,16 @@ void
 project_set_property(project_t *proj, const char *name, const char *value)
 {
     props_set(proj->properties, name, value);
+}
+
+void
+project_append_property(project_t *proj, const char *name, const char *value)
+{
+    const char *oldval = props_get(proj->properties, name);
+    if (oldval == 0)
+	props_set(proj->properties, name, value);
+    else
+	props_setm(proj->properties, name, g_strconcat(oldval, " ", value, 0));
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
