@@ -69,7 +69,7 @@ void props_apply_local(props_t *, void (*func)(const char *name,
  * the value of the corresponding property, i.e. expand
  * all property references.
  */
-char *props_replace(props_t *, const char *string);
+char *props_expand(props_t *, const char *string);
 
 
 

@@ -23,6 +23,7 @@
 #include "common.h"
 #include "estring.h"
 #include "props.h"
+#include "strarray.h"
 #include <regex.h>
 #include "xml.h"
 
@@ -75,7 +76,7 @@ struct task_s
     char *id;
     char *name;
     char *description;
-    props_t *attributes;
+    props_t *attributes;    /* xml attrs from parse TODO: remove this */
     project_t *project;
     target_t *target;
     task_ops_t *ops;
@@ -207,7 +208,7 @@ void project_set_property(project_t *, const char *name, const char *value);
 void project_add_fileset(project_t *, fileset_t *);
 fileset_t *project_find_fileset(project_t *, const char *id);
 #define project_expand(proj, str) \
-    props_replace((proj)->fixed_properties, (str))
+    props_expand((proj)->fixed_properties, (str))
 
 /* target.c */
 target_t *target_new(void);

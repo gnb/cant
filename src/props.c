@@ -26,7 +26,7 @@ struct props_s
     GHashTable *values;
 };
 
-CVSID("$Id: props.c,v 1.4 2001-11-06 14:06:43 gnb Exp $");
+CVSID("$Id: props.c,v 1.5 2001-11-07 08:59:20 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -172,7 +172,7 @@ props_apply_local(
 #define MAXDEPTH 100
 
 static void
-_props_replace_1(
+_props_expand_1(
     props_t *props,
     estring *rep,
     const char *str,
@@ -197,7 +197,7 @@ _props_replace_1(
 		    	fprintf(stderr, "Property loop detected while expanding \"%s\"\n",
 			    	    	    name.data);
 		    else
-		    	_props_replace_1(props, rep, value, depth+1);
+		    	_props_expand_1(props, rep, value, depth+1);
 		}
 	    	estring_truncate(&name);
 	    	inname = FALSE;
@@ -220,7 +220,7 @@ _props_replace_1(
 }
 
 char *
-props_replace(props_t *props, const char *str)
+props_expand(props_t *props, const char *str)
 {
     estring rep;
     
@@ -229,10 +229,10 @@ props_replace(props_t *props, const char *str)
 	
     estring_init(&rep);
     
-    _props_replace_1(props, &rep, str, 0);
+    _props_expand_1(props, &rep, str, 0);
     
 #if DEBUG
-    fprintf(stderr, "props_replace: \"%s\" -> \"%s\"\n", str, rep.data);
+    fprintf(stderr, "props_expand: \"%s\" -> \"%s\"\n", str, rep.data);
 #endif
         
     return rep.data;

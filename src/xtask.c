@@ -19,11 +19,12 @@
 
 #include "cant.h"
 
-CVSID("$Id: xtask.c,v 1.2 2001-11-07 08:36:00 gnb Exp $");
+CVSID("$Id: xtask.c,v 1.3 2001-11-07 08:59:20 gnb Exp $");
 
 typedef struct
 {
     fileset_t *fileset;
+    props_t *properties;    /* local properties, overriding the project */
 } xtask_private_t;
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -49,7 +50,7 @@ xtask_parse(task_t *task, xmlNode *node)
     	if ((xp->fileset = parse_fileset(task->project, node, "dir")) == 0)
 	    return FALSE;
     }
-    
+        
     task->private = xp;
 
     return TRUE;
@@ -84,6 +85,7 @@ xtask_append_file_strarray(const char *filename, void *userdata)
 static gboolean
 xtask_execute_command(task_t *task)
 {
+    xtask_private_t *xp = (xtask_private_t *)task->private;
     xtask_ops_t *xops = (xtask_ops_t *)task->ops;
     strarray_t *command;
     GList *iter;
@@ -92,7 +94,7 @@ xtask_execute_command(task_t *task)
     
     if (xops->logmessage != 0)
     {
-    	char *logexp = task_expand(task, xops->logmessage);
+    	char *logexp = props_expand(xp->properties, xops->logmessage);
 	logf("%s\n", logexp);
 	g_free(logexp);
     }
@@ -101,7 +103,7 @@ xtask_execute_command(task_t *task)
     command = strarray_new();
     
     if (xops->executable != 0)
-    	strarray_appendm(command, task_expand(task, xops->executable));
+    	strarray_appendm(command, props_expand(xp->properties, xops->executable));
     
     for (iter = xops->args ; iter != 0 ; iter = iter->next)
     {
@@ -117,7 +119,7 @@ xtask_execute_command(task_t *task)
 	    /* <arg> child */
 	    /* TODO: implement "if", "unless" conditions */
 	    /* TODO: implement XT_WHITESPACE */
-	    exp = task_expand(task, xa->arg);
+	    exp = props_expand(xp->properties, xa->arg);
 	    
 	    if (exp != 0 && *exp == '\0')
 	    {
@@ -186,32 +188,28 @@ xtask_execute(task_t *task)
     fprintf(stderr, "xtask_execute: executing \"%s\"\n", task->name);
 #endif
 
+    /* create a temporary props to hold locally scoped properties */
+    xp->properties = props_new(task->project->fixed_properties);
+
     if (xops->fileset_flag)
     {
     	if (xops->foreach)
 	{
 	    /* run the command once for each file in the fileset */
 	    fileset_apply(xp->fileset, xtask_execute_one, task);
-    	    /* clean up the property */
-	    /* TODO: properly designed task-scoping for properties */
-    	    project_set_property(task->project, "file", 0);
 	}
 	else
 	{
     	    /* construct the "files" property */
     	    estring files;
 
+    	    /* This is of course *NOT* whitespace-safe */
 	    estring_init(&files);
 	    fileset_apply(xp->fileset, xtask_append_file_estring, &files);
-	    /* TODO: project_set_propertym?? */
-	    props_setm(task->project->properties, "files", files.data);
+	    props_setm(xp->properties, "files", files.data);
 
     	    /* run the command just once */
 	    xtask_execute_command(task);
-
-    	    /* clean up the property */
-	    /* TODO: properly designed task-scoping for properties */
-    	    project_set_property(task->project, "files", 0);
 	}
     }
     else
@@ -219,6 +217,10 @@ xtask_execute(task_t *task)
     	/* run the command just once */
 	xtask_execute_command(task);
     }
+    
+    /* wipe out any temporary properties */
+    props_delete(xp->properties);
+    xp->properties = 0;
     
     return TRUE;
 }
@@ -236,6 +238,8 @@ xtask_delete(task_t *task)
 
     if (xp->fileset != 0)
     	fileset_delete(xp->fileset);
+    if (xp->properties != 0)
+	props_delete(xp->properties);
 	
     g_free(xp);
 

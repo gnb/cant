@@ -20,7 +20,7 @@
 #define _DEFINE_GLOBALS 1
 #include "cant.h"
 
-CVSID("$Id: cant.c,v 1.3 2001-11-06 14:10:02 gnb Exp $");
+CVSID("$Id: cant.c,v 1.4 2001-11-07 08:59:20 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -313,6 +313,13 @@ dump_one_target(gpointer key, gpointer value, gpointer userdata)
     fprintf(stderr, "    }\n");
 }
 
+static void
+dump_project_properties(project_t *proj)
+{
+    fprintf(stderr, "    PROPERTIES {\n", proj->basedir);
+    props_apply(proj->fixed_properties, dump_one_property, "        ");
+    fprintf(stderr, "    }\n", proj->basedir);
+}
 
 static void
 dump_project(project_t *proj)
@@ -323,9 +330,7 @@ dump_project(project_t *proj)
     fprintf(stderr, "    DEFAULT=\"%s\"\n", proj->default_target);
     fprintf(stderr, "    BASEDIR=\"%s\"\n", proj->basedir);
     g_hash_table_foreach(proj->targets, dump_one_target, 0);
-    fprintf(stderr, "    PROPERTIES {\n", proj->basedir);
-    props_apply(proj->fixed_properties, dump_one_property, "        ");
-    fprintf(stderr, "    }\n", proj->basedir);
+    dump_project_properties(proj);
     fprintf(stderr, "}\n");
 }
 
@@ -357,6 +362,10 @@ main(int argc, char **argv)
     
     ret = !build_commandline_targets(proj);
     
+#if DEBUG
+    dump_project_properties(proj);
+#endif
+
     project_delete(proj);
     
     return ret;
