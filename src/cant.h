@@ -127,16 +127,25 @@ struct task_ops_s
     GHashTable *children_hashed;    /* task_child_t's hashed on name */
 };
 
-#define XT_WHITESPACE	    (1<<0)  	/* escape whitespace in `arg' */
-#define XT_IFCOND	    (1<<1)  	/* `if' condition specified */
-#define XT_UNLESSCOND	    (1<<2)  	/* `unless' condition specified */
+#define XT_ARG	    	    1
+#define XT_FILESET  	    2
+#define XT_ENV	    	    3
+#define XT_FILES    	    4
+#define _XT_TYPE_MASK	    0xf
+#define XT_WHITESPACE	    (1<<4)  	/* escape whitespace in `arg' */
+#define XT_IFCOND	    (1<<5)  	/* `if' condition specified */
+#define XT_UNLESSCOND	    (1<<6)  	/* `unless' condition specified */
 
 struct xtask_arg_s
 {
     unsigned flags;
     
-    char *arg;
-    fileset_t *fileset;
+    union
+    {
+	char *arg;	    	/* for XT_ARG */
+	fileset_t *fileset;     /* for XT_FILESET */
+	GList *mappers; 	/* for XT_FILES */
+    } data;
     
     char *condition;
 };
@@ -293,6 +302,7 @@ void xtask_arg_set_unless_condition(xtask_arg_t *xa, const char *prop);
 xtask_arg_t *xtask_ops_add_line(xtask_ops_t *xops, const char *s);
 xtask_arg_t *xtask_ops_add_value(xtask_ops_t *xops, const char *s);
 xtask_arg_t *xtask_ops_add_fileset(xtask_ops_t *xops, fileset_t *fs);
+xtask_arg_t *xtask_ops_add_files(xtask_ops_t *xops);
 void xtask_ops_add_attribute(xtask_ops_t *xops, const char *attr,
     const char *prop, gboolean required);
 

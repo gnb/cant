@@ -19,7 +19,7 @@
 
 #include "cant.h"
 
-CVSID("$Id: xtask.c,v 1.5 2001-11-10 03:17:24 gnb Exp $");
+CVSID("$Id: xtask.c,v 1.6 2001-11-10 14:39:50 gnb Exp $");
 
 typedef struct
 {
@@ -56,6 +56,12 @@ xtask_generic_setter(task_t *task, const char *name, const char *value)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
+typedef struct
+{
+    GList *mappers;
+    strarray_t *strarray;
+} xtask_mapped_strarray_rec_t;
+
 static gboolean
 xtask_append_file_estring(const char *filename, void *userdata)
 {
@@ -79,6 +85,32 @@ xtask_append_file_strarray(const char *filename, void *userdata)
     
     return TRUE;   /* keep going */
 }
+
+
+static gboolean
+xtask_append_file_mapped_strarray(const char *filename, void *userdata)
+{
+    xtask_mapped_strarray_rec_t *rec = (xtask_mapped_strarray_rec_t *)userdata;
+    GList *iter;
+    char *mapped = 0;
+    
+    for (iter = rec->mappers ; iter != 0 ; iter = iter->next)
+    {
+    	mapper_t *ma = (mapper_t *)iter->data;
+	
+	if ((mapped = mapper_map(ma, filename)) != 0)
+	    break;
+    }
+
+    if (mapped != 0)
+    {    
+	strarray_append(rec->strarray, mapped);
+	g_free(mapped);
+    }
+    
+    return TRUE;   /* keep going */
+}
+
 
 static gboolean
 xtask_execute_command(task_t *task)
@@ -106,24 +138,18 @@ xtask_execute_command(task_t *task)
     for (iter = xops->args ; iter != 0 ; iter = iter->next)
     {
     	xtask_arg_t *xa = (xtask_arg_t *)iter->data;
-	
-	if (xa->fileset != 0)
+
+    	switch (xa->flags & _XT_TYPE_MASK)
 	{
-	    /* <fileset> child */
-	    fileset_apply(xa->fileset, xtask_append_file_strarray, command);
-	}
-	else
-	{
-	    /* <arg> child */
+	case XT_FILESET:    /* <fileset> child */
+	    fileset_apply(xa->data.fileset, xtask_append_file_strarray, command);
+	    break;
+
+	case XT_ARG:	    /* <arg> child */
+	    /* TODO: <arg arglistref=""> child */
 	    /* TODO: implement "if", "unless" conditions */
-	    /* TODO: implement XT_WHITESPACE */
-	    exp = props_expand(xp->properties, xa->arg);
-	    
-	    if (exp != 0 && *exp == '\0')
-	    {
-	    	g_free(exp);
-		exp = 0;
-	    }
+	    exp = props_expand(xp->properties, xa->data.arg);
+	    strnullnorm(exp);
 	    
 	    if (exp != 0)
 	    {
@@ -142,9 +168,20 @@ xtask_execute_command(task_t *task)
 		    g_free(exp);
 		}
 	    }
+	    break;
+	    /* TODO: <env> child */
+	
+	case XT_FILES:	    /* <files> child */
+	    if (task->fileset != 0)
+	    {
+    	    	xtask_mapped_strarray_rec_t rec;
+		
+		rec.mappers = xa->data.mappers;
+		rec.strarray = command;
+		fileset_apply(task->fileset, xtask_append_file_mapped_strarray, &rec);
+	    }
+	    break;
 	}
-	/* TODO: <arg arglistref=""> child */
-	/* TODO: <env> child */
     }
     
     /* execute the command */
@@ -247,18 +284,11 @@ xtask_delete(task_t *task)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static xtask_arg_t *
-xtask_arg_new(
-    unsigned flags,
-    const char *arg,
-    fileset_t *fs)
+xtask_arg_new(void)
 {
     xtask_arg_t *xa;
     
     xa = new(xtask_arg_t);
-    
-    xa->flags = flags;
-    strassign(xa->arg, arg);
-    xa->fileset = fs;
     
     return xa;
 }
@@ -266,12 +296,25 @@ xtask_arg_new(
 static void
 xtask_arg_delete(xtask_arg_t *xa)
 {
-    strdelete(xa->arg);
-    
-    if (xa->fileset != 0)
+    switch (xa->flags & _XT_TYPE_MASK)
     {
-    	fileset_delete(xa->fileset);
-	xa->fileset = 0;
+    case XT_FILESET:    /* <fileset> child */
+	if (xa->data.fileset != 0)
+	{
+    	    fileset_delete(xa->data.fileset);
+	    xa->data.fileset = 0;
+	}
+    	break;
+    case XT_ARG:    	/* <arg> child */
+	strdelete(xa->data.arg);
+    	break;
+    case XT_FILES:  	/* <files> child */
+    	while (xa->data.mappers != 0)
+	{
+	    mapper_delete((mapper_t *)xa->data.mappers->data);
+	    xa->data.mappers = g_list_remove_link(xa->data.mappers, xa->data.mappers);
+	}
+    	break;
     }
     
     strdelete(xa->condition);
@@ -345,14 +388,26 @@ xtask_ops_delete(xtask_ops_t *xops)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
+static xtask_arg_t *
+xtask_ops_add_arg(xtask_ops_t *xops, unsigned flags)
+{
+    xtask_arg_t *xa;
+    
+    xa = xtask_arg_new();
+    
+    xa->flags = flags;
+    xops->args = g_list_append(xops->args, xa);
+    
+    return xa;
+}
+
 xtask_arg_t *
 xtask_ops_add_line(xtask_ops_t *xops, const char *s)
 {
     xtask_arg_t *xa;
     
-    xa = xtask_arg_new(/*flags*/0, s, /*fileset*/0);
-    
-    xops->args = g_list_append(xops->args, xa);
+    xa = xtask_ops_add_arg(xops, XT_ARG);
+    strassign(xa->data.arg, s);
     
     return xa;
 }
@@ -362,9 +417,8 @@ xtask_ops_add_value(xtask_ops_t *xops, const char *s)
 {
     xtask_arg_t *xa;
     
-    xa = xtask_arg_new(XT_WHITESPACE, s, /*fileset*/0);
-    
-    xops->args = g_list_append(xops->args, xa);
+    xa = xtask_ops_add_arg(xops, XT_ARG|XT_WHITESPACE);
+    strassign(xa->data.arg, s);
     
     return xa;
 }
@@ -374,9 +428,18 @@ xtask_ops_add_fileset(xtask_ops_t *xops, fileset_t *fs)
 {
     xtask_arg_t *xa;
     
-    xa = xtask_arg_new(/*flags*/0, /*arg*/0, fs);
+    xa = xtask_ops_add_arg(xops, XT_FILESET);
+    xa->data.fileset = fs;
     
-    xops->args = g_list_append(xops->args, xa);
+    return xa;
+}
+
+xtask_arg_t *
+xtask_ops_add_files(xtask_ops_t *xops)
+{
+    xtask_arg_t *xa;
+    
+    xa = xtask_ops_add_arg(xops, XT_FILES);
     
     return xa;
 }

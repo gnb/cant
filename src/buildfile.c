@@ -20,7 +20,7 @@
 #include "cant.h"
 #include <parser.h>
 
-CVSID("$Id: buildfile.c,v 1.5 2001-11-10 03:17:24 gnb Exp $");
+CVSID("$Id: buildfile.c,v 1.6 2001-11-10 14:39:50 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -36,6 +36,7 @@ parse_error(const char *fmt, ...)
 {
     va_list args;
     
+    fprintf(stderr, "ERROR: ");
     va_start(args, fmt);
 #if 0
     fprintf(stderr, "%s:%d: ",
@@ -233,7 +234,7 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
     	    if (from != 0)
     	    	xtask_ops_add_attribute(xops, from, to,
 		    	cantXmlGetBooleanProp(child, "required", FALSE));
-		
+	    /* TODO: specify default value */
 	    if (from != 0)
 		xmlFree(from);
 	    if (to != 0)
@@ -243,6 +244,29 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
 	{
 	    if ((fs = parse_fileset(proj, child, "dir")) != 0)
 	    	xa = xtask_ops_add_fileset(xops, fs);
+	}
+	else if (!strcmp(child->name, "files"))
+	{
+	    mapper_t *ma;
+	    xmlNode *grand;
+	    
+	    xa = xtask_ops_add_files(xops);
+	    for (grand = child->childs ; grand != 0 ; grand = grand->next)
+	    {
+    		if (grand->type != XML_ELEMENT_NODE)
+		    continue;
+		
+		if (!strcmp(grand->name, "mapper"))
+		{
+		    if ((ma = parse_mapper(proj, grand)) != 0)
+		    	xa->data.mappers = g_list_append(xa->data.mappers, ma);
+		}
+		else
+		    parse_error("Expecting only \"mapper\" children\n");
+    	    }
+	    if (xa->data.mappers == 0)
+	    	xa->data.mappers = g_list_append(xa->data.mappers, 
+		    	    	    		 mapper_new("identity", 0, 0));
 	}
 	else
 	    parse_error("Unexpected child \"%s\"\n", child->name);
@@ -283,7 +307,34 @@ parse_fileset(project_t *proj, xmlNode *node, const char *dirprop)
     fprintf(stderr, "parsing fileset\n");
 #endif
 
-    
+    if ((buf = xmlGetProp(node, "refid")) != 0)
+    {
+    	/* Handle reference to an existing fileset */
+    	if ((buf2 = xmlGetProp(node, "id")) != 0)
+	{
+	    parse_error("Cannot specify both \"id\" and \"refid\"\n");
+	    xmlFree(buf);
+	    xmlFree(buf2);
+	    return 0;
+	}
+	
+	if ((fs = project_find_fileset(proj, buf)) == 0)
+	{
+	    /*
+    	     * TODO: order dependency.... May need to scan the project
+	     *       for non-tasks first before parsing tasks.
+	     */
+	    parse_error("Cannot find fileset \"%s\" to satisfy \"refid\"\n", buf);
+	    xmlFree(buf);
+	    return 0;
+	}
+	/* TODO: refcount to prevent problems deleting the project */
+	
+    	xmlFree(buf);
+	return fs;
+    }
+
+    /* Handle definition of a new fileset */
     if (dirprop != 0 && (buf = xmlGetProp(node, dirprop)) == 0)
     {
     	parse_error("Required attribute \"%s\" not present\n", dirprop);
@@ -293,6 +344,13 @@ parse_fileset(project_t *proj, xmlNode *node, const char *dirprop)
     fs = fileset_new(proj);
     fileset_set_directory(fs, buf);
     xmlFree(buf);
+
+
+    if ((buf = xmlGetProp(node, "id")) != 0)
+    {
+    	strassign(fs->id, buf);
+    	xmlFree(buf);
+    }
     
 
     fileset_set_case_sensitive(fs,
@@ -400,7 +458,7 @@ parse_project_fileset(project_t *proj, xmlNode *node)
     	parse_error("<fileset> at project scope must have \"id\" attribute\n");
     	return;
     }
-    
+    /* TODO: detect duplicate fileset ids */
     project_add_fileset(proj, fs);
 }
 
