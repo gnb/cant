@@ -21,7 +21,7 @@
 #include "tok.h"
 #include <time.h>
 
-CVSID("$Id: task_foreach.c,v 1.3 2002-02-11 05:34:38 gnb Exp $");
+CVSID("$Id: task_foreach.c,v 1.4 2002-03-29 11:12:40 gnb Exp $");
 
 typedef struct
 {
@@ -29,7 +29,6 @@ typedef struct
     /* TODO: whitespace-safe technique */
     char *values;
     GList *filesets;
-    GList *subtasks;
     /* TODO: support nested <property> tags */
 
     char *variable_e;
@@ -78,20 +77,6 @@ foreach_add_fileset(task_t *task, xmlNode *node)
     return TRUE;
 }
 
-static gboolean
-foreach_add_subtask(task_t *task, xmlNode *node)
-{
-    foreach_private_t *fp = (foreach_private_t *)task->private;
-    task_t *subtask;
-    
-    if ((subtask = parse_task(task->project, node)) == 0)
-    	return FALSE;
-
-    fp->subtasks = g_list_append(fp->subtasks, subtask);
-    
-    return TRUE;
-}
-
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static gboolean
@@ -99,7 +84,6 @@ foreach_do_iteration(const char *val, void *userdata)
 {
     task_t *task = (task_t *)userdata;
     foreach_private_t *fp = (foreach_private_t *)task->private;
-    GList *iter;
 
     /*
      * TODO: need a props stack... (per-task?) to get scope right.
@@ -109,18 +93,10 @@ foreach_do_iteration(const char *val, void *userdata)
     if (verbose)
 	logf("%s = %s\n", fp->variable_e, val);
 
-    for (iter = fp->subtasks ; iter != 0 ; iter = iter->next)
+    if (!task_execute_subtasks(task))
     {
-	task_t *subtask = (task_t *)iter->data;
-
-	/* This really should have happened at parse time */
-	subtask->target = task->target;
-
-	if (!task_execute(subtask))
-	{
-	    fp->failed = TRUE;
-	    return FALSE;
-	}
+	fp->failed = TRUE;
+	return FALSE;
     }
     return TRUE;
 }
@@ -163,7 +139,6 @@ foreach_delete(task_t *task)
     
     strdelete(fp->variable);
     strdelete(fp->values);
-    listdelete(fp->subtasks, task_t, task_delete);
     g_free(fp);
 }
 
@@ -179,7 +154,6 @@ static task_attr_t foreach_attrs[] =
 static task_child_t foreach_children[] = 
 {
     TASK_CHILD(foreach, fileset, 0),
-    TASK_GENERIC_CHILD(foreach, subtask, 0),
     {0}
 };
 
@@ -195,7 +169,9 @@ task_ops_t foreach_ops =
     foreach_attrs,
     foreach_children,
     /*is_fileset*/FALSE,
-    /*fileset_dir_name*/0
+    /*fileset_dir_name*/0,
+    /*cleanup*/0,
+    /*is_composite*/TRUE
 };
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

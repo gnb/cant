@@ -19,12 +19,11 @@
 
 #include "cant.h"
 
-CVSID("$Id: task_changedir.c,v 1.1 2002-02-11 06:28:19 gnb Exp $");
+CVSID("$Id: task_changedir.c,v 1.2 2002-03-29 11:12:40 gnb Exp $");
 
 typedef struct
 {
     char *dir;
-    GList *subtasks;
 } changedir_private_t;
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -43,20 +42,6 @@ changedir_set_dir(task_t *task, const char *name, const char *value)
     changedir_private_t *cp = (changedir_private_t *)task->private;
 
     strassign(cp->dir, value);
-    return TRUE;
-}
-
-static gboolean
-changedir_add_subtask(task_t *task, xmlNode *node)
-{
-    changedir_private_t *cp = (changedir_private_t *)task->private;
-    task_t *subtask;
-    
-    if ((subtask = parse_task(task->project, node)) == 0)
-    	return FALSE;
-
-    cp->subtasks = g_list_append(cp->subtasks, subtask);
-    
     return TRUE;
 }
 
@@ -90,19 +75,8 @@ changedir_execute(task_t *task)
     
     file_push_dir(dir_e);
 
-    for (iter = cp->subtasks ; iter != 0 ; iter = iter->next)
-    {
-	task_t *subtask = (task_t *)iter->data;
-
-	/* This really should have happened at parse time */
-	subtask->target = task->target;
-
-	if (!task_execute(subtask))
-	{
-	    ret = FALSE;
-	    break;
-	}
-    }
+    if (!task_execute_subtasks(task))
+    	ret = FALSE;
     
     file_pop_dir();
 
@@ -118,7 +92,6 @@ changedir_delete(task_t *task)
     changedir_private_t *cp = (changedir_private_t *)task->private;
     
     strdelete(cp->dir);
-    listdelete(cp->subtasks, task_t, task_delete);
     g_free(cp);
 }
 
@@ -127,12 +100,6 @@ changedir_delete(task_t *task)
 static task_attr_t changedir_attrs[] = 
 {
     TASK_ATTR(changedir, dir, TT_REQUIRED),
-    {0}
-};
-
-static task_child_t changedir_children[] = 
-{
-    TASK_GENERIC_CHILD(changedir, subtask, 0),
     {0}
 };
 
@@ -146,7 +113,7 @@ task_ops_t changedir_ops =
     changedir_execute,
     changedir_delete,
     changedir_attrs,
-    changedir_children,
+    /*children*/0,
     /*is_fileset*/FALSE,
     /*fileset_dir_name*/0
 };

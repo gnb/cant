@@ -20,7 +20,7 @@
 #include "cant.h"
 #include <fcntl.h>
 
-CVSID("$Id: task_redirect.c,v 1.2 2002-02-11 02:01:30 gnb Exp $");
+CVSID("$Id: task_redirect.c,v 1.3 2002-03-29 11:12:40 gnb Exp $");
 
 typedef struct
 {
@@ -29,7 +29,6 @@ typedef struct
     char *input_file;
     char *input_property;
     gboolean collapse_whitespace:1;
-    GList *subtasks;
 } redirect_private_t;
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -84,20 +83,6 @@ redirect_set_collapse_whitespace(task_t *task, const char *name, const char *val
     redirect_private_t *rp = (redirect_private_t *)task->private;
 
     boolassign(rp->collapse_whitespace, value);
-    return TRUE;
-}
-
-static gboolean
-redirect_add_subtask(task_t *task, xmlNode *node)
-{
-    redirect_private_t *rp = (redirect_private_t *)task->private;
-    task_t *subtask;
-    
-    if ((subtask = parse_task(task->project, node)) == 0)
-    	return FALSE;
-
-    rp->subtasks = g_list_append(rp->subtasks, subtask);
-    
     return TRUE;
 }
 
@@ -255,19 +240,8 @@ redirect_execute(task_t *task)
      * isn't and shouldn't be clever enough to stash away
      * file descriptors.
      */
-    for (iter = rp->subtasks ; iter != 0 ; iter = iter->next)
-    {
-	task_t *subtask = (task_t *)iter->data;
-
-	/* This really should have happened at parse time */
-	subtask->target = task->target;
-
-	if (!task_execute(subtask))
-	{
-	    ret = FALSE;
-	    break;
-	}
-    }
+    if (!task_execute_subtasks(task))
+	ret = FALSE;
 
     /*
      * Switch the file descriptors back.
@@ -372,7 +346,6 @@ redirect_delete(task_t *task)
     strdelete(rp->input_file);
     strdelete(rp->input_property);
 
-    listdelete(rp->subtasks, task_t, task_delete);
     g_free(rp);
 }
 
@@ -388,12 +361,6 @@ static task_attr_t redirect_attrs[] =
     {0}
 };
 
-static task_child_t redirect_children[] = 
-{
-    TASK_GENERIC_CHILD(redirect, subtask, 0),
-    {0}
-};
-
 task_ops_t redirect_ops = 
 {
     "redirect",
@@ -404,9 +371,11 @@ task_ops_t redirect_ops =
     redirect_execute,
     redirect_delete,
     redirect_attrs,
-    redirect_children,
+    /*children*/0,
     /*is_fileset*/FALSE,
-    /*fileset_dir_name*/0
+    /*fileset_dir_name*/0,
+    /*cleanup*/0,
+    /*is_composite*/TRUE
 };
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

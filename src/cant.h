@@ -96,6 +96,8 @@ struct task_s
     target_t *target;
     fileset_t *fileset;     /* for directory-based tasks */
     task_ops_t *ops;
+    /* TODO: I *really* need to convert this to C++ */
+    GList *subtasks;
     void *private;
 };
 
@@ -136,6 +138,7 @@ struct task_ops_s
     gboolean is_fileset;    	    	    /* parse as a fileset */
     char *fileset_dir_name; 	    	    /* name of base dir property */
     void (*cleanup)(task_ops_t*); 	    /* static dtor */
+    gboolean is_composite;  	    	    /* accepts subtasks */
     
     /* Don't initialised these fields to anything except 0 */
     GHashTable *attrs_hashed;	    /* task_attr_t's hashed on name */
@@ -301,6 +304,8 @@ void task_delete(task_t *);
 void task_set_id(task_t *, const char *id);
 void task_set_name(task_t *, const char *s);
 void task_set_description(task_t *, const char *s);
+void task_add_subtask(task_t *task, task_t *subtask);
+void task_attach(task_t *, target_t *);
 gboolean task_set_attribute(task_t *, const char *name, const char *value);
 void task_ops_attributes_apply(task_ops_t *ops,
     void (*function)(const task_attr_t *ta, void *userdata), void *userdata);
@@ -309,6 +314,7 @@ void task_ops_add_attribute(task_ops_t *, const task_attr_t *ta);
 const task_child_t *task_ops_find_child(const task_ops_t *ops, const char *name);
 void task_ops_add_child(task_ops_t *, const task_child_t *tc);
 gboolean task_execute(task_t *);
+gboolean task_execute_subtasks(task_t *task);
 void task_initialise_builtins(void);
 
 /* a task_scope_t is a stackable scope for task_ops_t definitions */

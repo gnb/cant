@@ -20,7 +20,7 @@
 #include "cant.h"
 #include "job.h"
 
-CVSID("$Id: target.c,v 1.6 2001-11-21 16:31:34 gnb Exp $");
+CVSID("$Id: target.c,v 1.7 2002-03-29 11:12:40 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -70,7 +70,7 @@ void
 target_add_task(target_t *targ, task_t *task)
 {
     targ->tasks = g_list_append(targ->tasks, task);
-    task->target = targ;
+    task_attach(task, targ);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

@@ -19,7 +19,7 @@
 
 #include "cant.h"
 
-CVSID("$Id: task.c,v 1.12 2002-02-08 07:37:46 gnb Exp $");
+CVSID("$Id: task.c,v 1.13 2002-03-29 11:12:40 gnb Exp $");
 
 task_scope_t *tscope_builtins;
 
@@ -43,7 +43,9 @@ task_delete(task_t *task)
     if (task->ops != 0 && task->ops->delete != 0)
     	(*task->ops->delete)(task);
     strdelete(task->id);
-	
+
+    listdelete(task->subtasks, task_t, task_delete);
+    	
     g_free(task);
 }
 
@@ -65,6 +67,29 @@ void
 task_set_description(task_t *task, const char *s)
 {
     strassign(task->description, s);
+}
+
+void
+task_add_subtask(task_t *task, task_t *subtask)
+{
+    assert(task->ops->is_composite);
+    task->subtasks = g_list_append(task->subtasks, subtask);
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+void
+task_attach(task_t *task, target_t *targ)
+{
+    GList *iter;
+    
+    task->target = targ;
+    for (iter = task->subtasks ; iter != 0 ; iter = iter->next)
+    {
+    	task_t *subtask = (task_t *)iter->data;
+	
+	task_attach(subtask, targ);
+    }
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -103,6 +128,22 @@ task_execute(task_t *task)
     log_pop_context();
     return ret;
 }
+
+gboolean
+task_execute_subtasks(task_t *task)
+{
+    GList *iter;
+
+    for (iter = task->subtasks ; iter != 0 ; iter = iter->next)
+    {
+	task_t *subtask = (task_t *)iter->data;
+
+	if (!task_execute(subtask))
+	    return FALSE;
+    }
+    return TRUE;
+}
+
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -161,6 +202,8 @@ task_ops_find_child(const task_ops_t *ops, const char *name)
 {
     task_child_t *tc;
     
+    if (ops->children_hashed == 0)
+    	return 0;
     if ((tc = g_hash_table_lookup(ops->children_hashed, name)) != 0)
     	return tc;
     return g_hash_table_lookup(ops->children_hashed, "*");

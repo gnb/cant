@@ -20,7 +20,7 @@
 #include "cant.h"
 #include "xtask.h"
 
-CVSID("$Id: buildfile.c,v 1.23 2002-02-11 05:32:36 gnb Exp $");
+CVSID("$Id: buildfile.c,v 1.24 2002-03-29 11:12:40 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -1246,16 +1246,27 @@ parse_task(project_t *proj, xmlNode *node)
 	    continue;
 	/* TODO: handle character data */
 	
-	if ((tc = task_ops_find_child(ops, child->name)) == 0)
+	if ((tc = task_ops_find_child(ops, child->name)) != 0)
 	{
-	    parse_error_unexpected_element(child);
-	    failed = TRUE;
+	    parse_node_push(child);
+	    if (!(*tc->adder)(task, child))
+		failed = TRUE;
+	    parse_node_pop();
 	    continue;
-    	}
-	parse_node_push(child);
-	if (!(*tc->adder)(task, child))
-	    failed = TRUE;
-	parse_node_pop();
+	}
+	
+	if (ops->is_composite)
+	{
+	    task_t *subtask = parse_task(proj, child);
+	    if (subtask == 0)
+	    	failed = TRUE;
+	    else
+	    	task_add_subtask(task, subtask);
+	    continue;
+	}
+	
+	parse_error_unexpected_element(child);
+	failed = TRUE;
     }
     
     /* TODO: scan for required children */
