@@ -8,3 +8,4 @@ builtin-mappers.h
 *.bbg
 *.da
 *.gcov
+normalise_test

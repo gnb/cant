@@ -23,7 +23,7 @@
 #include <dirent.h>
 #include <fcntl.h>
 
-CVSID("$Id: filename.c,v 1.6 2002-02-08 07:18:35 gnb Exp $");
+CVSID("$Id: filename.c,v 1.7 2002-02-08 16:51:07 gnb Exp $");
 
 #ifndef __set_errno
 #define __set_errno(v)	 errno = (v)
@@ -97,10 +97,22 @@ file_normalise_m(char *filename, const char *basedir)
 	{
 	    /* back up one dir level */
 	    char *p = strrchr(abs.data, '/');
-	    if (p == 0)
-	    	estring_append_string(&abs, "/..");
-	    else if (p != abs.data)
-	    	estring_truncate_to(&abs, (p - abs.data));
+
+	    if (!strcmp(abs.data, "."))
+	    	estring_append_string(&abs, ".");   	/* . + .. = .. */
+	    else if (!strcmp(abs.data, ".."))
+	    	estring_append_string(&abs, "/.."); 	/* .. + .. = ../.. */
+	    else if (p == 0)
+	    {
+	    	estring_truncate(&abs);
+		estring_append_string(&abs, "."); 	/* foo + .. = . */
+	    }
+	    else if (p == abs.data)
+	    	estring_truncate_to(&abs, 1);	    	/* /foo + .. = / */
+	    else if (!strcmp(p, "/.."))
+	    	estring_append_string(&abs, "/..");  /* ../.. + .. = ../../.. */
+	    else
+	    	estring_truncate_to(&abs, (p - abs.data));  /* foo/bar + .. = foo */
 	}
 	else
 	{

@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 # 
-# $Id: Makefile.am,v 1.20 2002-02-08 07:12:13 gnb Exp $
+# $Id: Makefile.am,v 1.21 2002-02-08 16:51:07 gnb Exp $
 #
 
 bin_PROGRAMS=	cant
@@ -105,3 +105,17 @@ post-gcov:
 
 pre-gcov:
 	$(RM) *.da *.gcov
+
+
+
+####
+# Test programs
+
+noinst_PROGRAMS=		normalise_test
+
+normalise_test_SOURCES=		normalise_test.c \
+				filename.h filename.c \
+				estring.h estring.c \
+				tok.h tok.c \
+				common.h common.c
+normalise_test_LDADD=		$(GLIB_LIBS)
