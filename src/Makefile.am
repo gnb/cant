@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 # 
-# $Id: Makefile.am,v 1.24 2002-03-29 12:36:25 gnb Exp $
+# $Id: Makefile.am,v 1.25 2002-03-29 16:12:31 gnb Exp $
 #
 
 bin_PROGRAMS=	cant
@@ -57,6 +57,7 @@ cant_SOURCES=	common.H thread.H cant.H \
 		xml.H xml.C \
 		common.C process.C \
 		strarray.H strarray.C \
+		hashtable.H hashtable.C \
 		queue.H queue.C \
 		job.H job.C \
 		$(TASK_SOURCES) \

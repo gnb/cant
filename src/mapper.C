@@ -19,10 +19,11 @@
 
 #include "mapper.H"
 #include "log.H"
+#include "hashtable.H"
 
-CVSID("$Id: mapper.C,v 1.1 2002-03-29 12:36:26 gnb Exp $");
+CVSID("$Id: mapper.C,v 1.2 2002-03-29 16:12:31 gnb Exp $");
 
-static GHashTable *mapper_ops_all;
+static hashtable_t<const char*, mapper_ops_t> *mapper_ops_all;
 
 static mapper_ops_t *mapper_ops_find(const char *name);
 
@@ -92,15 +93,15 @@ void
 mapper_ops_register(mapper_ops_t *ops)
 {
     if (mapper_ops_all == 0)
-    	mapper_ops_all = g_hash_table_new(g_str_hash, g_str_equal);
-    else if (g_hash_table_lookup(mapper_ops_all, ops->name) != 0)
+    	mapper_ops_all = new hashtable_t<const char*, mapper_ops_t>;
+    else if (mapper_ops_all->lookup(ops->name) != 0)
     {
     	logf("mapper operations \"%s\" already registered, ignoring new definition\n",
 	    	ops->name);
     	return;
     }
     
-    g_hash_table_insert(mapper_ops_all, ops->name, ops);
+    mapper_ops_all->insert(ops->name, ops);
 #if DEBUG
     fprintf(stderr, "mapper_ops_register: registering \"%s\"\n", ops->name);
 #endif
@@ -110,13 +111,13 @@ void
 mapper_ops_unregister(mapper_ops_t *ops)
 {
     if (mapper_ops_all != 0)
-	g_hash_table_remove(mapper_ops_all, ops->name);
+	mapper_ops_all->remove(ops->name);
 }
 
 static mapper_ops_t *
 mapper_ops_find(const char *name)
 {
-    return (mapper_ops_t *)g_hash_table_lookup(mapper_ops_all, name);
+    return mapper_ops_all->lookup(name);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

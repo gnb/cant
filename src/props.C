@@ -20,14 +20,15 @@
 #include "props.H"
 #include "estring.H"
 #include "filename.H"
+#include "hashtable.H"
 
 struct props_s
 {
     props_t *parent;	    /* inherits values from here */
-    GHashTable *values;
+    hashtable_t<char*, char> *values;
 };
 
-CVSID("$Id: props.C,v 1.1 2002-03-29 12:36:26 gnb Exp $");
+CVSID("$Id: props.C,v 1.2 2002-03-29 16:12:31 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -39,7 +40,7 @@ props_new(props_t *parent)
     props = new(props_t);
 
     props->parent = parent;
-    props->values = g_hash_table_new(g_str_hash, g_str_equal);
+    props->values = new hashtable_t<char *, char>;
     
     return props;
 }
@@ -47,21 +48,21 @@ props_new(props_t *parent)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static void
-_props_copy_one(gpointer key, gpointer value, gpointer userdata)
+_props_copy_one(char *key, char *value, void *userdata)
 {
-    props_set((props_t *)userdata, (const char *)key, (const char *)value);
+    props_set((props_t *)userdata, key, value);
 }
 
 void
 props_copy_contents(props_t *props, const props_t *orig)
 {
-    g_hash_table_foreach(orig->values, _props_copy_one, props);
+    orig->values->foreach(_props_copy_one, (void *)props);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static gboolean
-_props_delete_one_value(gpointer key, gpointer value, gpointer userdata)
+_props_delete_one_value(char *key, char *value, void *userdata)
 {
     g_free(key);
     g_free(value);
@@ -71,7 +72,7 @@ _props_delete_one_value(gpointer key, gpointer value, gpointer userdata)
 void
 props_delete(props_t *props)
 {
-    g_hash_table_foreach_remove(props->values, _props_delete_one_value, 0);
+    props->values->foreach_remove(_props_delete_one_value, 0);
     g_free(props);
 }
 
@@ -84,7 +85,7 @@ props_get(const props_t *props, const char *name)
     
     for ( ; props != 0 ; props = props->parent)
     {
-    	if ((value = (const char *)g_hash_table_lookup(props->values, name)) != 0)
+    	if ((value = props->values->lookup((char *)name)) != 0)
 	    return value;
     }
     return 0;
@@ -95,24 +96,24 @@ props_get(const props_t *props, const char *name)
 void
 props_setm(props_t *props, const char *name, char *value)
 {
-    gpointer okey = 0, ovalue = 0;
+    char *okey = 0, *ovalue = 0;
     
     assert(name != 0);
     
     if (value == 0)
     {
-	g_hash_table_remove(props->values, name);
+	props->values->remove((char *)name);
 	return;
     }
     
-    if (g_hash_table_lookup_extended(props->values, name, &okey, &ovalue))
+    if (props->values->lookup_extended((char *)name, &okey, &ovalue))
     {
     	/* remove the old value */
-	g_hash_table_remove(props->values, okey);
+	props->values->remove(okey);
 	g_free(okey);
 	g_free(ovalue);
     }
-    g_hash_table_insert(props->values, g_strdup(name), value);
+    props->values->insert(g_strdup(name), value);
 }
 
 void
@@ -124,12 +125,13 @@ props_set(props_t *props, const char *name, const char *value)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static void
-_props_consolidate_one(gpointer key, gpointer value, gpointer userdata)
+_props_consolidate_one(char *key, char *value, void *userdata)
 {
-    GHashTable *consolidated = (GHashTable *)userdata;
+    hashtable_t<char *, char> *consolidated =
+    	    	    	    (hashtable_t<char *, char> *)userdata;
     
-    if (g_hash_table_lookup(consolidated, key) == 0)
-    	g_hash_table_insert(consolidated, key, value);
+    if (consolidated->lookup(key) == 0)
+    	consolidated->insert(key, value);
 }
 
 void
@@ -138,7 +140,7 @@ props_apply(
     void (*func)(const char *name, const char *value, void *userdata),
     void *userdata)
 {
-    GHashTable *consolidated;
+    hashtable_t<char *, char> *consolidated;
     
     /*
      * Have to build a consolidated hash table to avoid
@@ -146,14 +148,16 @@ props_apply(
      * because it appears both in this props_t and in
      * one of its ancestors.
      */
-    consolidated = g_hash_table_new(g_str_hash, g_str_equal);
+    consolidated = new hashtable_t<char *, char>;
 
     for ( ; props != 0 ; props = props->parent)
-	g_hash_table_foreach(props->values, _props_consolidate_one, consolidated);
+	props->values->foreach(_props_consolidate_one, consolidated);
     
-    g_hash_table_foreach(consolidated, (GHFunc)func, userdata);
+    consolidated->foreach(
+    	    	    (void (*)(char*, char*, void*))func,
+		    userdata);
     
-    g_hash_table_destroy(consolidated);
+    delete consolidated;
 }
 
 void
@@ -162,7 +166,9 @@ props_apply_local(
     void (*func)(const char *name, const char *value, void *userdata),
     void *userdata)
 {
-    g_hash_table_foreach(props->values, (GHFunc)func, userdata);
+    props->values->foreach(
+    	    	    (void (*)(char*, char*, void*))func,
+		    userdata);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

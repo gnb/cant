@@ -20,13 +20,14 @@
 #include "job.H"
 #include "thread.H"
 #include "filename.H"
+#include "hashtable.H"
 
 #if !THREADS_NONE
 #include "thread.H"
 #include "queue.H"
 #endif
 
-CVSID("$Id: job.C,v 1.2 2002-03-29 13:57:32 gnb Exp $");
+CVSID("$Id: job.C,v 1.3 2002-03-29 16:12:31 gnb Exp $");
 
 
 typedef enum
@@ -55,7 +56,7 @@ struct job_s
 
 extern int process_run(strarray_t *command, strarray_t *env, const char *dir);
 
-static GHashTable *all_jobs;
+static hashtable_t<const char*, job_t> *all_jobs;
 static GList *runnable_jobs;
 static int state_count[NUM_STATES];
 
@@ -147,7 +148,7 @@ job_new(const char *name)
     job->state = UNKNOWN;
     state_count[UNKNOWN]++;
     
-    g_hash_table_insert(all_jobs, job->name, job);
+    all_jobs->insert(job->name, job);
 
     return job;
 }
@@ -174,7 +175,7 @@ job_delete(job_t *job)
 static job_t *
 job_find(const char *name)
 {
-    return (job_t *)g_hash_table_lookup(all_jobs, name);
+    return all_jobs->lookup(name);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -363,10 +364,8 @@ job_set_state(job_t *job, job_state_t newstate)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static void
-job_initialise_one(gpointer key, gpointer value, gpointer userdata)
+job_initialise_one(const char *key, job_t *job, void *userdata)
 {
-    job_t *job = (job_t *)value;
-    
     if (job->depends_down == 0)
     {
     	if (job->ops == 0 && file_exists(job->name) < 0)
@@ -382,7 +381,7 @@ job_initialise_one(gpointer key, gpointer value, gpointer userdata)
 static void
 job_initialise_states(void)
 {
-    g_hash_table_foreach(all_jobs, job_initialise_one, 0);
+    all_jobs->foreach(job_initialise_one, 0);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -413,16 +412,16 @@ job_dump(const job_t *job)
 }
 
 static void
-job_dump_one(gpointer key, gpointer value, gpointer userdata)
+job_dump_one(const char *key, job_t *value, void *userdata)
 {
-    job_dump((job_t *)value);
+    job_dump(value);
 }
 
 void
 job_dump_all(void)
 {
     fprintf(stderr, "all_jobs = \n");
-    g_hash_table_foreach(all_jobs, job_dump_one, 0);
+    all_jobs->foreach(job_dump_one, 0);
     fflush(stderr);
 }
 
@@ -613,16 +612,16 @@ job_immediate_command(
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static gboolean
-job_clear_one(gpointer key, gpointer value, gpointer userdata)
+job_clear_one(const char *key, job_t *value, void *userdata)
 {
-    job_delete((job_t *)value);
+    job_delete(value);
     return TRUE;    /* remove me */
 }
 
 void
 job_clear(void)
 {
-    g_hash_table_foreach_remove(all_jobs, job_clear_one, 0);
+    all_jobs->foreach_remove(job_clear_one, 0);
     
     while (runnable_jobs != 0)
     	runnable_jobs = g_list_remove_link(runnable_jobs, runnable_jobs);
@@ -639,7 +638,7 @@ job_clear(void)
 gboolean
 job_pending(void)
 {
-    return (g_hash_table_size(all_jobs) > 0);
+    return (all_jobs->size() > 0);
 }
 
 
@@ -702,7 +701,7 @@ job_init(unsigned int nw)
     }
 #endif
 
-    all_jobs = g_hash_table_new(g_str_hash, g_str_equal);
+    all_jobs = new hashtable_t<const char *, job_t>;
 
     return TRUE;
 }

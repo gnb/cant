@@ -20,7 +20,7 @@
 #include "cant.H"
 #include "tok.H"
 
-CVSID("$Id: taglist.C,v 1.3 2002-03-29 13:57:32 gnb Exp $");
+CVSID("$Id: taglist.C,v 1.4 2002-03-29 16:12:31 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -58,23 +58,23 @@ tl_def_new(const char *name)
     tldef = new(tl_def_t);
     
     strassign(tldef->name, name);
-    tldef->tags = g_hash_table_new(g_str_hash, g_str_equal);
+    tldef->tags = new hashtable_t<const char *, tl_def_tag_t>;
     
     return tldef;
 }
 
 static gboolean
-remove_one_tag(gpointer key, gpointer value, gpointer userdata)
+remove_one_tag(const char *key, tl_def_tag_t *value, void *userdata)
 {
-    tl_def_tag_delete((tl_def_tag_t *)value);
+    tl_def_tag_delete(value);
     return TRUE;    /* remove me please */
 }
 
 void
 tl_def_delete(tl_def_t *tldef)
 {
-    g_hash_table_foreach_remove(tldef->tags, remove_one_tag, 0);
-    g_hash_table_destroy(tldef->tags);
+    tldef->tags->foreach_remove(remove_one_tag, 0);
+    delete tldef->tags;
     strdelete(tldef->name);
     g_free(tldef);
 }
@@ -89,7 +89,7 @@ tl_def_add_tag(
     tl_def_tag_t *tltag;
     
     tltag = tl_def_tag_new(name, name_avail, value_avail);
-    g_hash_table_insert(tldef->tags, tltag->name, tltag);
+    tldef->tags->insert(tltag->name, tltag);
     
     return tltag;
 }
@@ -99,7 +99,7 @@ tl_def_find_tag(
     const tl_def_t *tldef,
     const char *name)
 {
-    return (tl_def_tag_t *)g_hash_table_lookup(tldef->tags, name);
+    return tldef->tags->lookup(name);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -112,16 +112,16 @@ tagexp_new(const char *name_space)
     te = new(tagexp_t);
     
     strassign(te->name_space, name_space);
-    te->exps = g_hash_table_new(g_str_hash, g_str_equal);
+    te->exps = new hashtable_t<char *, strarray_t>;
     
     return te;
 }
 
 static gboolean
-remove_one_expansion(gpointer key, gpointer value, gpointer userdata)
+remove_one_expansion(char *key, strarray_t *value, void *userdata)
 {
-    g_free((char *)key);
-    delete (strarray_t *)value;
+    g_free(key);
+    delete value;
     return TRUE;    /* remove me please */
 }
 
@@ -131,8 +131,8 @@ tagexp_delete(tagexp_t *te)
     strdelete(te->name_space);
     if (te->default_exps != 0)
 	delete te->default_exps;
-    g_hash_table_foreach_remove(te->exps, remove_one_expansion, 0);
-    g_hash_table_destroy(te->exps);
+    te->exps->foreach_remove(remove_one_expansion, 0);
+    delete te->exps;
     g_free(te);
 }
 
@@ -151,10 +151,10 @@ tagexp_add_expansion(tagexp_t *te, const char *tag, const char *exp)
 {
     strarray_t *sa;
     
-    if ((sa = (strarray_t *)g_hash_table_lookup(te->exps, tag)) == 0)
+    if ((sa = te->exps->lookup((char *)tag)) == 0)
     {
     	sa = new strarray_t;
-	g_hash_table_insert(te->exps, g_strdup(tag), sa);
+	te->exps->insert(g_strdup(tag), sa);
     }
     sa->append(exp);
 }
@@ -315,7 +315,7 @@ taglist_gather(
 	if (!condition_evaluate(&tlitem->condition, props))
 	    continue;
 	
-	exps = (strarray_t *)g_hash_table_lookup(te->exps, tlitem->tag);
+	exps = te->exps->lookup(tlitem->tag);
 	if (exps == 0)
 	    exps = te->default_exps;
 	if (exps == 0)

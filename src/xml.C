@@ -18,10 +18,11 @@
  */
 
 #include "cant.H"
+#include "hashtable.H"
 #include <parser.h>
 #include <SAX.h>
 
-CVSID("$Id: xml.C,v 1.1 2002-03-29 12:36:27 gnb Exp $");
+CVSID("$Id: xml.C,v 1.2 2002-03-29 16:12:31 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -47,23 +48,24 @@ cantXmlGetBooleanProp(xmlNode *node, const char *name, gboolean deflt)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
+GHashFunc hashtable_ops_t<const xmlNode*>::hash = g_direct_hash;
+GCompareFunc hashtable_ops_t<const xmlNode*>::compare = g_direct_equal;
+
 /* Data structures used to keep track of node file:line information */
-static GHashTable *filenames;	/* uniquified filename storage */
-static GHashTable *node_infos;
+static hashtable_t<const char*, char> *filenames;	/* uniquified filename storage */
+static hashtable_t<const xmlNode*, node_info_t> *node_infos;
 
 static gboolean
-remove_one_filename(gpointer key, gpointer value, gpointer userdata)
+remove_one_filename(const char *key, char *value, void *closure)
 {
     g_free(value);
     return TRUE;    /* remove me */
 }
 
 static gboolean
-remove_one_node_info(gpointer key, gpointer value, gpointer userdata)
+remove_one_node_info(const xmlNode *key, node_info_t *value, void *closure)
 {
-    node_info_t *ni = (node_info_t *)value;
-    
-    g_free(ni);
+    g_free(value);
     return TRUE;    /* remove me */
 }
 
@@ -73,8 +75,8 @@ node_info_init(void)
 {
     if (filenames == 0)
     {
-    	filenames = g_hash_table_new(g_str_hash, g_str_equal);
-    	node_infos = g_hash_table_new(g_direct_hash, g_direct_equal);
+    	filenames = new hashtable_t<const char*, char>;
+    	node_infos = new hashtable_t<const xmlNode*, node_info_t>;
     }
 }
 
@@ -82,9 +84,9 @@ void
 cantXmlNodeInfoClear(void)
 {
     if (filenames !=  0)
-    	g_hash_table_foreach_remove(filenames, remove_one_filename, 0);
+    	filenames->foreach_remove(remove_one_filename, 0);
     if (node_infos !=  0)
-    	g_hash_table_foreach_remove(node_infos, remove_one_node_info, 0);
+    	node_infos->foreach_remove(remove_one_node_info, 0);
 }
 
 static node_info_t *
@@ -93,17 +95,17 @@ node_info_insert(xmlNode *node, const char *filename, int lineno)
     char *savedfn;
     node_info_t *ni;
     
-    if ((savedfn = (char *)g_hash_table_lookup(filenames, filename)) == 0)
+    if ((savedfn = filenames->lookup(filename)) == 0)
     {
     	savedfn = g_strdup(filename);
-	g_hash_table_insert(filenames, savedfn, savedfn);
+	filenames->insert(savedfn, savedfn);
     }
     
     ni = new(node_info_t);
     ni->filename = savedfn;
     ni->lineno = lineno;
     
-    g_hash_table_insert(node_infos, node, ni);
+    node_infos->insert(node, ni);
     
 #if DEBUG > 10
     fprintf(stderr, "node_info_insert: 0x%08lx -> %s:%d\n",
@@ -116,7 +118,7 @@ node_info_insert(xmlNode *node, const char *filename, int lineno)
 const node_info_t *
 cantXmlNodeInfoGet(const xmlNode *node)
 {
-    return (node == 0 ? 0 : (const node_info_t *)g_hash_table_lookup(node_infos, (gpointer)node));
+    return (node == 0 ? 0 : node_infos->lookup(node));
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

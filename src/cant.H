@@ -31,6 +31,7 @@
 #include "mapper.H"
 #include "xml.H"
 #include "log.H"
+#include "hashtable.H"
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 /*
@@ -62,11 +63,11 @@ struct project_s
     char *basedir;
     project_t *parent;	    	/* inherits tscope, props etc */
     
-    GHashTable *targets;
-    GHashTable *filesets;   	/* <fileset>s in project scope */
-    GHashTable *taglists;   	/* taglists in project scope */
+    hashtable_t<const char*, target_t> *targets;
+    hashtable_t<const char*, fileset_t> *filesets;   	/* <fileset>s in project scope */
+    hashtable_t<char*, taglist_t> *taglists;   	/* taglists in project scope */
     
-    GHashTable *tl_defs;   	/* all taglistdefs */
+    hashtable_t<const char*, tl_def_t> *tl_defs;   	/* all taglistdefs */
     task_scope_t *tscope;   	/* scope for taskdefs */
     
     props_t *fixed_properties;	/* e.g. "basedir" which can't be overridden */
@@ -141,14 +142,14 @@ struct task_ops_s
     gboolean is_composite;  	    	    /* accepts subtasks */
     
     /* Don't initialised these fields to anything except 0 */
-    GHashTable *attrs_hashed;	    /* task_attr_t's hashed on name */
-    GHashTable *children_hashed;    /* task_child_t's hashed on name */
+    hashtable_t<const char*, task_attr_t> *attrs_hashed; /* task_attr_t's hashed on name */
+    hashtable_t<const char*, task_child_t> *children_hashed;    /* task_child_t's hashed on name */
 };
 
 struct task_scope_s
 {
     task_scope_t *parent;
-    GHashTable *taskdefs;
+    hashtable_t<const char *, task_ops_t> *taskdefs;
 };
 
 /*
@@ -190,7 +191,7 @@ struct tagexp_s
     /* TODO: gboolean follow_depends:1; */
     /* TODO: gboolean reverse_order:1; */
     strarray_t *default_exps;
-    GHashTable *exps;  	/* hash table of strarray_t, keyed on string */
+    hashtable_t<char *, strarray_t> *exps;
 };
 
 
@@ -202,7 +203,7 @@ struct tagexp_s
 struct tl_def_s
 {
     char *name;
-    GHashTable *tags;
+    hashtable_t<const char *, tl_def_tag_t> *tags;
     /* TODO: GList *depends */
 };
 

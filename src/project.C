@@ -20,7 +20,7 @@
 #include "cant.H"
 #include "tok.H"
 
-CVSID("$Id: project.C,v 1.2 2002-03-29 13:02:36 gnb Exp $");
+CVSID("$Id: project.C,v 1.3 2002-03-29 16:12:31 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -33,10 +33,10 @@ project_new(project_t *parent)
     
     proj->parent = parent;
     
-    proj->targets = g_hash_table_new(g_str_hash, g_str_equal);	
-    proj->filesets = g_hash_table_new(g_str_hash, g_str_equal);	
-    proj->taglists = g_hash_table_new(g_str_hash, g_str_equal);	
-    proj->tl_defs = g_hash_table_new(g_str_hash, g_str_equal);	
+    proj->targets = new hashtable_t<const char *, target_t>;
+    proj->filesets = new hashtable_t<const char*, fileset_t>;
+    proj->taglists = new hashtable_t<char*, taglist_t>;
+    proj->tl_defs = new hashtable_t<const char*, tl_def_t>;
     proj->tscope = tscope_new((parent == 0 ? tscope_builtins : parent->tscope));
     
     proj->properties = props_new((parent == 0 ? 0 : parent->properties));
@@ -50,30 +50,31 @@ project_new(project_t *parent)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static gboolean
-project_delete_one_target(gpointer key, gpointer value, gpointer userdata)
+project_delete_one_target(const char *key, target_t *value, void *userdata)
 {
-    target_delete((target_t *)value);
+    target_delete(value);
     return TRUE;    /* so remove it already */
 }
 
 static gboolean
-project_unref_one_fileset(gpointer key, gpointer value, gpointer userdata)
+project_unref_one_fileset(const char *key, fileset_t *value, void *userdata)
 {
-    fileset_unref((fileset_t *)value);
+    fileset_unref(value);
     return TRUE;    /* so remove it already */
 }
 
 static gboolean
-project_delete_one_taglist(gpointer key, gpointer value, gpointer userdata)
+project_delete_one_taglist(char *key, taglist_t *value, void *userdata)
 {
-    taglist_unref((taglist_t *)value);
+    g_free(key);
+    taglist_unref(value);
     return TRUE;    /* so remove it already */
 }
 
 static gboolean
-project_delete_one_tl_def(gpointer key, gpointer value, gpointer userdata)
+project_delete_one_tl_def(const char *key, tl_def_t *value, void *userdata)
 {
-    tl_def_delete((tl_def_t *)value);
+    tl_def_delete(value);
     return TRUE;    /* so remove it already */
 }
 
@@ -83,18 +84,18 @@ project_delete(project_t *proj)
     strdelete(proj->name);
     strdelete(proj->description);
     
-    g_hash_table_foreach_remove(proj->targets, project_delete_one_target, 0);
-    g_hash_table_destroy(proj->targets);
+    proj->targets->foreach_remove(project_delete_one_target, 0);
+    delete proj->targets;
     tscope_delete(proj->tscope);
     
-    g_hash_table_foreach_remove(proj->filesets, project_unref_one_fileset, 0);
-    g_hash_table_destroy(proj->filesets);
+    proj->filesets->foreach_remove(project_unref_one_fileset, 0);
+    delete proj->filesets;
     
-    g_hash_table_foreach_remove(proj->tl_defs, project_delete_one_tl_def, 0);
-    g_hash_table_destroy(proj->tl_defs);
+    proj->tl_defs->foreach_remove(project_delete_one_tl_def, 0);
+    delete proj->tl_defs;
     
-    g_hash_table_foreach_remove(proj->taglists, project_delete_one_taglist, 0);
-    g_hash_table_destroy(proj->taglists);
+    proj->taglists->foreach_remove(project_delete_one_taglist, 0);
+    delete proj->taglists;
     
     props_delete(proj->properties);
     props_delete(proj->fixed_properties);
@@ -192,13 +193,13 @@ project_override_properties(project_t *proj, props_t *props)
 target_t *
 project_find_target(project_t *proj, const char *name)
 {
-    return (target_t *)g_hash_table_lookup(proj->targets, name);
+    return proj->targets->lookup(name);
 }
 
 void
 project_remove_target(project_t *proj, target_t *targ)
 {
-    g_hash_table_remove(proj->targets, targ->name);
+    proj->targets->remove(targ->name);
     targ->project = 0;
 }
 
@@ -207,7 +208,7 @@ project_add_target(project_t *proj, target_t *targ)
 {
     assert(targ != 0);
     assert(targ->name != 0);
-    g_hash_table_insert(proj->targets, targ->name, targ);
+    proj->targets->insert(targ->name, targ);
     targ->project = proj;
 }
 
@@ -220,7 +221,7 @@ project_find_tl_def(const project_t *proj, const char *name)
     
     for ( ; proj != 0 ; proj = proj->parent)
     {
-    	if ((tldef = (tl_def_t *)g_hash_table_lookup(proj->tl_defs, name)) != 0)
+    	if ((tldef = proj->tl_defs->lookup(name)) != 0)
 	    return tldef;
     }
     
@@ -230,13 +231,13 @@ project_find_tl_def(const project_t *proj, const char *name)
 void
 project_add_tl_def(project_t *proj, tl_def_t *tldef)
 {
-    g_hash_table_insert(proj->tl_defs, tldef->name, tldef);
+    proj->tl_defs->insert(tldef->name, tldef);
 }
 
 void
 project_remove_tl_def(project_t *proj, tl_def_t *tldef)
 {
-    g_hash_table_remove(proj->tl_defs, tldef->name);
+    proj->tl_defs->remove(tldef->name);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -252,7 +253,7 @@ project_find_taglist(project_t *proj, const char *name_space, const char *id)
     
     for ( ; proj != 0 ; proj = proj->parent)
     {
-    	if ((tl = (taglist_t*)g_hash_table_lookup(proj->taglists, key)) != 0)
+    	if ((tl = proj->taglists->lookup(key)) != 0)
 	    break;
     }
     
@@ -265,21 +266,21 @@ project_add_taglist(project_t *proj, taglist_t *tl)
 {
     char *key = build_taglist_key(tl->name_space, tl->id);
     
-    g_hash_table_insert(proj->taglists, key, tl);
+    proj->taglists->insert(key, tl);
 }
 
 void
 project_remove_taglist(project_t *proj, taglist_t *tl)
 {
     char *key = build_taglist_key(tl->name_space, tl->id);
-    gpointer okey = 0;
-    gpointer ovalue;
+    char *okey = 0;
+    taglist_t *ovalue = 0;
     
-    g_hash_table_lookup_extended(proj->taglists, key, 
-    	    &okey, &ovalue);
+    proj->taglists->lookup_extended(key, &okey, &ovalue);
     assert(okey != 0);
+    assert(tl == ovalue);
     
-    g_hash_table_remove(proj->taglists, key);
+    proj->taglists->remove(key);
 
     g_free(key);
     g_free(okey);
@@ -315,13 +316,13 @@ void
 project_add_fileset(project_t *proj, fileset_t *fs)
 {
     assert(fs->id != 0);
-    g_hash_table_insert(proj->filesets, fs->id, fs);
+    proj->filesets->insert(fs->id, fs);
 }
 
 fileset_t *
 project_find_fileset(project_t *proj, const char *id)
 {
-    return (fileset_t *)g_hash_table_lookup(proj->filesets, id);
+    return proj->filesets->lookup(id);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

@@ -19,7 +19,7 @@
 
 #include "cant.H"
 
-CVSID("$Id: task.C,v 1.1 2002-03-29 12:36:26 gnb Exp $");
+CVSID("$Id: task.C,v 1.2 2002-03-29 16:12:31 gnb Exp $");
 
 task_scope_t *tscope_builtins;
 
@@ -100,7 +100,7 @@ task_set_attribute(task_t *task, const char *name, const char *value)
     task_attr_t *ta = 0;
     
     if (task->ops->attrs_hashed != 0)
-	ta = (task_attr_t *)g_hash_table_lookup(task->ops->attrs_hashed, name);
+	ta = task->ops->attrs_hashed->lookup(name);
 
     if (ta == 0)
     	return FALSE;
@@ -158,8 +158,8 @@ task_ops_add_attribute(task_ops_t *ops, const task_attr_t *proto)
     ta->name = g_strdup(ta->name);
     
     if (ops->attrs_hashed == 0)
-	ops->attrs_hashed = g_hash_table_new(g_str_hash, g_str_equal);
-    g_hash_table_insert(ops->attrs_hashed, ta->name, ta);
+	ops->attrs_hashed = new hashtable_t<const char *, task_attr_t>;
+    ops->attrs_hashed->insert(ta->name, ta);
 }
 
 
@@ -170,10 +170,9 @@ typedef struct
 } task_ops_foreach_attr_rec_t;
 
 static void
-task_ops_attributes_apply_one(gpointer key, gpointer value, gpointer userdata)
+task_ops_attributes_apply_one(const char *key, task_attr_t *ta, void *userdata)
 {
     task_ops_foreach_attr_rec_t *recp = (task_ops_foreach_attr_rec_t *)userdata;
-    task_attr_t *ta = (task_attr_t *)value;
     
     (*recp->function)(ta, recp->userdata);
 }
@@ -191,7 +190,7 @@ task_ops_attributes_apply(
 	rec.function = function;
 	rec.userdata = userdata;
 	
-    	g_hash_table_foreach(ops->attrs_hashed, task_ops_attributes_apply_one, &rec);
+    	ops->attrs_hashed->foreach(task_ops_attributes_apply_one, &rec);
     }
 }
 
@@ -204,9 +203,9 @@ task_ops_find_child(const task_ops_t *ops, const char *name)
     
     if (ops->children_hashed == 0)
     	return 0;
-    if ((tc = (task_child_t *)g_hash_table_lookup(ops->children_hashed, name)) != 0)
+    if ((tc = ops->children_hashed->lookup(name)) != 0)
     	return tc;
-    return (task_child_t *)g_hash_table_lookup(ops->children_hashed, "*");
+    return ops->children_hashed->lookup("*");
 }
 
 void
@@ -220,17 +219,15 @@ task_ops_add_child(task_ops_t *ops, const task_child_t *proto)
     tc->name = g_strdup(tc->name);
     
     if (ops->children_hashed == 0)
-	ops->children_hashed = g_hash_table_new(g_str_hash, g_str_equal);
-    g_hash_table_insert(ops->children_hashed, tc->name, tc);
+	ops->children_hashed = new hashtable_t<const char *, task_child_t>;
+    ops->children_hashed->insert(tc->name, tc);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static gboolean
-remove_one_attr(gpointer key, gpointer value, gpointer userdata)
+remove_one_attr(const char *key, task_attr_t *ta, void *userdata)
 {
-    task_attr_t *ta = (task_attr_t *)value;
-    
     g_free(ta->name);
     g_free(ta);
 
@@ -238,10 +235,8 @@ remove_one_attr(gpointer key, gpointer value, gpointer userdata)
 }
 
 static gboolean
-remove_one_child(gpointer key, gpointer value, gpointer userdata)
+remove_one_child(const char *key, task_child_t *tc, void *userdata)
 {
-    task_child_t *tc = (task_child_t *)value;
-    
     g_free(tc->name);
     g_free(tc);
     
@@ -256,14 +251,14 @@ task_ops_cleanup(task_ops_t *ops)
    
     if (ops->attrs_hashed != 0)
     {
-	g_hash_table_foreach_remove(ops->attrs_hashed, remove_one_attr, 0);
-	g_hash_table_destroy(ops->attrs_hashed);
+	ops->attrs_hashed->foreach_remove(remove_one_attr, 0);
+	delete ops->attrs_hashed;
     }
 
     if (ops->children_hashed != 0)
     {
-	g_hash_table_foreach_remove(ops->children_hashed, remove_one_child, 0);
-	g_hash_table_destroy(ops->children_hashed);
+	ops->children_hashed->foreach_remove(remove_one_child, 0);
+	delete ops->children_hashed;
     }
 }
 
@@ -277,37 +272,37 @@ tscope_new(task_scope_t *parent)
     ts = new(task_scope_t);
 
     ts->parent = parent;
-    ts->taskdefs = g_hash_table_new(g_str_hash, g_str_equal);
+    ts->taskdefs = new hashtable_t<const char *, task_ops_t>;
     
     return ts;
 }
 
 static gboolean
-cleanup_one_taskdef(gpointer key, gpointer value, gpointer userdata)
+cleanup_one_taskdef(const char *key, task_ops_t *value, void *userdata)
 {
-    task_ops_cleanup((task_ops_t *)value);
+    task_ops_cleanup(value);
     return TRUE;    /* remove me */
 }
 
 void
 tscope_delete(task_scope_t *ts)
 {
-    g_hash_table_foreach_remove(ts->taskdefs, cleanup_one_taskdef, 0);
-    g_hash_table_destroy(ts->taskdefs);
+    ts->taskdefs->foreach_remove(cleanup_one_taskdef, 0);
+    delete ts->taskdefs;
     g_free(ts);
 }
 
 gboolean
 tscope_register(task_scope_t *ts, task_ops_t *ops)
 {
-    if (g_hash_table_lookup(ts->taskdefs, ops->name) != 0)
+    if (ts->taskdefs->lookup(ops->name) != 0)
     {
     	logf("Task operations \"%s\" already registered, ignoring new definition\n",
 	    	ops->name);
     	return FALSE;
     }
     
-    g_hash_table_insert(ts->taskdefs, ops->name, ops);
+    ts->taskdefs->insert(ops->name, ops);
 #if DEBUG
     fprintf(stderr, "tscope_register: registering \"%s\"\n", ops->name);
 #endif
@@ -337,7 +332,7 @@ tscope_register(task_scope_t *ts, task_ops_t *ops)
 void
 tscope_unregister(task_scope_t *ts, task_ops_t *ops)
 {
-    g_hash_table_remove(ts->taskdefs, ops->name);
+    ts->taskdefs->remove(ops->name);
 }
 
 task_ops_t *
@@ -347,7 +342,7 @@ tscope_find(task_scope_t *ts, const char *name)
     {
     	task_ops_t *ops;
 	
-	if ((ops = (task_ops_t *)g_hash_table_lookup(ts->taskdefs, name)) != 0)
+	if ((ops = ts->taskdefs->lookup(name)) != 0)
 	    return ops;
     }
     return 0;

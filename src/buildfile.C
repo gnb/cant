@@ -20,7 +20,7 @@
 #include "cant.H"
 #include "xtask.H"
 
-CVSID("$Id: buildfile.C,v 1.1 2002-03-29 12:36:25 gnb Exp $");
+CVSID("$Id: buildfile.C,v 1.2 2002-03-29 16:12:31 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -1416,9 +1416,8 @@ parse_target(project_t *proj, xmlNode *node)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static void
-check_one_target(gpointer key, gpointer value, gpointer userdata)
+check_one_target(const char *key, target_t *targ, void *userdata)
 {
-    target_t *targ = (target_t *)value;
     gboolean *failedp = (gboolean *)userdata;
     
     if ((targ->flags & (T_DEFINED|T_DEPENDED_ON)) == T_DEPENDED_ON)
@@ -1501,7 +1500,7 @@ parse_project(xmlNode *node, project_t *parent)
     }
 
     if (!globals)    
-	g_hash_table_foreach(proj->targets, check_one_target, &failed);
+	proj->targets->foreach(check_one_target, &failed);
     
     if (failed)
     {
