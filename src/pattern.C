@@ -21,7 +21,7 @@
 #include "estring.H"
 #include "log.H"
 
-CVSID("$Id: pattern.C,v 1.6 2002-04-13 12:30:42 gnb Exp $");
+CVSID("$Id: pattern.C,v 1.7 2002-04-21 03:58:33 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -160,7 +160,7 @@ pattern_t::match(const char *filename)
     	    	    _PAT_NGROUPS, matches, /*eflags*/0) == 0);
 #if DEBUG
     fprintf(stderr, "pattern_t::match: pattern=\"%s\" filename=\"%s\" -> %s\n",
-    	    pattern_, filename, (ret ? "true" : "false"));
+    	    pattern_.data(), filename, (ret ? "true" : "false"));
 #endif
 
     if (ret)
@@ -190,7 +190,7 @@ pattern_t::match_c(const char *filename) const
     	    	    /*nmatches*/0, /*matches*/0, /*eflags*/0) == 0);
 #if DEBUG
     fprintf(stderr, "pattern_t::match_c: pattern=\"%s\" filename=\"%s\" -> %s\n",
-    	    pattern_, filename, (ret ? "true" : "false"));
+    	    pattern_.data(), filename, (ret ? "true" : "false"));
 #endif
 
     return ret;
