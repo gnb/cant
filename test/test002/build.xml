@@ -2,7 +2,7 @@
 
 <!--
   Test filesets using the the <enumerate> task
-  $Id: build.xml,v 1.2 2001-11-21 16:28:07 gnb Exp $
+  $Id: build.xml,v 1.3 2002-02-08 07:47:21 gnb Exp $
 -->
 
 <project name="test002" default="all" basedir=".">
@@ -12,7 +12,7 @@
 
   <target name="test1">
     <enumerate>
-    	<!-- should match none TODO??? -->
+    	<!-- should match d1/a.c, d1/b.c -->
     	<fileset dir="d1" includes="*.c"/>
     </enumerate>
   </target>
@@ -31,30 +31,51 @@
     </enumerate>
   </target>
 
+  <target name="test1d">
+    <enumerate>
+    	<!-- should match d1/a.c -->
+    	<fileset dir="d1" includes="[ac].c"/>
+    </enumerate>
+  </target>
+
+  <target name="test1e">
+    <enumerate>
+    	<!-- should match d1/a.c d1/b/c -->
+    	<fileset dir="d1" includes="[a-c].c"/>
+    </enumerate>
+  </target>
+
   <target name="test2">
     <enumerate>
-    	<!-- should match d1/a.c, d1/b.c -->
+    	<!-- should match d1/a.c d1/b.c e1/g.c -->
+    	<fileset dir="." includes="*/*.c"/>
+    </enumerate>
+  </target>
+
+  <target name="test2b">
+    <enumerate>
+    	<!-- should match d1/d2/f.c -->
     	<fileset dir="d1" includes="*/*.c"/>
     </enumerate>
   </target>
 
   <target name="test3">
     <enumerate>
-    	<!-- should match d1/a.c, d1/b.c, d1/d2/d3/e.c -->
+    	<!-- should match d1/a.c, d1/b.c, d1/d2/f.c, d1/d2/d3/e.c -->
     	<fileset dir="d1" includes="**/*.c"/>
     </enumerate>
   </target>
   
   <target name="test3b">
     <enumerate>
-    	<!-- should match d1/a.c, d1/b.c, d1/d2/d3/e.c -->
+    	<!-- should match t.c d1/a.c, d1/b.c, d1/d2/f.c, d1/d2/d3/e.c e1/g.c -->
     	<fileset dir="." includes="**/*.c"/>
     </enumerate>
   </target>
   
   <target name="test4">
     <enumerate>
-    	<!-- should match none TODO??? -->
+    	<!-- should match d1/a.c d1/b.c -->
     	<fileset dir="d1">
 	  <include name="*.c"/>
 	</fileset>
@@ -63,7 +84,7 @@
   
   <target name="test5">
     <enumerate>
-    	<!-- should match d1/a.c, d1/b.c -->
+    	<!-- should match d1/d2/f.c -->
     	<fileset dir="d1">
 	  <include name="*/*.c"/>
 	</fileset>
@@ -72,7 +93,7 @@
   
   <target name="test6">
     <enumerate>
-    	<!-- should match d1/a.c, d1/b.c, d1/d2/d3/e.c -->
+    	<!-- should match d1/a.c, d1/b.c, d1/d2/f.c d1/d2/d3/e.c -->
     	<fileset dir="d1">
 	  <include name="**/*.c"/>
 	</fileset>

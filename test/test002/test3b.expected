@@ -3,4 +3,7 @@
     [enumerate] d1/a.c
     [enumerate] d1/b.c
     [enumerate] d1/d2/d3/e.c
+    [enumerate] d1/d2/f.c
+    [enumerate] e1/g.c
+    [enumerate] t.c
     [enumerate] }

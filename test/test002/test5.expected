@@ -1,5 +1,4 @@
   [test5] 
     [enumerate] {
-    [enumerate] d1/a.c
-    [enumerate] d1/b.c
+    [enumerate] d1/d2/f.c
     [enumerate] }

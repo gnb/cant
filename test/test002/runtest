@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: runtest,v 1.2 2001-11-21 16:28:07 gnb Exp $
+# $Id: runtest,v 1.3 2002-02-08 07:47:21 gnb Exp $
 #
 
 . ../testfunctions.sh
@@ -19,7 +19,10 @@ fileset_test ()
 fileset_test 1
 fileset_test 1b
 fileset_test 1c
+fileset_test 1d
+fileset_test 1e
 fileset_test 2
+fileset_test 2b
 fileset_test 3
 fileset_test 3b
 fileset_test 4
