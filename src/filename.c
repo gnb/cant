@@ -18,11 +18,12 @@
  */
 
 #include "cant.h"
+#include "tok.h"
 #include <sys/stat.h>
 #include <dirent.h>
 #include <fcntl.h>
 
-CVSID("$Id: filename.c,v 1.5 2002-02-04 05:11:03 gnb Exp $");
+CVSID("$Id: filename.c,v 1.6 2002-02-08 07:18:35 gnb Exp $");
 
 #ifndef __set_errno
 #define __set_errno(v)	 errno = (v)
@@ -66,10 +67,14 @@ file_top_dir(void)
 char *
 file_normalise_m(char *filename, const char *basedir)
 {
-    char *fp;
-    char *fn2;
+    const char *fp;
     estring abs;
+    tok_t tok;
         
+#if DEBUG
+    fprintf(stderr, "file_normalise_m(\"%s\", \"%s\")",
+    	filename, (basedir == 0 ? file_top_dir() : basedir));
+#endif
     estring_init(&abs);
 
     /* seed `abs' with the base directory to which `filename' is relative */
@@ -81,10 +86,9 @@ file_normalise_m(char *filename, const char *basedir)
     	estring_append_string(&abs, basedir);
     
     /* iterate over parts of `filename', appending to `abs' */
-    fn2 = filename;
-    while ((fp = strtok(fn2, "/")) != 0)
+    tok_init_m(&tok, filename, "/");
+    while ((fp = tok_next(&tok)) != 0)
     {
-    	fn2 = 0;
     	if (!strcmp(fp, "."))
 	{
 	    /* drop redundant `.' */
@@ -107,7 +111,13 @@ file_normalise_m(char *filename, const char *basedir)
 	}
     }
     
-    g_free(filename);
+    if (abs.data[0] == '.' && abs.data[1] == '/')
+    	estring_remove(&abs, 0, 2);
+    
+    tok_free(&tok);
+#if DEBUG
+    fprintf(stderr, " -> \"%s\"\n", abs.data);
+#endif
     return abs.data;
 }
 
