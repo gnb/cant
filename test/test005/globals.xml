@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 
-<!-- $Id: globals.xml,v 1.1 2001-11-14 06:32:28 gnb Exp $ -->
+<!-- $Id: globals.xml,v 1.2 2001-11-16 03:35:10 gnb Exp $ -->
 
 <globals>
 
@@ -18,7 +18,7 @@
   <property name="c.warnings" value="true"/>
   <property name="c.optimize" value="true"/>
   <property name="AR" value="${program_prefix}ar"/>
-  <property name="ARFLAGS" value="ruv"/>
+  <property name="ARFLAGS" value="ru"/>
 
   <xtaskdef
     	name="compile"
