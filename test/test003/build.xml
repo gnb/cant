@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 
-<!-- $Id: build.xml,v 1.2 2001-11-10 03:20:39 gnb Exp $ -->
+<!-- $Id: build.xml,v 1.3 2001-11-21 09:34:09 gnb Exp $ -->
 
 <project name="test003" default="all" basedir=".">
 
@@ -17,6 +17,8 @@
   <property name="c.debug" value="true"/>
   <property name="c.warnings" value="true"/>
   <property name="c.optimize" value="true"/>
+  <property name="AR" value="${program_prefix}ar"/>
+  <property name="ARFLAGS" value="ruv"/>
 
   <!-- name=str => name of the new task element -->
   <!-- TODO: "if", "unless", and "os" attributes on "xtaskdef" and "arg"s -->
@@ -68,38 +70,58 @@
   </xtaskdef>
 
   <!--
-    TODO: need to be able to mark attributes as required.
     TODO: need to have a way to map some kind of child arglist into
           the commandline, e.g. for libraries.
   -->
   <xtaskdef
     	name="link"
 	logmessage="Linking ${program}"
-	fileset="false"
+	fileset="true"
 	foreach="false"
 	executable="${CC}">
     <attr attribute="program"/>
     <arg line="${CFLAGS}"/>
     <arg value="-g" if="c.debug"/>
-    <arg value="-O2" if="c.optimize"/>
     <arg value="-o"/>
     <arg value="${program}"/>
-    <fileset dir="." includes="*.o"/>
+    <files>
+      <mapper name="glob" from="*.c" to="*.o"/>
+    </files>
     <!-- TODO: libraries -->
   </xtaskdef>
 
+  <xtaskdef
+    	name="arlib"
+	logmessage="Building lib${library}"
+	fileset="true"
+	foreach="false"
+	executable="${AR}">
+    <attr attribute="library"/>
+    <arg line="${ARFLAGS}"/>
+    <arg value="lib${library}.a"/>
+    <files>
+      <mapper name="glob" from="*.c" to="*.o"/>
+    </files>
+    <!-- TODO: libraries -->
+  </xtaskdef>
+
+  <!-- The C source files for the foo program -->
+  <fileset id="foo-sources" dir="." includes="[a-k]*.c"/>
+  
+  <!-- The C source files for the foo library -->
+  <fileset id="libfoo-sources" dir="." includes="[l-z]*.c"/>
+  
   <target name="all">
-    <compile dir="." includes="*.c"/>
-    <link program="foo"/>
+    <compile refid="foo-sources"/>
+    <link program="foo" refid="foo-sources"/>
+    <compile refid="libfoo-sources"/>
+    <arlib library="foo" refid="libfoo-sources"/>
   </target>
 
   <target name="install">
     <copy file="foo" todir="${bindir}"/>
     <copy todir="${libdir}">
-      <mapper name="glob" from="*.o" to="*.so"/>
-      <fileset dir=".">
-        <include name="*.o"/>
-      </fileset>
+      <fileset dir="." includes="lib*.a"/>
     </copy>
   </target>
 
@@ -108,11 +130,11 @@
       <fileset dir=".">
 	<include name="foo"/>
 	<include name="*.o"/>
+	<include name="lib*.a"/>
       </fileset>
     </delete>
   </target>
-  
-  <target name="null">
-  </target>
+
+  <target name="null"/>
 
 </project>
