@@ -20,7 +20,7 @@
 #include "cant.H"
 #include <time.h>
 
-CVSID("$Id: task_tstamp.C,v 1.6 2002-04-13 02:30:18 gnb Exp $");
+CVSID("$Id: task_tstamp.C,v 1.7 2002-04-13 09:26:06 gnb Exp $");
 
 class tstamp_format_t
 {
@@ -155,8 +155,8 @@ tstamp_format_t::execute(project_t *proj, struct tm *tm)
 class tstamp_task_t : public task_t
 {
 private:
-    GList *formats_;	    	/* GList of tstamp_format_t */
-    static GList *builtins_;	/* list of tstamp_format_t */
+    list_t<tstamp_format_t> formats_;
+    static list_t<tstamp_format_t> builtins_;
 
 public:
 
@@ -169,7 +169,7 @@ tstamp_task_t(task_class_t *tclass, project_t *proj)
 
 ~tstamp_task_t()
 {
-    listdelete(formats_, tstamp_format_t, delete);
+    formats_.delete_all();
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -246,7 +246,7 @@ tstamp_task_t::add_format(xml_node_t *node)
     	return FALSE;
     }
     
-    formats_ = g_list_append(formats_, fmt);
+    formats_.append(fmt);
 
     return TRUE;
 }
@@ -258,24 +258,16 @@ exec()
 {
     time_t clock;
     struct tm tm;
-    GList *iter;
+    list_iterator_t<tstamp_format_t> iter;
 
     time(&clock);
     tm = *localtime(&clock);	/* TODO: localtime_r */
 
-    for (iter = builtins_ ; iter != 0 ; iter = iter->next)
-    {
-    	tstamp_format_t *fmt = (tstamp_format_t*)iter->data;
+    for (iter = builtins_.first() ; iter != 0 ; ++iter)
+	(*iter)->execute(project_, &tm);
 
-	fmt->execute(project_, &tm);
-    }
-
-    for (iter = formats_ ; iter != 0 ; iter = iter->next)
-    {
-    	tstamp_format_t *fmt = (tstamp_format_t*)iter->data;
-
-	fmt->execute(project_, &tm);
-    }
+    for (iter = formats_.first() ; iter != 0 ; ++iter)
+	(*iter)->execute(project_, &tm);
 
     return TRUE;
 }
@@ -290,30 +282,30 @@ initialise_builtins()
     fmt = new tstamp_format_t();
     fmt->set_property("DSTAMP");
     fmt->set_pattern("yyyyMMdd");
-    tstamp_task_t::builtins_ = g_list_append(tstamp_task_t::builtins_, fmt);
+    tstamp_task_t::builtins_.append(fmt);
 
     fmt = new tstamp_format_t();
     fmt->set_property("TSTAMP");
     fmt->set_pattern("hhmm");
-    tstamp_task_t::builtins_ = g_list_append(tstamp_task_t::builtins_, fmt);
+    tstamp_task_t::builtins_.append(fmt);
 
     fmt = new tstamp_format_t();
     fmt->set_property("TODAY");
     fmt->set_pattern("MMMM dd yyyy");
-    tstamp_task_t::builtins_ = g_list_append(tstamp_task_t::builtins_, fmt);
+    tstamp_task_t::builtins_.append(fmt);
 }
 
 static void
 cleanup_builtins()
 {
-    listdelete(builtins_, tstamp_format_t, delete);
+    builtins_.delete_all();
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 }; // end of class
 
-GList *tstamp_task_t::builtins_;	/* list of tstamp_format_t */
+list_t<tstamp_format_t> tstamp_task_t::builtins_;
 
 static task_child_t tstamp_children[] = 
 {
@@ -334,12 +326,14 @@ void
 init()
 {
     tstamp_task_t::initialise_builtins();
+    task_class_t::init();
 }
 
 void
 cleanup()
 {
     tstamp_task_t::cleanup_builtins();
+    task_class_t::cleanup();
 }
 
 TASK_DEFINE_CLASS_END(tstamp)

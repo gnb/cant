@@ -19,7 +19,7 @@
 
 #include "cant.H"
 
-CVSID("$Id: task_copy.C,v 1.7 2002-04-13 02:30:18 gnb Exp $");
+CVSID("$Id: task_copy.C,v 1.8 2002-04-13 09:26:06 gnb Exp $");
 
 class copy_task_t : public task_t
 {
@@ -28,7 +28,7 @@ private:
     char *tofile_;
     char *todir_;
     list_t<fileset_t> filesets_;
-//    GList *filtersets_;	    	/* list of filterset_t */
+//    list_t<filterset_t> filtersets_;
     mapper_t *mapper_;
     gboolean preserve_last_modified_:1;
     gboolean overwrite_:1;

@@ -20,7 +20,7 @@
 #include "cant.H"
 #include <fcntl.h>
 
-CVSID("$Id: task_redirect.C,v 1.6 2002-04-13 02:30:18 gnb Exp $");
+CVSID("$Id: task_redirect.C,v 1.7 2002-04-13 09:26:06 gnb Exp $");
 
 static const char tmpfile_proto[] = "/tmp/cant-redirect-propXXXXXX";
 
@@ -126,7 +126,6 @@ post_parse()
 gboolean
 exec()
 {
-    GList *iter;
     gboolean ret = TRUE;
     int old_stdin = -1, old_stdout = -1;
     int new_stdin = -1, new_stdout = -1;

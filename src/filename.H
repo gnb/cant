@@ -35,6 +35,8 @@ typedef gboolean (*file_apply_proc_t)(const char *filename, void *userdata);
 void file_push_dir(const char *dirname);
 void file_pop_dir(void);
 const char *file_top_dir(void);
+void file_pop_all(void);
+
 
 /*
  * In the next 2 functions, if `basedir' is 0, the topmost directory

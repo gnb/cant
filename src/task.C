@@ -19,7 +19,7 @@
 
 #include "cant.H"
 
-CVSID("$Id: task.C,v 1.7 2002-04-13 02:30:18 gnb Exp $");
+CVSID("$Id: task.C,v 1.8 2002-04-13 09:26:06 gnb Exp $");
 
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -382,6 +382,13 @@ task_scope_t::initialise_builtins()
 #define TASK_CLASS(t)  builtins->add(&t##_task_class);
 #include "builtin-tasks.H"
 #undef TASK_CLASS
+}
+
+void
+task_scope_t::cleanup_builtins()
+{
+    delete builtins;
+    builtins = 0;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

@@ -154,7 +154,7 @@ public:
 private:
     char *name_space_;
     hashtable_t<const char *, tag_t> *tags_;
-    /* TODO: GList *depends */
+    /* TODO: list_t<something> *depends */
     
 public:
     tl_def_t(const char *name_space);

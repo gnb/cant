@@ -19,7 +19,7 @@
 
 #include "cant.H"
 
-CVSID("$Id: task_changedir.C,v 1.3 2002-04-12 13:07:24 gnb Exp $");
+CVSID("$Id: task_changedir.C,v 1.4 2002-04-13 09:26:06 gnb Exp $");
 
 class changedir_task_t : public task_t
 {
@@ -55,7 +55,6 @@ gboolean
 exec()
 {
     char *dir_e;
-    GList *iter;
     gboolean ret = TRUE;
 
     dir_e = expand(dir_);

@@ -25,7 +25,7 @@
 #include <fcntl.h>
 #include "log.H"
 
-CVSID("$Id: filename.C,v 1.4 2002-04-12 13:07:24 gnb Exp $");
+CVSID("$Id: filename.C,v 1.5 2002-04-13 09:26:06 gnb Exp $");
 
 #ifndef __set_errno
 #define __set_errno(v)	 errno = (v)
@@ -38,30 +38,33 @@ CVSID("$Id: filename.C,v 1.4 2002-04-12 13:07:24 gnb Exp $");
  * the directory from which filenames need to be
  * interpreted.
  */
-static GList *dir_stack;
+static list_t<char> dir_stack;
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 void
 file_push_dir(const char *dirname)
 {
-    dir_stack = g_list_prepend(dir_stack, file_normalise(dirname, 0));
+    dir_stack.prepend(file_normalise(dirname, 0));
 }
 
 void
 file_pop_dir(void)
 {
-    if (dir_stack != 0)
-    {
-    	g_free(dir_stack->data);
-	dir_stack = g_list_remove_link(dir_stack, dir_stack);
-    }
+    if (dir_stack.first() != 0)
+    	g_free(dir_stack.remove_head());
 }
 
 const char *
 file_top_dir(void)
 {
-    return (dir_stack == 0 ? "." : (const char *)dir_stack->data);
+    return (dir_stack.first() == 0 ? "." : (const char *)dir_stack.head());
+}
+
+void
+file_pop_all(void)
+{
+    dir_stack.apply_remove(strfree);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

@@ -246,6 +246,7 @@ public:
     task_class_t *find(const char *name) const;
 
     static void initialise_builtins();
+    static void cleanup_builtins();
     static task_scope_t *builtins;
 };
 

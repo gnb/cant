@@ -21,13 +21,13 @@
 #include "cant.H"
 #include "job.H"
 
-CVSID("$Id: cant.C,v 1.11 2002-04-13 03:18:40 gnb Exp $");
+CVSID("$Id: cant.C,v 1.12 2002-04-13 09:26:06 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static gboolean find_flag = FALSE;
 static props_t *command_defines;   /* -Dfoo=bar on the commandline */
-static GList *command_targets;     /* targets specified on the commandline */
+static list_t<const char> command_targets;     /* targets specified on the commandline */
 static char *buildfile = "build.xml";
 static unsigned parallelism = 1;
 static char *globals_file = PKGDATADIR "/globals.xml";
@@ -155,14 +155,14 @@ find_buildfile(void)
 static gboolean
 build_commandline_targets(project_t *proj)
 {
-    GList *iter;
+    list_iterator_t<const char> iter;
     
-    if (command_targets == 0)
+    if (command_targets.length() == 0)
     	return proj->execute_target_by_name(proj->default_target());
 	
-    for (iter = command_targets ; iter != 0 ; iter = iter->next)
+    for (iter = command_targets.first() ; iter != 0 ; ++iter)
     {
-    	if (!proj->execute_target_by_name((const char *)iter->data))
+    	if (!proj->execute_target_by_name(*iter))
 	    return FALSE;
     }
     
@@ -318,8 +318,7 @@ parse_args(int argc, char **argv)
 	}
 	else
 	{
-	    command_targets = g_list_append(command_targets,
-	    	    	    	    	    g_strdup(argv[i]));
+	    command_targets.append(argv[i]);
 	}
     }
     
@@ -331,10 +330,10 @@ parse_args(int argc, char **argv)
     fprintf(stderr, "parse_args: buildfile = \"%s\"\n", buildfile);
     fprintf(stderr, "parse_args: globals file = \"%s\"\n", globals_file);
     {
-    	GList *iter;
+    	list_iterator_t<const char> iter;
 	fprintf(stderr, "parse_args: command_targets =");
-	for (iter = command_targets ; iter != 0 ; iter = iter->next)
-	    fprintf(stderr, " \"%s\"", (const char *)iter->data);
+	for (iter = command_targets.first() ; iter != 0 ; ++iter)
+	    fprintf(stderr, " \"%s\"", *iter);
 	fprintf(stderr, "\n");
     }
     
@@ -404,6 +403,10 @@ main(int argc, char **argv)
 
     delete proj;
     delete globals;
+    command_targets.remove_all();
+    task_scope_t::cleanup_builtins();
+    file_pop_all();
+
         
     return ret;
 }
