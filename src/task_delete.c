@@ -31,7 +31,7 @@ typedef struct
     gboolean result:1;
 } delete_private_t;
 
-CVSID("$Id: task_delete.c,v 1.8 2001-11-16 05:52:17 gnb Exp $");
+CVSID("$Id: task_delete.c,v 1.9 2001-11-19 01:18:07 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -259,6 +259,7 @@ task_ops_t delete_ops =
     "delete",
     /*init*/0,
     delete_new,
+    /*set_content*/0,
     delete_post_parse,
     delete_execute,
     delete_delete,

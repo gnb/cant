@@ -38,7 +38,7 @@ typedef struct
     unsigned ncopied;
 } copy_private_t;
 
-CVSID("$Id: task_copy.c,v 1.7 2001-11-16 03:34:19 gnb Exp $");
+CVSID("$Id: task_copy.c,v 1.8 2001-11-19 01:18:07 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -431,6 +431,7 @@ task_ops_t copy_ops =
     "copy",
     /*init*/0,
     copy_new,
+    /*set_content*/0,
     copy_post_parse,
     copy_execute,
     copy_delete,

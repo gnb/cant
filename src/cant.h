@@ -113,6 +113,7 @@ struct task_ops_s
     
     void (*init)(void); 	    	    /* static initialiser */
     void (*new)(task_t *);  	    	    /* instance created */
+    gboolean (*set_content)(task_t *, const char *);	/* node content */
     gboolean (*post_parse)(task_t *);	    /* post-parsing check */
     gboolean (*execute)(task_t *);  	    /* execute instance */
     void (*delete)(task_t *);	    	    /* instance deleted */

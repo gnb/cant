@@ -20,7 +20,7 @@
 #include "cant.h"
 #include <time.h>
 
-CVSID("$Id: task_tstamp.c,v 1.7 2001-11-16 05:22:37 gnb Exp $");
+CVSID("$Id: task_tstamp.c,v 1.8 2001-11-19 01:18:07 gnb Exp $");
 
 typedef struct
 {
@@ -324,6 +324,7 @@ task_ops_t tstamp_ops =
     "tstamp",
     tstamp_init,
     tstamp_new,
+    /*set_content*/0,
     /*post_parse*/0,
     tstamp_execute,
     tstamp_delete,

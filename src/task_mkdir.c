@@ -19,7 +19,7 @@
 
 #include "cant.h"
 
-CVSID("$Id: task_mkdir.c,v 1.5 2001-11-13 04:08:05 gnb Exp $");
+CVSID("$Id: task_mkdir.c,v 1.6 2001-11-19 01:18:07 gnb Exp $");
 
 typedef struct
 {
@@ -110,6 +110,7 @@ task_ops_t mkdir_ops =
     "mkdir",
     /*init*/0,
     mkdir_new,
+    /*set_content*/0,
     /*post_parse*/0,
     mkdir_execute,
     /*delete*/0,

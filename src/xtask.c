@@ -20,7 +20,7 @@
 #include "xtask.h"
 #include "job.h"
 
-CVSID("$Id: xtask.c,v 1.12 2001-11-16 05:31:45 gnb Exp $");
+CVSID("$Id: xtask.c,v 1.13 2001-11-19 01:18:07 gnb Exp $");
 
 typedef struct
 {
@@ -329,6 +329,7 @@ xtask_ops_new(const char *name)
 
     xops->task_ops.init = 0;
     xops->task_ops.new = xtask_new;
+    xops->task_ops.set_content = 0;
     xops->task_ops.post_parse = 0;
     xops->task_ops.execute = xtask_execute;
     xops->task_ops.delete = xtask_delete;

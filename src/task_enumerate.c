@@ -19,7 +19,7 @@
 
 #include "cant.h"
 
-CVSID("$Id: task_enumerate.c,v 1.6 2001-11-16 03:34:19 gnb Exp $");
+CVSID("$Id: task_enumerate.c,v 1.7 2001-11-19 01:18:07 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -101,6 +101,7 @@ task_ops_t enumerate_ops =
     "enumerate",
     /*init*/0,
     enumerate_new,
+    /*set_content*/0,
     /*post_parse*/0,
     enumerate_execute,
     enumerate_delete,

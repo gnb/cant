@@ -20,7 +20,7 @@
 #include "cant.h"
 #include "xtask.h"
 
-CVSID("$Id: buildfile.c,v 1.13 2001-11-18 11:17:01 gnb Exp $");
+CVSID("$Id: buildfile.c,v 1.14 2001-11-19 01:18:07 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -643,6 +643,7 @@ parse_task(project_t *proj, xmlNode *node)
     xmlNode *child;
     task_ops_t *ops;
     task_child_t *tc;
+    char *content;
     gboolean failed = FALSE;
     
 #if DEBUG
@@ -721,6 +722,14 @@ parse_task(project_t *proj, xmlNode *node)
     }
     
     /* TODO: scan for required children */
+    
+    /* handle text content */
+    if ((content = xmlNodeGetContent(node)) != 0)
+    {
+    	if (ops->set_content != 0 && !(*ops->set_content)(task, content))
+	    failed = TRUE;
+    	xmlFree(content);
+    }
 
     /* call the task's post-parse function */    
     if (!failed && ops->post_parse != 0)
