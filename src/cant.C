@@ -21,7 +21,7 @@
 #include "cant.H"
 #include "job.H"
 
-CVSID("$Id: cant.C,v 1.12 2002-04-13 09:26:06 gnb Exp $");
+CVSID("$Id: cant.C,v 1.13 2002-04-13 12:30:32 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -111,8 +111,8 @@ hack_mapper_test(void)
 static gboolean
 find_buildfile(void)
 {
-    char *dir;
-    char *bf;
+    string_var dir;
+    string_var bf;
     char *x;
     struct stat sb;
     
@@ -120,24 +120,22 @@ find_buildfile(void)
     
     for (;;)
     {
-    	bf = g_strconcat(dir, "/", buildfile, 0);
+    	bf = g_strconcat(dir.data(), "/", buildfile, 0);
 	
 #if DEBUG
-    	fprintf(stderr, "find_buildfile: Trying \"%s\"\n", bf);
+    	fprintf(stderr, "find_buildfile: Trying \"%s\"\n", bf.data());
 #endif
 	
 	if (stat(bf, &sb) == 0)
 	{
-	    g_free(dir);
-	    buildfile = bf;
+	    buildfile = bf.take();
 #if DEBUG
     	    fprintf(stderr, "find_buildfile: Found \"%s\"\n", buildfile);
 #endif
 	    return TRUE;
 	}
-	g_free(bf);
 	
-	if (dir[1] == '\0')
+	if (dir.data()[1] == '\0')
 	    break;  	    /* got to root, still can't find */
 	
 	/* chop off the last part of the directory */
@@ -146,23 +144,97 @@ find_buildfile(void)
 	*x = '\0';
     }
     
-    g_free(dir);
     return FALSE;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static gboolean
-build_commandline_targets(project_t *proj)
+class cant_t
+{
+private:
+    project_t *proj_;
+    project_t *globals_;
+    
+public:
+    cant_t();
+    ~cant_t();
+    
+    gboolean initialise();
+    gboolean build_commandline_targets();
+};
+
+cant_t::cant_t()
+{
+    proj_ = 0;
+    globals_ = 0;
+}
+
+cant_t::~cant_t()
+{
+    if (proj_ != 0)
+	delete proj_;
+    if (globals_ != 0)
+	delete globals_;
+    command_targets.remove_all();
+    task_scope_t::cleanup_builtins();
+    file_pop_all();
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+gboolean
+cant_t::initialise()
+{
+    task_scope_t::initialise_builtins();
+    mapper_t::initialise_builtins();
+    if (!job_t::init(parallelism))
+    	return FALSE;
+
+    // First project read automatically becomes project_t::globals_
+    // We use the pointer return here only to detect failure to load
+    // and then later for cleanup.
+    globals_ = read_project(globals_file, /*parent*/0, /*isglobals*/TRUE);
+    if (globals_ == 0)
+    {
+    	log::errorf("Can't read globals file \"%s\"\n", globals_file);
+	return FALSE;
+    }
+
+    if (find_flag && !find_buildfile())
+    {
+    	log::errorf("Can't find buildfile \"%s\" in any parent directory\n", buildfile);
+	return FALSE;
+    }
+
+    if ((proj_ = read_buildfile(buildfile, /*parent*/0)) == 0)
+    {
+    	log::errorf("Can't read buildfile \"%s\"\n", buildfile);
+	return FALSE;
+    }
+
+    if (command_defines != 0)
+	proj_->override_properties(command_defines);
+    	
+#if DEBUG
+    globals_->dump();
+    proj_->dump();
+#endif
+    return TRUE;
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+gboolean
+cant_t::build_commandline_targets()
 {
     list_iterator_t<const char> iter;
     
     if (command_targets.length() == 0)
-    	return proj->execute_target_by_name(proj->default_target());
+    	return proj_->execute_target_by_name(proj_->default_target());
 	
     for (iter = command_targets.first() ; iter != 0 ; ++iter)
     {
-    	if (!proj->execute_target_by_name(*iter))
+    	if (!proj_->execute_target_by_name(*iter))
 	    return FALSE;
     }
     
@@ -342,73 +414,29 @@ parse_args(int argc, char **argv)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
+
 int
 main(int argc, char **argv)
 {
-    project_t *proj;
-    project_t *globals;
-    int ret;
-
     log_simple_context_t context(file_basename_c(argv[0]));
 
     parse_args(argc, argv);
-    
-    task_scope_t::initialise_builtins();
-    mapper_t::initialise_builtins();
-    if (!job_t::init(parallelism))
-    	return 1;
-
-    // First project read automatically becomes project_t::globals_
-    // We use the pointer return here only to detect failure to load
-    // and then later for cleanup.
-    globals = read_project(globals_file, /*parent*/0, /*isglobals*/TRUE);
-    if (globals == 0)
-    {
-    	log::errorf("Can't read globals file \"%s\"\n", globals_file);
-	exit(1);
-    }
-
-    if (find_flag && !find_buildfile())
-    {
-    	log::errorf("Can't find buildfile \"%s\" in any parent directory\n", buildfile);
-	exit(1);
-    }
-
-    if ((proj = read_buildfile(buildfile, /*parent*/0)) == 0)
-    {
-    	log::errorf("Can't read buildfile \"%s\"\n", buildfile);
-	exit(1);
-    }
-
-    if (command_defines != 0)
-	proj->override_properties(command_defines);
-    	
-#if DEBUG
-    globals->dump();
-    proj->dump();
-#endif
-    
-    ret = !build_commandline_targets(proj);
-    
-#if 0 /*DEBUG*/
-    proj->dump_properties();
-#endif
 
 #if PATTERN_TEST
     hack_pattern_test();
-#endif
-#if MAPPER_TEST
+#elif MAPPER_TEST
     hack_mapper_test();
+#else
+    cant_t cant;
+
+    if (!cant.initialise())
+    	return 1;
+
+    if (!cant.build_commandline_targets())
+    	return 1;
 #endif
 
-    delete proj;
-    delete globals;
-    command_targets.remove_all();
-    task_scope_t::cleanup_builtins();
-    file_pop_all();
-
-        
-    return ret;
+    return 0;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
