@@ -83,8 +83,7 @@
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-extern void *cant_malloc(size_t sz);
-#define new(ty)     	((ty *)cant_malloc(sizeof(ty)))
+extern void *operator new(size_t sz);
 
 extern int strbool(const char *s, int deflt/*may be -1*/);
 

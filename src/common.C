@@ -19,14 +19,14 @@
 
 #include "common.H"
 
-CVSID("$Id: common.C,v 1.1 2002-03-29 12:36:26 gnb Exp $");
+CVSID("$Id: common.C,v 1.2 2002-03-29 13:56:49 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 extern char *argv0;
 
 void *
-cant_malloc(size_t sz)
+operator new(size_t sz)
 {
     void *x;
     
