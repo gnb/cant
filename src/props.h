@@ -71,6 +71,6 @@ void props_apply_local(const props_t *, void (*func)(const char *name,
  */
 char *props_expand(const props_t *, const char *string);
 
-
+gboolean props_read_shellfile(props_t *, const char *filename);
 
 #endif /* _props_h_ */
