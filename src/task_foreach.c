@@ -21,15 +21,19 @@
 #include "tok.h"
 #include <time.h>
 
-CVSID("$Id: task_foreach.c,v 1.2 2002-02-11 02:14:29 gnb Exp $");
+CVSID("$Id: task_foreach.c,v 1.3 2002-02-11 05:34:38 gnb Exp $");
 
 typedef struct
 {
     char *variable;
     /* TODO: whitespace-safe technique */
     char *values;
+    GList *filesets;
     GList *subtasks;
     /* TODO: support nested <property> tags */
+
+    char *variable_e;
+    gboolean failed:1;
 } foreach_private_t;
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -61,6 +65,20 @@ foreach_set_values(task_t *task, const char *name, const char *value)
 }
 
 static gboolean
+foreach_add_fileset(task_t *task, xmlNode *node)
+{
+    foreach_private_t *fp = (foreach_private_t *)task->private;
+    fileset_t *fs;
+    
+    if ((fs = parse_fileset(task->project, node, "dir")) == 0)
+    	return FALSE;
+
+    fp->filesets = g_list_append(fp->filesets, fs);
+    
+    return TRUE;
+}
+
+static gboolean
 foreach_add_subtask(task_t *task, xmlNode *node)
 {
     foreach_private_t *fp = (foreach_private_t *)task->private;
@@ -77,47 +95,63 @@ foreach_add_subtask(task_t *task, xmlNode *node)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static gboolean
+foreach_do_iteration(const char *val, void *userdata)
+{
+    task_t *task = (task_t *)userdata;
+    foreach_private_t *fp = (foreach_private_t *)task->private;
+    GList *iter;
+
+    /*
+     * TODO: need a props stack... (per-task?) to get scope right.
+     * For now, this variable goes into the project scope.
+     */
+    props_set(task->project->properties, fp->variable_e, val);
+    if (verbose)
+	logf("%s = %s\n", fp->variable_e, val);
+
+    for (iter = fp->subtasks ; iter != 0 ; iter = iter->next)
+    {
+	task_t *subtask = (task_t *)iter->data;
+
+	/* This really should have happened at parse time */
+	subtask->target = task->target;
+
+	if (!task_execute(subtask))
+	{
+	    fp->failed = TRUE;
+	    return FALSE;
+	}
+    }
+    return TRUE;
+}
+
+static gboolean
 foreach_execute(task_t *task)
 {
     foreach_private_t *fp = (foreach_private_t *)task->private;
     const char *val;
-    char *var_e;
     GList *iter;
-    gboolean ret = TRUE;
     tok_t tok;
-    
-    var_e = task_expand(task, fp->variable);
+
+    fp->failed = FALSE;    
+    fp->variable_e = task_expand(task, fp->variable);
+
     tok_init_m(&tok, task_expand(task, fp->values), ",");
+    while (!fp->failed && (val = tok_next(&tok)) != 0)
+    	foreach_do_iteration(val, task);
+    tok_free(&tok);
     
-    while (ret && (val = tok_next(&tok)) != 0)
+    for (iter = fp->filesets ; !fp->failed && iter != 0 ; iter = iter->next)
     {
-	/*
-	 * TODO: need a props stack... (per-task?) to get scope right.
-	 * For now, this variable goes into the project scope.
-	 */
-	props_set(task->project->properties, var_e, val);
-	if (verbose)
-	    logf("%s = %s\n", var_e, val);
+    	fileset_t *fs = (fileset_t *)iter->data;
 	
-	for (iter = fp->subtasks ; iter != 0 ; iter = iter->next)
-	{
-	    task_t *subtask = (task_t *)iter->data;
-	    
-	    /* This really should have happened at parse time */
-	    subtask->target = task->target;
-	    
-	    if (!task_execute(subtask))
-	    {
-	    	ret = FALSE;
-		break;
-	    }
-	}
+	fileset_apply(fs, project_get_props(task->project),
+			foreach_do_iteration, task);
     }
 
-    g_free(var_e);
-    tok_free(&tok);
+    g_free(fp->variable_e);
 
-    return ret;
+    return !fp->failed;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -144,6 +178,7 @@ static task_attr_t foreach_attrs[] =
 
 static task_child_t foreach_children[] = 
 {
+    TASK_CHILD(foreach, fileset, 0),
     TASK_GENERIC_CHILD(foreach, subtask, 0),
     {0}
 };
