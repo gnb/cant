@@ -23,7 +23,7 @@
 #include "log.h"
 #include <dirent.h>
 
-CVSID("$Id: fileset.c,v 1.10 2001-11-16 03:34:19 gnb Exp $");
+CVSID("$Id: fileset.c,v 1.11 2002-02-04 05:13:16 gnb Exp $");
 
 typedef enum { FS_IN, FS_EX, FS_UNKNOWN } fs_result_t;
 
@@ -278,7 +278,7 @@ fileset_apply_1(
     estring child;
     int ret = 1;
     
-    if ((dir = opendir(filename)) == 0)
+    if ((dir = file_opendir(filename)) == 0)
     	return -1;
 	
     estring_init(&child);
