@@ -16,7 +16,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 # 
-# $Id: Makefile.am,v 1.1 2001-11-06 07:40:31 gnb Exp $
+# $Id: Makefile.am,v 1.2 2001-11-13 03:46:27 gnb Exp $
 #
 
 SUBDIRS=	src
+
+EXTRA_DIST=	libxml.m4
