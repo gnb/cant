@@ -19,7 +19,7 @@
 
 #include "cant.h"
 
-CVSID("$Id: project.c,v 1.12 2002-02-08 07:33:57 gnb Exp $");
+CVSID("$Id: project.c,v 1.13 2002-02-10 15:31:05 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -273,7 +273,7 @@ project_append_property(project_t *proj, const char *name, const char *value)
     if (oldval == 0)
 	props_set(proj->properties, name, value);
     else
-	props_setm(proj->properties, name, g_strconcat(oldval, " ", value, 0));
+	props_setm(proj->properties, name, g_strconcat(oldval, value, 0));
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
