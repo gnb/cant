@@ -19,7 +19,7 @@
 
 #include "cant.h"
 
-CVSID("$Id: task.c,v 1.11 2001-11-21 16:31:34 gnb Exp $");
+CVSID("$Id: task.c,v 1.12 2002-02-08 07:37:46 gnb Exp $");
 
 task_scope_t *tscope_builtins;
 
@@ -159,7 +159,11 @@ task_ops_attributes_apply(
 const task_child_t *
 task_ops_find_child(const task_ops_t *ops, const char *name)
 {
-    return g_hash_table_lookup(ops->children_hashed, name);
+    task_child_t *tc;
+    
+    if ((tc = g_hash_table_lookup(ops->children_hashed, name)) != 0)
+    	return tc;
+    return g_hash_table_lookup(ops->children_hashed, "*");
 }
 
 void
