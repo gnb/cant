@@ -1,8 +1,27 @@
 #!/bin/sh
 #
-# $Id: runtest,v 1.1 2001-11-14 11:00:35 gnb Exp $
+# $Id: runtest,v 1.2 2001-11-14 11:24:35 gnb Exp $
 #
 CANT="${CANT:-../../src/cant} --globals-file globals.xml"
+
+
+arg_test ()
+{
+    VALUE="$1"
+    EXPECTED="$2"
+    
+    echo "================================================================"
+    echo "arg inclusion test, value=$VALUE"
+    
+    /bin/rm -rf *.o foo
+    $CANT all -Ddebug="$VALUE" || exit 1
+    
+    test -x foo || exit 1
+    RESULT=`objdump --stabs foo |\
+    	awk '$2 == "FUN" && $7 ~ /^main:/{res=1} END{print (res?"yes":"no")}'`
+    test "$EXPECTED" = "$RESULT" || exit 1
+}
+
 
 matchprop_test ()
 {
@@ -45,6 +64,19 @@ boolprop_test ()
 
 /bin/rm -rf foo *.o my-bindir
 set -x
+
+arg_test "" no
+arg_test "anythingelse" yes
+
+arg_test "yes" yes
+arg_test "true" yes
+arg_test "1" yes
+arg_test "on" yes
+
+arg_test "no" no
+arg_test "false" no
+arg_test "0" no
+arg_test "off" no
 
 matchprop_test "br" bar
 matchprop_test "bar" bar
