@@ -182,8 +182,8 @@ struct tagexp_s
     char *namespace;
     /* TODO: gboolean follow_depends:1; */
     /* TODO: gboolean reverse_order:1; */
-    char *default_exp;
-    props_t *exps;  	/* used as hash table of string->string */
+    strarray_t *default_exps;
+    GHashTable *exps;  	/* hash table of strarray_t, keyed on string */
 };
 
 
@@ -321,7 +321,7 @@ tl_def_tag_t *tl_def_add_tag(tl_def_t*, const char *name,
 const tl_def_tag_t *tl_def_find_tag(const tl_def_t *, const char *name);
 tagexp_t *tagexp_new(const char *namespace);
 void tagexp_delete(tagexp_t *te);
-void tagexp_set_default_expansion(tagexp_t *te, const char *s);
+void tagexp_add_default_expansion(tagexp_t *te, const char *s);
 void tagexp_add_expansion(tagexp_t *te, const char *tag, const char *exp);
 taglist_t *taglist_new(const char *namespace);
 void taglist_delete(taglist_t *tl);

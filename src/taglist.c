@@ -19,7 +19,7 @@
 
 #include "cant.h"
 
-CVSID("$Id: taglist.c,v 1.1 2001-11-20 18:02:41 gnb Exp $");
+CVSID("$Id: taglist.c,v 1.2 2001-11-21 07:17:31 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -111,32 +111,51 @@ tagexp_new(const char *namespace)
     te = new(tagexp_t);
     
     strassign(te->namespace, namespace);
-    te->exps = props_new(/*parent*/0);
+    te->exps = g_hash_table_new(g_str_hash, g_str_equal);
     
     return te;
+}
+
+static gboolean
+remove_one_expansion(gpointer key, gpointer value, gpointer userdata)
+{
+    g_free((char *)key);
+    strarray_delete((strarray_t *)value);
+    return TRUE;    /* remove me please */
 }
 
 void
 tagexp_delete(tagexp_t *te)
 {
     strdelete(te->namespace);
-    strdelete(te->default_exp);
-    props_delete(te->exps);
+    if (te->default_exps != 0)
+	strarray_delete(te->default_exps);
+    g_hash_table_foreach_remove(te->exps, remove_one_expansion, 0);
+    g_hash_table_destroy(te->exps);
     g_free(te);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 void
-tagexp_set_default_expansion(tagexp_t *te, const char *s)
+tagexp_add_default_expansion(tagexp_t *te, const char *s)
 {
-    strassign(te->default_exp, s);
+    if (te->default_exps == 0)
+    	te->default_exps = strarray_new();
+    strarray_append(te->default_exps, s);
 }
 
 void
 tagexp_add_expansion(tagexp_t *te, const char *tag, const char *exp)
 {
-    props_set(te->exps, tag, exp);
+    strarray_t *sa;
+    
+    if ((sa = g_hash_table_lookup(te->exps, tag)) == 0)
+    {
+    	sa = strarray_new();
+	g_hash_table_insert(te->exps, g_strdup(tag), sa);
+    }
+    strarray_append(sa, exp);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -219,21 +238,26 @@ taglist_add_item(
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static void
-gather_exp(
+gather_exps(
     props_t *localprops,
-    const char *exp,
+    strarray_t *exps,
     strarray_t *sa)
 {
     char *expexp;
-    
-    expexp = props_expand(localprops, exp);
-    strnullnorm(expexp);
-    if (expexp != 0)
-	strarray_appendm(sa, expexp);
+    int i;
 
+    for (i = 0 ; i < exps->len ; i++)
+    {    
+	expexp = props_expand(localprops, strarray_nth(exps, i));
+	strnullnorm(expexp);
+	if (expexp != 0)
+	{
+	    strarray_appendm(sa, expexp);
 #if DEBUG
-    fprintf(stderr, "taglist_gather:     -> \"%s\"\n", expexp);
+	    fprintf(stderr, "taglist_gather:     -> \"%s\"\n", expexp);
 #endif
+    	}
+    }
 }
 
 void
@@ -244,7 +268,7 @@ taglist_gather(
     strarray_t *sa) 	/* results appended to this */
 {
     GList *iter;
-    const char *exp;
+    strarray_t *exps;
     char *expvalue;
     props_t *localprops;
 
@@ -275,24 +299,25 @@ taglist_gather(
 	
 	/* TODO: evaluate tlitem->condition at this point */
 	
-	exp = props_get(te->exps, tlitem->tag);
-	if (exp == 0)
-	    exp = te->default_exp;
-	if (exp == 0)
+	exps = g_hash_table_lookup(te->exps, tlitem->tag);
+	if (exps == 0)
+	    exps = te->default_exps;
+	if (exps == 0)
 	    continue;
-	
+
 #if DEBUG
 	fprintf(stderr, "taglist_gather:     tag=\"%s\" name=\"%s\" value=\"%s\"\n",
 	    	    	    tlitem->tag, tlitem->name, tlitem->value);
 #endif
 
 	props_set(localprops, "name", tlitem->name);
-	
+	props_set(localprops, "tag", tlitem->tag);
+
 	switch (tlitem->type)
 	{
 	case TL_VALUE:
 	    props_set(localprops, "value", tlitem->value);
-    	    gather_exp(localprops, exp, sa);
+    	    gather_exps(localprops, exps, sa);
 	    break;
 
 	case TL_LINE:
@@ -307,12 +332,12 @@ taglist_gather(
 		{
 		    buf2 = 0;
 		    props_set(localprops, "value", x);
-    		    gather_exp(localprops, exp, sa);
+    		    gather_exps(localprops, exps, sa);
 		}
 		g_free(expvalue);
 	    }
 	    break;
-	
+
 	case TL_FILE:
 	    /* to canonicalise the right filename, need to pre-expand */
 	    expvalue = props_expand(props, tlitem->value);
@@ -320,7 +345,7 @@ taglist_gather(
 	    if (expvalue != 0)
 	    {
 	    	props_setm(localprops, "value", file_make_absolute(expvalue));
-    		gather_exp(localprops, exp, sa);
+    		gather_exps(localprops, exps, sa);
 		g_free(expvalue);
 	    }
 	    break;

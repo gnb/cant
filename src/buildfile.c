@@ -20,7 +20,7 @@
 #include "cant.h"
 #include "xtask.h"
 
-CVSID("$Id: buildfile.c,v 1.16 2001-11-20 18:02:41 gnb Exp $");
+CVSID("$Id: buildfile.c,v 1.17 2001-11-21 07:17:31 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -329,7 +329,7 @@ parse_tagexpand(project_t *proj, xmlNode *node)
 
     if ((buf = xmlGetProp(node, "default")) != 0)
     {
-    	tagexp_set_default_expansion(te, buf);
+    	tagexp_add_default_expansion(te, buf);
     	xmlFree(buf);
     }
     
@@ -366,6 +366,27 @@ parse_tagexpand(project_t *proj, xmlNode *node)
 	    
 	    if (tag != 0)
 	    	xmlFree(tag);
+	    if (to != 0)
+	    	xmlFree(to);
+	}
+    	else if (!strcmp(child->name, "default"))
+	{
+	    char *to = 0;
+	    
+	    if ((to = xmlGetProp(child, "to")) == 0)
+	    {
+	    	parse_error_required_attribute(child, "to");
+	    	failed = TRUE;
+	    }
+	    
+	    /* TODO: check no other attributes are present */
+	    
+    	    if (to != 0)
+	    	tagexp_add_default_expansion(te, to);
+
+	    if (!check_childless(child))
+	    	failed = TRUE;
+	    
 	    if (to != 0)
 	    	xmlFree(to);
 	}
