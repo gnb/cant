@@ -21,7 +21,7 @@
 #include "cant.h"
 #include "job.h"
 
-CVSID("$Id: cant.c,v 1.12 2001-11-16 05:31:45 gnb Exp $");
+CVSID("$Id: cant.c,v 1.13 2001-11-20 18:02:41 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -384,6 +384,32 @@ dump_one_property(const char *name, const char *value, void *userdata)
 }
 
 static void
+dump_one_taglist(gpointer key, gpointer value, gpointer userdata)
+{
+    taglist_t *tl = (taglist_t *)value;
+    GList *iter;
+    
+    fprintf(stderr, "    TAGLIST {\n");
+    fprintf(stderr, "        NAMESPACE=\"%s\"\n", tl->namespace);
+    fprintf(stderr, "        ID=\"%s\"\n", tl->id);
+
+    for (iter = tl->items ; iter != 0 ; iter = iter->next)
+    {
+    	tl_item_t *tlitem = (tl_item_t *)iter->data;
+	
+	fprintf(stderr, "        TL_SPEC {\n");
+	fprintf(stderr, "            TAG=\"%s\"\n", tlitem->tag);
+	fprintf(stderr, "            NAME=\"%s\"\n", tlitem->name);
+	fprintf(stderr, "            TYPE=%d\n", tlitem->type);
+	fprintf(stderr, "            VALUE=\"%s\"\n", tlitem->value);
+	fprintf(stderr, "        }\n");
+    }
+        
+    fprintf(stderr, "    }\n");
+}
+
+
+static void
 dump_one_target(gpointer key, gpointer value, gpointer userdata)
 {
     target_t *targ = (target_t *)value;
@@ -435,6 +461,7 @@ dump_project(project_t *proj)
     fprintf(stderr, "    DEFAULT=\"%s\"\n", proj->default_target);
     fprintf(stderr, "    BASEDIR=\"%s\"\n", proj->basedir);
     g_hash_table_foreach(proj->targets, dump_one_target, 0);
+    g_hash_table_foreach(proj->taglists, dump_one_taglist, 0);
     dump_project_properties(proj);
     fprintf(stderr, "}\n");
 }

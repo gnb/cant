@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 
-<!-- $Id: globals.xml,v 1.1 2001-11-14 06:30:26 gnb Exp $ -->
+<!-- $Id: globals.xml,v 1.2 2001-11-20 18:02:41 gnb Exp $ -->
 
 <globals>
 
@@ -20,6 +20,13 @@
   <property name="AR" value="${program_prefix}ar"/>
   <property name="ARFLAGS" value="ruv"/>
 
+  <taglistdef name="library">
+    <tag tag="incdir" name="forbidden" value="mandatory"/>
+    <tag tag="define" name="mandatory" value="optional"/>
+    <tag tag="libdir" name="forbidden" value="mandatory"/>
+    <tag tag="lib" name="forbidden" value="mandatory"/>
+  </taglistdef>
+
   <xtaskdef
     	name="compile"
 	logmessage="Compiling ${file}"
@@ -30,8 +37,15 @@
     <attr attribute="debug"/>
     <attr attribute="warnings"/>
     <attr attribute="optimize"/>
+    <taglist namespace="library"/>
     <arg line="${CFLAGS}"/>
     <arg line="${CPPFLAGS}"/>
+    <tagexpand namespace="library">
+      <expand tag="incdir" to="-I${value}"/>
+    </tagexpand>
+    <tagexpand namespace="library">
+      <expand tag="define" to="-D${name}=${value}"/>
+    </tagexpand>
     <arg line="${CWARNFLAGS}" if="warnings"/>
     <arg value="-g" if="debug"/>
     <arg value="-O2" if="optimize"/>
@@ -49,11 +63,16 @@
     <mapper name="glob" from="*.c" to="*.o"/>
     <attr attribute="program"/>
     <attr attribute="debug"/>
+    <taglist namespace="library"/>
     <arg line="${CFLAGS}"/>
     <arg value="-g" if="debug"/>
     <arg value="-o"/>
     <arg value="${program}"/>
     <files/>
+    <tagexpand namespace="library">
+      <expand tag="libdir" to="-L${value}"/>
+      <expand tag="lib" to="-l${value}"/>
+    </tagexpand>
   </xtaskdef>
 
   <xtaskdef

@@ -20,12 +20,13 @@
 #include "xtask.h"
 #include "job.h"
 
-CVSID("$Id: xtask.c,v 1.14 2001-11-19 01:35:34 gnb Exp $");
+CVSID("$Id: xtask.c,v 1.15 2001-11-20 18:02:41 gnb Exp $");
 
 typedef struct
 {
     gboolean result;
     props_t *properties;    /* local properties, overriding the project */
+    GList *taglists;	    /* list of taglist_t */
 } xtask_private_t;
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -52,6 +53,22 @@ xtask_generic_setter(task_t *task, const char *name, const char *value)
     if ((propname = props_get(xops->property_map, name)) == 0)
     	return FALSE;
     props_set(xp->properties, propname, value);
+    return TRUE;
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+static gboolean
+xtask_generic_adder(task_t *task, xmlNode *node)
+{
+    xtask_private_t *xp = (xtask_private_t *)task->private;
+    xtask_ops_t *xops = (xtask_ops_t *)task->ops;
+    taglist_t *tl;
+    
+    if ((tl = parse_taglist(task->project, node)) == 0)
+    	return FALSE;
+    
+    xp->taglists = g_list_append(xp->taglists, tl);
     return TRUE;
 }
 
@@ -123,6 +140,11 @@ xtask_build_command(task_t *task, strarray_t *command)
 	    if (task->fileset != 0)
     	    	fileset_gather_mapped(task->fileset, xp->properties,
 		    	    	      command, xops->mappers);
+	    break;
+	    
+	case XT_TAGEXPAND:  /* <tagexpand> child */
+	    taglist_list_gather(xp->taglists, xa->data.tagexp,
+	    	    	    	xp->properties, command);
 	    break;
 	}
     }
@@ -283,6 +305,9 @@ xtask_delete(task_t *task)
     fprintf(stderr, "xtask_delete: deleting \"%s\"\n", task->name);
 #endif
 
+    /* TODO: delete unrefed filesets */
+    /* TODO: delete unrefed taglists */
+    
     props_delete(xp->properties);
 	
     g_free(xp);
@@ -319,6 +344,9 @@ xtask_arg_delete(xtask_arg_t *xa)
     	    fileset_delete(xa->data.fileset);
     	break;
     case XT_FILES:  	/* <files> child */
+    	break;
+    case XT_TAGEXPAND:	/* <tagexpand> child */
+    	tagexp_delete(xa->data.tagexp);
     	break;
     }
     
@@ -437,6 +465,17 @@ xtask_ops_add_files(xtask_ops_t *xops)
     return xa;
 }
 
+xtask_arg_t *
+xtask_ops_add_tagexpand(xtask_ops_t *xops, tagexp_t *te)
+{
+    xtask_arg_t *xa;
+    
+    xa = xtask_ops_add_arg(xops, XT_TAGEXPAND);
+    xa->data.tagexp = te;
+    
+    return xa;
+}
+
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 void
@@ -455,6 +494,23 @@ xtask_ops_add_attribute(
     task_ops_add_attribute((task_ops_t *)xops, &proto);
     
     props_set(xops->property_map, attr, prop);
+}
+
+/* TODO: add `gboolean required' */
+
+void
+xtask_ops_add_child(
+    xtask_ops_t *xops,
+    const char *name)
+{
+    task_child_t proto;
+    
+    proto.name = (char *)name;
+    proto.adder = xtask_generic_adder;
+    proto.flags = 0;
+
+    task_ops_add_child((task_ops_t *)xops, &proto);
+    /* TODO: will xtasks ever have children other than taglists?? */
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

@@ -19,7 +19,7 @@
 
 #include "cant.h"
 
-CVSID("$Id: project.c,v 1.7 2001-11-14 10:59:03 gnb Exp $");
+CVSID("$Id: project.c,v 1.8 2001-11-20 18:02:41 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -34,6 +34,8 @@ project_new(project_t *parent)
     
     proj->targets = g_hash_table_new(g_str_hash, g_str_equal);	
     proj->filesets = g_hash_table_new(g_str_hash, g_str_equal);	
+    proj->taglists = g_hash_table_new(g_str_hash, g_str_equal);	
+    proj->tl_defs = g_hash_table_new(g_str_hash, g_str_equal);	
     proj->tscope = tscope_new((parent == 0 ? tscope_builtins : parent->tscope));
     
     proj->properties = props_new((parent == 0 ? 0 : parent->properties));
@@ -60,18 +62,38 @@ project_delete_one_fileset(gpointer key, gpointer value, gpointer userdata)
     return TRUE;    /* so remove it already */
 }
 
+static gboolean
+project_delete_one_taglist(gpointer key, gpointer value, gpointer userdata)
+{
+    taglist_delete((taglist_t *)value);
+    return TRUE;    /* so remove it already */
+}
+
+static gboolean
+project_delete_one_tl_def(gpointer key, gpointer value, gpointer userdata)
+{
+    tl_def_delete((tl_def_t *)value);
+    return TRUE;    /* so remove it already */
+}
+
 void
 project_delete(project_t *proj)
 {
     strdelete(proj->name);
     strdelete(proj->description);
-	
+    
     g_hash_table_foreach_remove(proj->targets, project_delete_one_target, 0);
     g_hash_table_destroy(proj->targets);
     tscope_delete(proj->tscope);
     
     g_hash_table_foreach_remove(proj->filesets, project_delete_one_fileset, 0);
     g_hash_table_destroy(proj->filesets);
+    
+    g_hash_table_foreach_remove(proj->tl_defs, project_delete_one_tl_def, 0);
+    g_hash_table_destroy(proj->tl_defs);
+    
+    g_hash_table_foreach_remove(proj->taglists, project_delete_one_taglist, 0);
+    g_hash_table_destroy(proj->taglists);
     
     props_delete(proj->properties);
     props_delete(proj->fixed_properties);
@@ -146,6 +168,80 @@ project_add_target(project_t *proj, target_t *targ)
     assert(targ->name != 0);
     g_hash_table_insert(proj->targets, targ->name, targ);
     targ->project = proj;
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+tl_def_t *
+project_find_tl_def(const project_t *proj, const char *name)
+{
+    tl_def_t *tldef;
+    
+    for ( ; proj != 0 ; proj = proj->parent)
+    {
+    	if ((tldef = g_hash_table_lookup(proj->tl_defs, name)) != 0)
+	    return tldef;
+    }
+    
+    return 0;
+}
+
+void
+project_add_tl_def(project_t *proj, tl_def_t *tldef)
+{
+    g_hash_table_insert(proj->tl_defs, tldef->name, tldef);
+}
+
+void
+project_remove_tl_def(project_t *proj, tl_def_t *tldef)
+{
+    g_hash_table_remove(proj->tl_defs, tldef->name);
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+#define build_taglist_key(namespace, id) \
+    g_strconcat((namespace), "::", (id), 0)
+
+taglist_t *
+project_find_taglist(project_t *proj, const char *namespace, const char *id)
+{
+    char *key = build_taglist_key(namespace, id);
+    taglist_t *tl;
+    
+    for ( ; proj != 0 ; proj = proj->parent)
+    {
+    	if ((tl = g_hash_table_lookup(proj->taglists, key)) != 0)
+	    break;
+    }
+    
+    g_free(key);
+    return tl;
+}
+
+void
+project_add_taglist(project_t *proj, taglist_t *tl)
+{
+    char *key = build_taglist_key(tl->namespace, tl->id);
+    
+    g_hash_table_insert(proj->taglists, key, tl);
+}
+
+void
+project_remove_taglist(project_t *proj, taglist_t *tl)
+{
+    char *key = build_taglist_key(tl->namespace, tl->id);
+    gpointer okey = 0;
+    gpointer ovalue;
+    
+    g_hash_table_lookup_extended(proj->taglists, key, 
+    	    &okey, &ovalue);
+    assert(okey != 0);
+    
+    g_hash_table_remove(proj->taglists, key);
+
+    g_free(key);
+    g_free(okey);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

@@ -20,7 +20,7 @@
 #include "cant.h"
 #include "xtask.h"
 
-CVSID("$Id: buildfile.c,v 1.15 2001-11-19 01:35:34 gnb Exp $");
+CVSID("$Id: buildfile.c,v 1.16 2001-11-20 18:02:41 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -282,6 +282,259 @@ parse_property(project_t *proj, xmlNode *node)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
+static gboolean
+check_childless(xmlNode *node)
+{
+    xmlNode *child;
+    gboolean res = TRUE;
+
+    for (child = node->childs ; child != 0 ; child = child->next)
+    {
+    	if (child->type != XML_ELEMENT_NODE)
+	    continue;
+
+    	parse_error_unexpected_element(child);
+	res = FALSE;
+    }
+    
+    return res;
+}
+
+
+static tagexp_t *
+parse_tagexpand(project_t *proj, xmlNode *node)
+{
+    char *buf;
+    tagexp_t *te;
+    xmlNode *child;
+    gboolean failed = FALSE;
+
+#if DEBUG
+    fprintf(stderr, "Parsing tagexpand\n");
+#endif
+
+    if ((buf = xmlGetProp(node, "namespace")) == 0)
+    {
+	parse_error_required_attribute(node, "namespace");
+	return 0;
+    }
+    
+    te = tagexp_new(buf);
+    xmlFree(buf);
+
+#if 0 /* TODO */
+    te->follow_depends = cantXmlGetBooleanProp(node, "followdepends", FALSE);
+    te->reverse_order = cantXmlGetBooleanProp(node, "reverse", FALSE);
+#endif
+
+    if ((buf = xmlGetProp(node, "default")) != 0)
+    {
+    	tagexp_set_default_expansion(te, buf);
+    	xmlFree(buf);
+    }
+    
+    /* TODO: check no other attributes are present */
+    
+    for (child = node->childs ; child != 0 ; child = child->next)
+    {
+    	if (child->type != XML_ELEMENT_NODE)
+	    continue;
+
+    	if (!strcmp(child->name, "expand"))
+	{
+	    char *tag = 0, *to = 0;
+	    
+	    if ((tag = xmlGetProp(child, "tag")) == 0)
+	    {
+	    	parse_error_required_attribute(child, "tag");
+	    	failed = TRUE;
+	    }
+	    	    
+	    if ((to = xmlGetProp(child, "to")) == 0)
+	    {
+	    	parse_error_required_attribute(child, "to");
+	    	failed = TRUE;
+	    }
+	    
+	    /* TODO: check no other attributes are present */
+	    
+    	    if (tag != 0 && to != 0)
+	    	tagexp_add_expansion(te, tag, to);
+
+	    if (!check_childless(child))
+	    	failed = TRUE;
+	    
+	    if (tag != 0)
+	    	xmlFree(tag);
+	    if (to != 0)
+	    	xmlFree(to);
+	}
+	else
+	{
+	    parse_error_unexpected_element(child);
+	    failed = TRUE;
+	}
+    }
+    
+    
+    if (failed)
+    {
+    	tagexp_delete(te);
+	te = 0;
+    }
+        
+    return te;
+}
+
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+taglist_t *
+parse_taglist(project_t *proj, xmlNode *node)
+{
+    char *buf, *buf2;
+    tl_def_t *tldef;
+    taglist_t *tl;
+    const tl_def_tag_t *tag;
+    xmlNode *child;
+    gboolean failed = FALSE;
+    const char *namespace = node->name;
+    
+
+#if DEBUG
+    fprintf(stderr, "Parsing taglist \"%s\"\n", namespace);
+#endif
+
+    if ((tldef = project_find_tl_def(proj, namespace)) == 0)
+    {
+    	parse_node_error(node, "Unknown taglist type \"%s\"\n", namespace);
+	return 0;
+    }
+    
+    if ((buf = xmlGetProp(node, "refid")) != 0)
+    {
+    	/* Handle reference to an existing taglist */
+    	if ((buf2 = xmlGetProp(node, "id")) != 0)
+	{
+	    parse_node_error(node, "Cannot specify both \"id\" and \"refid\"\n");
+	    xmlFree(buf);
+	    xmlFree(buf2);
+	    return 0;
+	}
+	
+	if ((tl = project_find_taglist(proj, namespace, buf)) == 0)
+	{
+	    /* TODO: order dependency */
+	    parse_node_error(node, "Cannot find taglist \"%s\" to satisfy \"refid\"\n", buf);
+	    xmlFree(buf);
+	    return 0;
+	}
+	/* TODO: refcount to prevent problems deleting the project */
+	
+    	xmlFree(buf);
+	return tl;
+    }
+
+    /* actual taglist definition */
+    if ((buf = xmlGetProp(node, "id")) == 0)
+    {
+	parse_error_required_attribute(node, "id");
+	return 0;
+    }
+
+    tl = taglist_new(namespace);
+    taglist_set_id(tl, buf);
+    xmlFree(buf);
+    
+    /* TODO: parse optional "depends" attribute */
+    /* TODO: syntax check other attributes */
+    
+    for (child = node->childs ; child != 0 ; child = child->next)
+    {
+    	if (child->type != XML_ELEMENT_NODE)
+	    continue;
+
+    	if ((tag = tl_def_find_tag(tldef, child->name)) != 0)
+	{
+	    char *name = xmlGetProp(child, "name");
+	    char *value = 0;
+	    tl_item_t *tlitem = 0;
+
+	    if (name == 0 && tag->name_avail == AV_MANDATORY)
+	    {
+		parse_error_required_attribute(child, "name");
+		failed = TRUE;
+	    }
+	    else if (name != 0 && tag->name_avail == AV_FORBIDDEN)
+	    {
+	    	parse_node_error(child, "Attribute \"name\" not allowed at this point\n");
+	    	failed = TRUE;
+	    }
+
+	    if ((value = xmlGetProp(child, "value")) != 0)
+		tlitem = taglist_add_item(tl, child->name, name, TL_VALUE, value);
+	    else if ((value = xmlGetProp(child, "line")) != 0)
+		tlitem = taglist_add_item(tl, child->name, name, TL_LINE, value);
+	    else if ((value = xmlGetProp(child, "file")) != 0)
+		tlitem = taglist_add_item(tl, child->name, name, TL_FILE, value);
+	    
+	    if (value == 0 && tag->value_avail == AV_MANDATORY)
+	    {
+		parse_node_error(child, "One of \"value\", \"line\" or \"file\" must be present\n");
+		failed = TRUE;
+	    }
+	    else if (value != 0 && tag->value_avail == AV_FORBIDDEN)
+	    {
+	    	parse_node_error(child, "None of \"value\", \"line\" or \"file\" may be present\n");
+	    	failed = TRUE;
+	    }
+
+    	    if (tlitem != 0 && !parse_condition(&tlitem->condition, child))
+	    	failed = TRUE;
+
+	    if (name != 0)
+		xmlFree(name);
+	    if (value != 0)
+		xmlFree(value);
+    	}
+	else
+	{
+	    parse_error_unexpected_element(child);
+	    failed = FALSE;
+	}
+    }
+    
+    
+    if (failed)
+    {
+    	taglist_delete(tl);
+	tl = 0;
+    }
+        
+    return tl;
+}
+
+static gboolean
+parse_project_taglist(project_t *proj, xmlNode *node)
+{
+    taglist_t *tl;
+    
+    if ((tl = parse_taglist(proj, node)) == 0)
+    	return FALSE;
+	
+    if (project_find_taglist(proj, tl->namespace, tl->id) != 0)
+    {
+    	parse_node_error(node, "Duplicate taglist %s::%s\n", tl->namespace, tl->id);
+	taglist_delete(tl);
+	return FALSE;
+    }
+
+    project_add_taglist(proj, tl);
+    return TRUE;
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
 static void
 parse_xtaskdef(project_t *proj, xmlNode *node)
 {
@@ -358,6 +611,18 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
 	    if (to != 0)
 		xmlFree(to);
 	}
+	else if (!strcmp(child->name, "taglist"))
+	{
+	    char *namespace = 0;
+	    
+	    if ((namespace = xmlGetProp(child, "namespace")) == 0)
+		parse_error_required_attribute(node, "namespace");
+
+	    xtask_ops_add_child(xops, namespace);
+	    
+	    if (namespace != 0)
+		xmlFree(namespace);
+    	}	
 	else if (!strcmp(child->name, "fileset"))
 	{
 	    if ((fs = parse_fileset(proj, child, "dir")) != 0)
@@ -366,6 +631,14 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
 	else if (!strcmp(child->name, "files"))
 	{
 	    xa = xtask_ops_add_files(xops);
+	}
+	else if (!strcmp(child->name, "tagexpand"))
+	{
+	    tagexp_t *te;
+	    
+	    /* TODO: propagate failure */
+	    if ((te = parse_tagexpand(proj, child)) != 0)
+		xa = xtask_ops_add_tagexpand(xops, te);
 	}
 	else if (!strcmp(child->name, "mapper"))
 	{
@@ -382,7 +655,7 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
 		xops->dep_mappers = g_list_append(xops->dep_mappers, ma);
 	}
 	else
-	    parse_node_error(node, "Unexpected child \"%s\"\n", child->name);
+	    parse_error_unexpected_element(child);
 
     	if (xa == 0)
 	    continue;
@@ -393,6 +666,102 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
 
     /* TODO: handle duplicate registrations cleanly */
     tscope_register(proj->tscope, (task_ops_t *)xops);
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+static gboolean
+parse_availability_attr(
+    xmlNode *node,
+    const char *attrname,
+    availability_t *availp)
+{
+    char *val;
+    
+    /* default value */
+    *availp = AV_OPTIONAL;
+
+    if ((val = xmlGetProp(node, attrname)) == 0)
+    	return TRUE;
+	
+    if (!strcasecmp(val, "mandatory"))
+    	*availp = AV_MANDATORY;
+    else if (!strcasecmp(val, "optional"))
+    	*availp = AV_OPTIONAL;
+    else if (!strcasecmp(val, "forbidden"))
+    	*availp = AV_FORBIDDEN;
+    else
+    {
+    	parse_node_error(node, "Attribute \"%s\" must be one of \"mandatory\", \"optional\" or \"forbidden\"\n",
+	    	    	    attrname);
+    	xmlFree(val);
+    	return FALSE;
+    }
+	
+    xmlFree(val);
+    return TRUE;
+}
+
+
+static gboolean
+parse_taglistdef(project_t *proj, xmlNode *node)
+{
+    char *buf;
+    tl_def_t *tldef;
+    tl_def_tag_t *tltag;
+    xmlNode *child;
+    gboolean failed = FALSE;
+    
+#if DEBUG
+    fprintf(stderr, "Parsing taglistdef\n");
+#endif
+
+    if ((buf = xmlGetProp(node, "name")) == 0)
+    {
+	parse_error_required_attribute(node, "name");
+	return FALSE;
+    }
+
+    tldef = tl_def_new(buf);
+    xmlFree(buf);
+
+    /* TODO: syntax check other attributes */
+    
+    for (child = node->childs ; child != 0 ; child = child->next)
+    {
+    	if (child->type != XML_ELEMENT_NODE)
+	    continue;
+
+    	tltag = 0;
+    	if (!strcmp(child->name, "tag"))
+	{
+	    char *tag = 0;
+	    availability_t name_avail = AV_OPTIONAL;
+	    availability_t value_avail = AV_OPTIONAL;
+	    
+	    if ((tag = xmlGetProp(child, "tag")) == 0)
+	    {
+	    	parse_error_required_attribute(child, "tag");
+	    	failed = TRUE;
+	    }
+	    
+	    if (!parse_availability_attr(child, "name", &name_avail))
+	    	failed = TRUE;
+	    if (!parse_availability_attr(child, "value", &value_avail))
+	    	failed = TRUE;
+
+    	    if (tag != 0)	    
+	    {
+		tltag = tl_def_add_tag(tldef, tag, name_avail, value_avail);
+		xmlFree(tag);
+	    }
+	}
+	else
+	    parse_error_unexpected_element(child);
+    }    
+
+    /* TODO: handle duplicate registrations cleanly */
+    project_add_tl_def(proj, tldef);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -647,7 +1016,7 @@ parse_task(project_t *proj, xmlNode *node)
     xmlAttr *attr;
     xmlNode *child;
     task_ops_t *ops;
-    task_child_t *tc;
+    const task_child_t *tc;
     char *content;
     gboolean failed = FALSE;
     
@@ -713,8 +1082,7 @@ parse_task(project_t *proj, xmlNode *node)
 	    continue;
 	/* TODO: handle character data */
 	
-	tc = (task_child_t *)g_hash_table_lookup(ops->children_hashed, child->name);
-	if (tc == 0)
+	if ((tc = task_ops_find_child(ops, child->name)) == 0)
 	{
 	    parse_error_unexpected_element(child);
 	    failed = TRUE;
@@ -932,13 +1300,17 @@ parse_project(xmlNode *node, project_t *parent)
 	    parse_project_fileset(proj, child);
     	else if (!strcmp(child->name, "xtaskdef"))
 	    parse_xtaskdef(proj, child);
+    	else if (!strcmp(child->name, "taglistdef"))
+	    parse_taglistdef(proj, child);
 	else if (!globals && !strcmp(child->name, "target"))
 	    /* TODO: propagate failure */
 	    parse_target(proj, child);
+	else if (project_find_tl_def(proj, child->name) != 0)
+	    parse_project_taglist(proj, child);
 	else
 	    /* TODO: fileset */
 	    /* TODO: patternset */
-	    parse_node_error(node, "Element \"%s\" unexpected at this point.\n", child->name);
+	    parse_error_unexpected_element(child);
     }
 
     if (!globals)    

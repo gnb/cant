@@ -35,7 +35,8 @@ typedef enum
     XT_FILESET,     /* insert list of files from fileset child. */
     /* TODO: XT_FILELIST */
     /* TODO: XT_ENV */
-    XT_FILES	    /* insert list of files from task's own fileset */
+    XT_FILES,	    /* insert list of files from task's own fileset */
+    XT_TAGEXPAND    /* expand tags from xtask's child taglists */
 } xtask_arg_type_t;
 
 struct xtask_arg_s
@@ -46,6 +47,7 @@ struct xtask_arg_s
     {
 	char *arg;	    	/* for XT_VALUE, XT_LINE */
 	fileset_t *fileset;     /* for XT_FILESET */
+	tagexp_t *tagexp;   	/* for XT_TAGEXPAND */
     } data;
     
     condition_t condition;
@@ -76,8 +78,10 @@ xtask_arg_t *xtask_ops_add_value(xtask_ops_t *xops, const char *s);
 xtask_arg_t *xtask_ops_add_file(xtask_ops_t *xops, const char *s);
 xtask_arg_t *xtask_ops_add_fileset(xtask_ops_t *xops, fileset_t *fs);
 xtask_arg_t *xtask_ops_add_files(xtask_ops_t *xops);
+xtask_arg_t *xtask_ops_add_tagexpand(xtask_ops_t *xops, tagexp_t *te);
 void xtask_ops_add_attribute(xtask_ops_t *xops, const char *attr,
     const char *prop, gboolean required);
+void xtask_ops_add_child(xtask_ops_t *xops, const char *name);
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 #endif /* _cant_xtask_h_ */

@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 # 
-# $Id: Makefile.am,v 1.14 2001-11-19 01:18:07 gnb Exp $
+# $Id: Makefile.am,v 1.15 2001-11-20 18:02:40 gnb Exp $
 #
 
 bin_PROGRAMS=	cant
@@ -39,6 +39,7 @@ MAPPER_SOURCES=	\
 
 cant_SOURCES=	common.h thread.h cant.h \
 		cant.c buildfile.c project.c target.c task.c \
+		taglist.c \
 		xtask.h xtask.c \
 		props.h props.c \
 		estring.h estring.c \

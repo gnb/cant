@@ -19,7 +19,7 @@
 
 #include "cant.h"
 
-CVSID("$Id: task.c,v 1.9 2001-11-16 05:22:37 gnb Exp $");
+CVSID("$Id: task.c,v 1.10 2001-11-20 18:02:41 gnb Exp $");
 
 task_scope_t *tscope_builtins;
 
@@ -121,7 +121,6 @@ task_ops_add_attribute(task_ops_t *ops, const task_attr_t *proto)
     g_hash_table_insert(ops->attrs_hashed, ta->name, ta);
 }
 
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 typedef struct
 {
@@ -153,6 +152,29 @@ task_ops_attributes_apply(
 	
     	g_hash_table_foreach(ops->attrs_hashed, task_ops_attributes_apply_one, &rec);
     }
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+const task_child_t *
+task_ops_find_child(const task_ops_t *ops, const char *name)
+{
+    return g_hash_table_lookup(ops->children_hashed, name);
+}
+
+void
+task_ops_add_child(task_ops_t *ops, const task_child_t *proto)
+{
+    task_child_t *tc;
+    
+    /* TODO: somehow we have to delete these again!! */
+    tc = new(task_child_t);
+    *tc = *proto;
+    tc->name = g_strdup(tc->name);
+    
+    if (ops->children_hashed == 0)
+	ops->children_hashed = g_hash_table_new(g_str_hash, g_str_equal);
+    g_hash_table_insert(ops->children_hashed, tc->name, tc);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -209,9 +231,8 @@ tscope_register(task_scope_t *ts, task_ops_t *ops)
     {
 	task_child_t *tc;
 
-    	ops->children_hashed = g_hash_table_new(g_str_hash, g_str_equal);
 	for (tc = ops->children ; tc->name != 0 ; tc++)
-    	    g_hash_table_insert(ops->children_hashed, tc->name, tc);
+	    task_ops_add_child(ops, tc);
     }
 
     if (ops->init != 0)
