@@ -88,7 +88,7 @@ public:
     gboolean default_excludes() const { return default_excludes_; }
     void set_default_excludes(gboolean b);
 
-    gboolean set_case_sensitive(gboolean b) const { return case_sensitive_; }
+    gboolean case_sensitive() const { return case_sensitive_; }
     void set_case_sensitive(gboolean b);
 
     // add various children to the fileset
