@@ -18,7 +18,7 @@ dnl You should have received a copy of the GNU General Public License
 dnl along with this program; if not, write to the Free Software
 dnl Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 dnl 
-dnl $Id: configure.in,v 1.7 2001-11-13 03:33:09 gnb Exp $
+dnl $Id: configure.in,v 1.8 2001-11-16 04:22:41 gnb Exp $
 dnl
 
 AC_INIT(src/cant.c)
@@ -29,10 +29,31 @@ sinclude(/usr/share/aclocal/header.m4)dnl
 sinclude(/usr/share/aclocal/progtest.m4)dnl
 sinclude(/usr/share/aclocal/missing.m4)dnl
 sinclude(/usr/share/aclocal/sanity.m4)dnl
+sinclude(/usr/share/aclocal/cond.m4)dnl
 sinclude(/usr/share/aclocal/glib.m4)dnl
 sinclude(libxml.m4)dnl
 AM_INIT_AUTOMAKE(cant,0.0.5)
 AM_CONFIG_HEADER(config.h)
+
+
+dnl Enabling debugging code
+dnl This is mostly straight out of the automake manual.
+AC_MSG_CHECKING(whether to enable debugging code)
+AC_ARG_ENABLE(debug,
+[  --enable-debug          Turn on debugging code],[
+case "${enableval}" in
+yes|no)
+    debug=${enableval}
+    ;;
+*)
+    AC_MSG_ERROR(bad value ${enableval} for --enable-debug)
+    ;;
+esac
+],[debug=no])
+AC_MSG_RESULT($debug)
+test x$debug = xyes && CFLAGS="-g"
+AM_CONDITIONAL(DEBUG, test x$debug = xyes)
+
 
 dnl Checks for programs.
 AC_ARG_PROGRAM
