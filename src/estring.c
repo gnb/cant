@@ -20,7 +20,7 @@
 #include "estring.h"
 #include <stdarg.h>
 
-CVSID("$Id: estring.c,v 1.4 2002-02-04 05:07:08 gnb Exp $");
+CVSID("$Id: estring.c,v 1.5 2002-02-08 07:16:35 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -224,6 +224,14 @@ estring_insert_printf(estring *e, unsigned int start, const char *fmt, ...)
     va_start(args, fmt);
     estring_replace_vprintf(e, start, 0, fmt, args);
     va_end(args);
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+void
+estring_remove(estring *e, unsigned int start, unsigned int len)
+{
+    estring_replace_chars(e, start, len, 0, 0);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
