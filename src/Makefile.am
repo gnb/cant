@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 # 
-# $Id: Makefile.am,v 1.17 2001-11-21 13:05:14 gnb Exp $
+# $Id: Makefile.am,v 1.18 2001-11-21 16:29:05 gnb Exp $
 #
 
 bin_PROGRAMS=	cant
@@ -91,12 +91,12 @@ EXTRA_DIST=	$(pkgdata_DATA)
 
 ####
 GCOV=		gcov
-GCOVFLAGS=	-b
+GCOVFLAGS=	-b -f
 
 post-gcov:
 	for file in $(SOURCES) ; do \
 	    case "$$file" in \
-	    *.c) $(GCOV) $(GCOVFLAGS) $$file ;; \
+	    *.c) echo "==> $$file" ; $(GCOV) $(GCOVFLAGS) $$file ;; \
 	    esac ;\
 	done
 
