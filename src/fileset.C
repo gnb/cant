@@ -24,7 +24,7 @@
 #include "log.H"
 #include <dirent.h>
 
-CVSID("$Id: fileset.C,v 1.6 2002-04-06 12:40:16 gnb Exp $");
+CVSID("$Id: fileset.C,v 1.7 2002-04-07 04:23:25 gnb Exp $");
 
 static void fs_spec_delete(fs_spec_t *fss);
 
@@ -99,11 +99,10 @@ fs_spec_add(
     fss->flags = flags;
     
     if (pattern != 0)
-    	fss->pattern.init(pattern,
+    	fss->pattern.set_pattern(pattern,
 	    	    	(fs->case_sensitive ? PAT_CASE : 0));
     
     strassign(fss->filename, filename);
-    condition_init(&fss->condition);
 
     fs->specs.append(fss);
         
@@ -114,10 +113,9 @@ static void
 fs_spec_delete(fs_spec_t *fss)
 {
     strdelete(fss->filename);
-    fss->pattern.hacky_dtor();
-    condition_free(&fss->condition);
+    fss->pattern.set_pattern(0, 0);
 
-    g_free(fss);
+    delete fss;
 }
 
 fs_spec_t *
@@ -207,7 +205,7 @@ glob_part(
 
     if ((dir = file_opendir(*base == '\0' ? "." : base)) != 0)
     {
-	pat.init(globpart, (state->case_sens ? PAT_CASE : 0));
+	pat.set_pattern(globpart, (state->case_sens ? PAT_CASE : 0));
 
 	while ((de = readdir(dir)) != 0)
 	{
@@ -301,7 +299,7 @@ glob_path(
 	    pattern_t pat;
 	    list_t<char> oldpending;
 	    
-    	    pat.init(globpath, (state->case_sens ? PAT_CASE : 0));
+    	    pat.set_pattern(globpath, (state->case_sens ? PAT_CASE : 0));
 
     	    oldpending.take(&state->pending);
 	    char *base;
@@ -442,7 +440,7 @@ fs_apply_file(
 	{
 	    pattern_t pat;
 	    
-	    pat.init(buf, (state->case_sens ? PAT_CASE : 0));
+	    pat.set_pattern(buf, (state->case_sens ? PAT_CASE : 0));
 	    fs_exclude(state, &pat);
 	}
     }
@@ -469,7 +467,7 @@ fileset_apply(
     {
     	fs_spec_t *fss = *iter;
 	
-	if (!condition_evaluate(&fss->condition, props))
+	if (!fss->condition.evaluate(props))
 	    continue;
 
 	if (fss->flags & FS_FILE)

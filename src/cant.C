@@ -21,7 +21,7 @@
 #include "cant.H"
 #include "job.H"
 
-CVSID("$Id: cant.C,v 1.4 2002-04-06 11:28:18 gnb Exp $");
+CVSID("$Id: cant.C,v 1.5 2002-04-07 04:23:25 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -45,12 +45,12 @@ test1(
 {
     pattern_t *pat;
 
-    pat = pattern_new(pattern, flags);
+    pat = pattern_t::create(pattern, flags);
 
-    if (pattern_match(pat, filename) && rep != 0)
-    	g_free(pattern_replace(pat, rep));
+    if (pat->match(filename) && rep != 0)
+    	g_free(pat->replace(rep));
 
-    pattern_delete(pat);
+    delete pat;
 }
 
 static void
@@ -417,7 +417,7 @@ dump_one_fileset(gpointer key, gpointer value, gpointer userdata)
 	fprintf(stderr, "            FLAGS=%d\n", fss->flags);
 	fprintf(stderr, "            FILENAME=\"%s\"\n", fss->filename);
 	fprintf(stderr, "            PATTERN=\"%s\"\n", fss->pattern.pattern);
-	cond_desc = condition_describe(&fss->condition);
+	cond_desc = fss->condition.describe();
 	fprintf(stderr, "            CONDITION=%s\n", cond_desc);
 	g_free(cond_desc);
 	fprintf(stderr, "        }\n");
@@ -438,7 +438,7 @@ dump_one_target(gpointer key, gpointer value, gpointer userdata)
     fprintf(stderr, "        NAME=\"%s\"\n", targ->name);
     fprintf(stderr, "        DESCRIPTION=\"%s\"\n", targ->description);
     fprintf(stderr, "        FLAGS=\"%08x\"\n", targ->flags);
-    cond_desc = condition_describe(&targ->condition);
+    cond_desc = targ->condition.describe();
     fprintf(stderr, "        CONDITION=%s\n", cond_desc);
     g_free(cond_desc);
     fprintf(stderr, "        DEPENDS {\n");

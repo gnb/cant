@@ -26,36 +26,39 @@
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
  
-typedef struct condition_s    	condition_t;
-
-/* Values for `flags' */
-#define COND_IF    	    (1<<0)  	/* "if" attribute given */
-#define COND_UNLESS  	    (1<<1)  	/* "unless" attribute given */
-#define COND_MATCHES  	    (1<<2)  	/* "matches" or "matchesregex" attribute given */
-
-struct condition_s
+class condition_t
 {
-    unsigned int flags;
-    char *property; 	    	    	/* name of property, "if" or "unless" */
-    pattern_t pattern;	    	    	/* pattern, "matches" or "matchesregex" */
-};
+private:
+    enum _flags
+    {
+	/* Values for `flags' */
+	COND_IF    	    =(1<<0),  	/* "if" attribute given */
+	COND_UNLESS  	    =(1<<1),  	/* "unless" attribute given */
+	COND_MATCHES  	    =(1<<2)  	/* "matches" or "matchesregex" attribute given */
+    };
 
-void condition_init(condition_t *);
-void condition_free(condition_t *);
-#if 0
-condition_t *condition_new(void);
-void condition_delete(condition_t *);
-#endif
-void condition_set_if(condition_t *, const char *property);
-void condition_set_unless(condition_t *, const char *property);
-void condition_set_matches(condition_t *, const char *pattern,
-    	    	    	   gboolean case_sens);
-void condition_set_matches_regex(condition_t *, const char *regex,
-    	    	    	    	 gboolean case_sens);
-gboolean condition_evaluate(const condition_t *, const props_t *props);
+    unsigned int flags_;
+    char *property_; 	    	    	/* name of property, "if" or "unless" */
+    pattern_t pattern_;	    	    	/* pattern, "matches" or "matchesregex" */
+
+    void set_property(unsigned int flags, const char *property);
+    gboolean set_match(unsigned int patt_flags, const char *pattern);
+
+public:
+    condition_t();
+    ~condition_t();
+    
+    void set_if(const char *property);
+    void set_unless(const char *property);
+    gboolean set_matches(const char *pattern, gboolean case_sens);
+    gboolean set_matches_regex(const char *regex, gboolean case_sens);
+
+    gboolean evaluate(const props_t *props) const;
+
 #if DEBUG
-char *condition_describe(const condition_t *);
+    char *describe() const;
 #endif
+};
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 #endif /* _condition_h_ */

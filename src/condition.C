@@ -22,125 +22,82 @@
 #include "estring.H"
 #endif
 
-CVSID("$Id: condition.C,v 1.3 2002-04-06 12:40:16 gnb Exp $");
+CVSID("$Id: condition.C,v 1.4 2002-04-07 04:23:25 gnb Exp $");
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+condition_t::condition_t()
+{
+    // only useful when using condition_t auto variables
+    memset(this, 0, sizeof(*this));
+}
+
+condition_t::~condition_t()
+{
+    strdelete(property_);
+}
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 void
-condition_init(condition_t *cond)
+condition_t::set_property(unsigned int flags, const char *property)
 {
-    memset(cond, 0, sizeof(*cond));
+    strassign(property_, property);
+    flags_ = (flags_ & ~(COND_IF|COND_UNLESS)) | flags;
 }
 
 void
-condition_free(condition_t *cond)
+condition_t::set_if(const char *property)
 {
-    strdelete(cond->property);
-    cond->pattern.hacky_dtor();
-}
-
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
-#if 0
-
-condition_t *
-condition_new()
-{
-    condition_t *cond;
-    
-    cond = new(condition_t);
-    
-    condition_init(cond);
-    
-    return cond;
+    set_property(COND_IF, property);
 }
 
 void
-condition_delete(condition_t *cond)
+condition_t::set_unless(const char *property)
 {
-    condition_free(cond);	
-    g_free(cond);
-}
-
-#endif
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
-
-static void
-condition_set_property(
-    condition_t *cond,
-    unsigned int flags,
-    const char *property)
-{
-    strassign(cond->property, property);
-    cond->flags = (cond->flags & ~(COND_IF|COND_UNLESS)) | flags;
-}
-
-void
-condition_set_if(condition_t *cond, const char *property)
-{
-    condition_set_property(cond, COND_IF, property);
-}
-
-void
-condition_set_unless(condition_t *cond, const char *property)
-{
-    condition_set_property(cond, COND_UNLESS, property);
-}
-
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
-
-static void
-condition_set_match(
-    condition_t *cond,
-    unsigned int patt_flags,
-    const char *pattern)
-{
-    if (cond->flags & COND_MATCHES)
-	cond->pattern.hacky_dtor();
-    cond->pattern.init(pattern, patt_flags);
-    cond->flags |= COND_MATCHES;
-}
-
-void
-condition_set_matches(
-    condition_t *cond,
-    const char *pattern,
-    gboolean case_sens)
-{
-    condition_set_match(cond,
-    	    		(case_sens ? PAT_CASE : 0),
-			 pattern);
-}
-
-void
-condition_set_matches_regex(
-    condition_t *cond,
-    const char *regex,
-    gboolean case_sens)
-{
-    condition_set_match(cond,
-    	    		(case_sens ? PAT_CASE : 0)|PAT_REGEXP,
-			 regex);
+    set_property(COND_UNLESS, property);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 gboolean
-condition_evaluate(const condition_t *cond, const props_t *props)
+condition_t::set_match(unsigned int patt_flags, const char *pattern)
+{
+    flags_ |= COND_MATCHES;
+    return pattern_.set_pattern(pattern, patt_flags);
+}
+
+gboolean
+condition_t::set_matches(const char *pattern, gboolean case_sens)
+{
+    return set_match((case_sens ? PAT_CASE : 0), pattern);
+}
+
+gboolean
+condition_t::set_matches_regex(const char *regex, gboolean case_sens)
+{
+    return set_match((case_sens ? PAT_CASE : 0)|PAT_REGEXP, regex);
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+gboolean
+condition_t::evaluate(const props_t *props) const
 {
     const char *value;
     char *expvalue;
     gboolean res = TRUE;
     
-    if (!(cond->flags & (COND_IF|COND_UNLESS)))
+    if (!(flags_ & (COND_IF|COND_UNLESS)))
     	return TRUE;	    	/* no condition -> trivially true */
 	
-    value = props->get(cond->property);
+    value = props->get(property_);
     expvalue = props->expand(value);
 
-    if (cond->flags & COND_MATCHES)
+    if (flags_ & COND_MATCHES)
     {
     	/* match against pattern to get a boolean */
-    	res = cond->pattern.match_c((expvalue == 0 ? "" : expvalue));
+    	res = pattern_.match_c((expvalue == 0 ? "" : expvalue));
     }
     else
     {
@@ -159,12 +116,12 @@ condition_evaluate(const condition_t *cond, const props_t *props)
     
     /* at this point `res' is true if the condition matched */
     
-    if (cond->flags & COND_UNLESS)
+    if (flags_ & COND_UNLESS)
     	res = !res;
 	
 #if DEBUG
     {
-    	char *desc = condition_describe(cond);
+    	char *desc = describe();
 	fprintf(stderr, "Condition %s -> %s\n", desc, (res ? "true" : "false"));
 	g_free(desc);
     }
@@ -178,7 +135,7 @@ condition_evaluate(const condition_t *cond, const props_t *props)
 #if DEBUG
 
 char *
-condition_describe(const condition_t *cond)
+condition_t::describe() const
 {
     estring e;
     
@@ -186,13 +143,13 @@ condition_describe(const condition_t *cond)
     
     estring_append_string(&e, "{ ");
     
-    if (cond->flags & COND_IF)
-    	estring_append_printf(&e, "if=\"%s\"", cond->property);
-    else if (cond->flags & COND_UNLESS)
-    	estring_append_printf(&e, "unless=\"%s\"", cond->property);
+    if (flags_ & COND_IF)
+    	estring_append_printf(&e, "if=\"%s\"", property_);
+    else if (flags_ & COND_UNLESS)
+    	estring_append_printf(&e, "unless=\"%s\"", property_);
 
-    if (cond->flags & COND_MATCHES)
-    	estring_append_printf(&e, " matches=\"%s\"", cond->pattern.pattern);
+    if (flags_ & COND_MATCHES)
+    	estring_append_printf(&e, " matches=\"%s\"", pattern_.pattern);
     
     estring_append_string(&e, " }");
 
