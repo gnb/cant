@@ -18,7 +18,7 @@ dnl You should have received a copy of the GNU General Public License
 dnl along with this program; if not, write to the Free Software
 dnl Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 dnl 
-dnl $Id: configure.in,v 1.10 2001-11-16 10:11:31 gnb Exp $
+dnl $Id: configure.in,v 1.11 2001-11-16 10:32:34 gnb Exp $
 dnl
 
 AC_INIT(src/cant.c)
@@ -151,6 +151,6 @@ AC_OUTPUT([
     doc/Makefile
     doc/tutorial/Makefile
     doc/tutorial/example1/Makefile
-    www/version.m4
+    version.m4
 ])
 dnl intl/Makefile po/Makefile.in

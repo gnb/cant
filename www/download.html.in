@@ -9,7 +9,7 @@ include(version.m4)
 define(COUNTER_START_DATE,`13 Nov 2001')
 
 <P>
-The latest version available is <B>LATEST_VERSION</B>.
+The latest version available is <B>VERSION</B>.
 </P>
 
 <P>
@@ -19,7 +19,7 @@ if you really need an older version.
 </P>
 
 BEGINDOWNLOAD
-DOWNLOAD(source tarball,cant-LATEST_VERSION.tar.gz)
+DOWNLOAD(source tarball,cant-VERSION.tar.gz)
 ENDDOWNLOAD
 
 ifelse(ENABLE_COUNT,1,`

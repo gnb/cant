@@ -10,3 +10,4 @@ stamp-h
 stamp-h.in
 .deps
 cant-*.tar.gz
+version.m4

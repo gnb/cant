@@ -21,7 +21,7 @@ ANSI C compiler, and an hour or two.
 </p>
 
 <p>
-This tutorial is written for version CANT version LATEST_VERSION.
+This tutorial is written for version CANT version VERSION.
 </p>
 
 <h2>Get The Source</h2>
@@ -39,7 +39,7 @@ packages from source).  This should result in a executable
 Now, look in the CANT source directory for the tutorial examples.
 For the purposes of this tutorial, we'll assume you've
 extracted the CANT tarball in your home directory, so the
-tutorial examples are in <i>~/cant-LATEST_VERSION/doc/tutorial/</i>.
+tutorial examples are in <i>~/cant-VERSION/doc/tutorial/</i>.
 </p>
 
 <h2>Simple C Program</h2>
@@ -55,7 +55,7 @@ Change to the first example directory:
 <p>
 
 <pre class="example">
-me@mybox % cd ~/cant-LATEST_VERSION/doc/tutorial/example1
+me@mybox % cd ~/cant-VERSION/doc/tutorial/example1
 </pre>
 
 <h3>Taking a Look Around</h3>
