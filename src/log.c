@@ -19,7 +19,7 @@
 
 #include "log.h"
 
-CVSID("$Id: log.c,v 1.12 2002-02-11 05:33:00 gnb Exp $");
+CVSID("$Id: log.c,v 1.13 2002-03-29 11:06:56 gnb Exp $");
 
 typedef struct log_context_s	log_context_t;
 
@@ -72,7 +72,9 @@ logv(const char *fmt, va_list args)
 	     prev = iter, iter = iter->next, n--)
 	    ;
 
-	for (iter = prev, n++ ;
+    	if (iter != log_context_stack)
+	    n++;
+	for (iter = prev ;
 	     iter != 0 && iter != log_context_stack ;
 	     iter = iter->prev, n++)
 	{
