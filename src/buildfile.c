@@ -20,7 +20,7 @@
 #include "cant.h"
 #include "xtask.h"
 
-CVSID("$Id: buildfile.c,v 1.19 2001-11-21 16:31:34 gnb Exp $");
+CVSID("$Id: buildfile.c,v 1.20 2002-02-04 04:58:35 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -834,6 +834,7 @@ parse_taglistdef(project_t *proj, xmlNode *node)
 
     /* TODO: handle duplicate registrations cleanly */
     project_add_tl_def(proj, tldef);
+    return TRUE;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
