@@ -19,7 +19,7 @@
 
 #include "cant.H"
 
-CVSID("$Id: mapper_glob.C,v 1.4 2002-04-07 04:21:19 gnb Exp $");
+CVSID("$Id: mapper_glob.C,v 1.5 2002-04-07 08:28:51 gnb Exp $");
 
 class mapper_glob_t : public mapper_t
 {
@@ -65,30 +65,28 @@ init()
     
 
 
-    estring_init(&replace);
     nstar = nother = 0;
     for (p = to_ ; *p ; p++)
     {
     	if (*p == '*')
 	{
 	    nstar++;
-	    estring_append_string(&replace, "\\1");
+	    replace.append_string("\\1");
 	}
 	else if (strchr("?[]", *p) != 0 ||
 	    	 (p[0] == '\\' && isdigit(p[1])))
 	    nother++;
 	else
-	    estring_append_char(&replace, *p);
+	    replace.append_char(*p);
     }
     if (nstar != 1 || nother != 0)
     {
     	parse_error("bad \"to\" expression \"%s\"\n", to_);
-    	estring_free(&replace);
     	return FALSE;
     }
     /* might as well stash this in `to', it has no other use */
     g_free(to_);
-    to_ = replace.data;
+    to_ = replace.take();
     
     return TRUE;
 }

@@ -20,7 +20,7 @@
 #include "cant.H"
 #include "tok.H"
 
-CVSID("$Id: project.C,v 1.7 2002-04-07 07:46:28 gnb Exp $");
+CVSID("$Id: project.C,v 1.8 2002-04-07 08:28:51 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -134,24 +134,19 @@ project_update_magic_paths(project_t *proj)
     estring path;
     tok_t tok(file_normalise(proj->basedir, 0), "/");
 
-    estring_init(&path);
-    
     /* TODO: We need something like a file_denormalise() */
     
     while ((d = tok.next()) != 0)
-	estring_append_string(&path, (!strcmp(d, ".") ? "./" : "../"));
+	path.append_string((!strcmp(d, ".") ? "./" : "../"));
     
-    project_set_property(proj, "_pathup", path.data);
-    project_set_property(proj, "topdir", path.data);
+    project_set_property(proj, "_pathup", path.data());
+    project_set_property(proj, "topdir", path.data());
     
-    estring_truncate(&path);
-    estring_append_string(&path, proj->basedir);
-    if (path.length)
-    	estring_append_char(&path, '/');
-    project_set_property(proj, "_pathdown", path.data);
-
-    
-    estring_free(&path);
+    path.truncate();
+    path.append_string(proj->basedir);
+    if (path.length())
+    	path.append_char('/');
+    project_set_property(proj, "_pathdown", path.data());
 }
 
 

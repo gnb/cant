@@ -20,7 +20,7 @@
 #include "cant.H"
 #include <fcntl.h>
 
-CVSID("$Id: task_redirect.C,v 1.3 2002-04-06 11:34:39 gnb Exp $");
+CVSID("$Id: task_redirect.C,v 1.4 2002-04-07 08:28:51 gnb Exp $");
 
 static const char tmpfile_proto[] = "/tmp/cant-redirect-propXXXXXX";
 
@@ -266,7 +266,6 @@ exec()
 	estring buf;
 	FILE *fp;
 
-    	estring_init(&buf);
 	lseek(new_stdout, 0, SEEK_SET);
 	fp = fdopen(new_stdout, "r");
 	while ((c = fgetc(fp)) != EOF)
@@ -278,9 +277,9 @@ exec()
 	    	    if (!isspace(c))
 		    {
 			inws = FALSE;
-			if (buf.length > 0)
-			    estring_append_char(&buf, ' ');
-			estring_append_char(&buf, c);
+			if (buf.length() > 0)
+			    buf.append_char(' ');
+			buf.append_char(c);
 		    }
 		}
 		else
@@ -288,17 +287,17 @@ exec()
 	    	    if (isspace(c))
 			inws = TRUE;
 		    else
-		    	estring_append_char(&buf, c);
+		    	buf.append_char(c);
 		}
 	    }
 	    else
 	    {
-	    	estring_append_char(&buf, c);
+	    	buf.append_char(c);
 	    }
 	}
 	fclose(fp);
 	new_stdout = -1;
-	project_->properties->setm(output_property, buf.data);
+	project_->properties->setm(output_property, buf.take());
     }
 
     /*

@@ -31,45 +31,80 @@
 #define _printf_fmt(fmtidx,firsta)
 #endif
 
-
-typedef struct
+class estring
 {
-    char *data;
-    int length;		/* string length not including nul */
-    int available;	/* total bytes available, >= length+1 */
-} estring;
+private:
+    char *data_;
+    unsigned int length_;	/* string length not including nul */
+    unsigned int available_;	/* total bytes available, >= length+1 */
 
-void estring_init(estring *e);
+    void inline expand_by(unsigned int dl);
+    void replace_vprintf(unsigned int start, unsigned int len,
+			 const char *fmt, va_list args);
 
-void estring_append_string(estring *e, const char *str);
-void estring_append_char(estring *e, char c);
-void estring_append_chars(estring *e, const char *buf, unsigned int buflen);
-void estring_append_printf(estring *e, const char *fmt, ...) _printf_fmt(2,3);
+    
+public:
+    // default ctor
+    estring()
+     :  data_(0), length_(0), available_(0)
+    {
+    }
+    // dtor    
+    ~estring()
+    {
+	if (data_ != 0)
+	{
+	    g_free(data_);
+	    data_ = 0;
+	    length_ = 0;
+	    available_ = 0;
+	}
+    }
 
-void estring_replace_string(estring *e, unsigned int start, unsigned int len,
-    	    	    	    const char *str);
-void estring_replace_char(estring *e, unsigned int start, unsigned int len,
-    	    	    	    char c);
-void estring_replace_chars(estring *e, unsigned int start, unsigned int len,
-    	    	    	    const char *buf, unsigned int buflen);
-void estring_replace_printf(estring *e, unsigned int start, unsigned int len,
-    	    	    	    const char *fmt, ...) _printf_fmt(4,5);
-void estring_replace_all(estring *e, const char *from, const char *to);
+    const char *data() const
+    {
+    	return data_;
+    }
+    unsigned int length() const
+    {
+    	return length_;
+    }
+        
+    char *take()
+    {
+    	char *d = data_;
+	data_ = 0;
+	return d;
+    }
+    
+    
 
-void estring_insert_string(estring *e, unsigned int start, const char *str);
-void estring_insert_char(estring *e, unsigned int start, char c);
-void estring_insert_chars(estring *e, unsigned int start, const char *buf, int len);
-void estring_insert_printf(estring *e, unsigned int start, const char *fmt, ...)
-    	    	    	    _printf_fmt(3,4);
+    void append_string(const char *str);
+    void append_char(char c);
+    void append_chars(const char *buf, unsigned int buflen);
+    void append_printf(const char *fmt, ...) _printf_fmt(2,3);
 
-void estring_remove(estring *e, unsigned int start, unsigned int len);
+    void replace_string(unsigned int start, unsigned int len,
+    	    	    		const char *str);
+    void replace_char(unsigned int start, unsigned int len,
+    	    	    		char c);
+    void replace_chars(unsigned int start, unsigned int len,
+    	    	    		const char *buf, unsigned int buflen);
+    void replace_printf(unsigned int start, unsigned int len,
+    	    	    		const char *fmt, ...) _printf_fmt(4,5);
+    void replace_all(const char *from, const char *to);
 
-void estring_truncate(estring *e);
-void estring_truncate_to(estring *e, unsigned int len);
-void estring_free(estring *e);
+    void insert_string(unsigned int start, const char *str);
+    void insert_char(unsigned int start, char c);
+    void insert_chars(unsigned int start, const char *buf, int len);
+    void insert_printf(unsigned int start, const char *fmt, ...)
+    	    	    		_printf_fmt(3,4);
 
-#define ESTRING_STATIC_INIT \
-	{ 0, 0, 0 }
+    void remove(unsigned int start, unsigned int len);
+
+    void truncate();
+    void truncate_to(unsigned int len);
+};
 
 #undef _printf_fmt
 

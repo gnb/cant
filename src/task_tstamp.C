@@ -20,7 +20,7 @@
 #include "cant.H"
 #include <time.h>
 
-CVSID("$Id: task_tstamp.C,v 1.2 2002-04-02 11:52:28 gnb Exp $");
+CVSID("$Id: task_tstamp.C,v 1.3 2002-04-07 08:28:51 gnb Exp $");
 
 class tstamp_format_t
 {
@@ -93,8 +93,6 @@ tstamp_format_t::set_pattern(const char *pattern)
     estring cpattern;
     int i, l;
     
-    estring_init(&cpattern);
-    
     while (*s)
     {
     	gboolean gotit = FALSE;
@@ -104,7 +102,7 @@ tstamp_format_t::set_pattern(const char *pattern)
 	    l = strlen(pattern_map[i]);
 	    if (!strncmp(s, pattern_map[i], l))
 	    {
-	    	estring_append_string(&cpattern, pattern_map[i+1]);
+	    	cpattern.append_string(pattern_map[i+1]);
 		s += l;
 		gotit = TRUE;
 	    	break;
@@ -112,17 +110,17 @@ tstamp_format_t::set_pattern(const char *pattern)
 	}
 	
 	if (!gotit)
-	    estring_append_char(&cpattern, *s++);
+	    cpattern.append_char(*s++);
     }
 
 #if DEBUG
-    fprintf(stderr, "tstamp_pattern_parse: \"%s\" -> \"%s\"\n",
-    	    	    	pattern, cpattern.data);
+    fprintf(stderr, "tstamp_format_t::set_pattern: \"%s\" -> \"%s\"\n",
+    	    	    	pattern, cpattern.data());
 #endif
 
     if (cpattern_ != 0)
     	g_free(cpattern_);
-    cpattern_ = cpattern.data;
+    cpattern_ = cpattern.take();
 
     return TRUE;
 }

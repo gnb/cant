@@ -17,13 +17,14 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "cant.H"
+#include "filename.H"
+#include "estring.H"
 #include "tok.H"
 #include <sys/stat.h>
 #include <dirent.h>
 #include <fcntl.h>
 
-CVSID("$Id: filename.C,v 1.2 2002-03-29 13:02:36 gnb Exp $");
+CVSID("$Id: filename.C,v 1.3 2002-04-07 08:28:51 gnb Exp $");
 
 #ifndef __set_errno
 #define __set_errno(v)	 errno = (v)
@@ -74,15 +75,14 @@ file_normalise_m(char *filename, const char *basedir)
     fprintf(stderr, "file_normalise_m(\"%s\", \"%s\")",
     	filename, (basedir == 0 ? file_top_dir() : basedir));
 #endif
-    estring_init(&abs);
 
     /* seed `abs' with the base directory to which `filename' is relative */
     if (filename[0] == '/')
-    	estring_append_char(&abs, '/');
+    	abs.append_char('/');
     else if (basedir == 0)
-    	estring_append_string(&abs, file_top_dir());
+    	abs.append_string(file_top_dir());
     else
-    	estring_append_string(&abs, basedir);
+    	abs.append_string(basedir);
     
     /* iterate over parts of `filename', appending to `abs' */
     tok_t tok(filename, "/");
@@ -95,40 +95,40 @@ file_normalise_m(char *filename, const char *basedir)
 	else if (!strcmp(fp, ".."))
 	{
 	    /* back up one dir level */
-	    char *p = strrchr(abs.data, '/');
+	    char *p = strrchr(abs.data(), '/');
 
-	    if (!strcmp(abs.data, "."))
-	    	estring_append_string(&abs, ".");   	/* . + .. = .. */
-	    else if (!strcmp(abs.data, ".."))
-	    	estring_append_string(&abs, "/.."); 	/* .. + .. = ../.. */
+	    if (!strcmp(abs.data(), "."))
+	    	abs.append_string( ".");   	/* . + .. = .. */
+	    else if (!strcmp(abs.data(), ".."))
+	    	abs.append_string("/.."); 	/* .. + .. = ../.. */
 	    else if (p == 0)
 	    {
-	    	estring_truncate(&abs);
-		estring_append_string(&abs, "."); 	/* foo + .. = . */
+	    	abs.truncate();
+		abs.append_string("."); 	/* foo + .. = . */
 	    }
-	    else if (p == abs.data)
-	    	estring_truncate_to(&abs, 1);	    	/* /foo + .. = / */
+	    else if (p == abs.data())
+	    	abs.truncate_to(1);	    	/* /foo + .. = / */
 	    else if (!strcmp(p, "/.."))
-	    	estring_append_string(&abs, "/..");  /* ../.. + .. = ../../.. */
+	    	abs.append_string("/..");  /* ../.. + .. = ../../.. */
 	    else
-	    	estring_truncate_to(&abs, (p - abs.data));  /* foo/bar + .. = foo */
+	    	abs.truncate_to((p - abs.data()));  /* foo/bar + .. = foo */
 	}
 	else
 	{
 	    /* some other component -- just append it */
-	    if (abs.length > 1 || abs.data[0] != '/')
-		estring_append_char(&abs, '/');
-	    estring_append_string(&abs, fp);
+	    if (abs.length() > 1 || abs.data()[0] != '/')
+		abs.append_char('/');
+	    abs.append_string(fp);
 	}
     }
     
-    if (abs.data[0] == '.' && abs.data[1] == '/')
-    	estring_remove(&abs, 0, 2);
+    if (abs.data()[0] == '.' && abs.data()[1] == '/')
+    	abs.remove(0, 2);
     
 #if DEBUG
-    fprintf(stderr, " -> \"%s\"\n", abs.data);
+    fprintf(stderr, " -> \"%s\"\n", abs.data());
 #endif
-    return abs.data;
+    return abs.take();
 }
 
 char *
@@ -385,30 +385,28 @@ file_apply_children(
     if ((dir = file_opendir(filename)) == 0)
     	return -1;
 	
-    estring_init(&child);
     while ((de = readdir(dir)) != 0)
     {
     	if (!strcmp(de->d_name, ".") ||
 	    !strcmp(de->d_name, ".."))
 	    continue;
 	    
-	/* TODO: estring_truncate_to() */
-	estring_truncate(&child);
+	/* TODO: child.truncate_to() */
+	child.truncate();
 	if (strcmp(filename, "."))
 	{
-	    estring_append_string(&child, filename);
-	    estring_append_char(&child, '/');
+	    child.append_string(filename);
+	    child.append_char('/');
 	}
-	estring_append_string(&child, de->d_name);
+	child.append_string(de->d_name);
 	
-	if (!(*function)(child.data, userdata))
+	if (!(*function)(child.data(), userdata))
 	{
 	    ret = 0;
 	    break;
 	}
     }
     
-    estring_free(&child);
     closedir(dir);
     return ret;
 }

@@ -21,7 +21,7 @@
 #include "estring.H"
 #include "log.H"
 
-CVSID("$Id: pattern.C,v 1.3 2002-04-07 04:21:52 gnb Exp $");
+CVSID("$Id: pattern.C,v 1.4 2002-04-07 08:28:51 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -71,16 +71,14 @@ pattern_t::set_pattern(const char *pattern, unsigned flags)
         
     strassign(pattern_, pattern);
 
-    estring_init(&restr);
-    
     if (flags & PAT_REGEXP)
     {
-    	estring_append_string(&restr, pattern);
+    	restr.append_string(pattern);
 	reflags |= REG_EXTENDED;
     }
     else
     {
-	estring_append_char(&restr, '^');
+	restr.append_char('^');
 
 	for ( ; *p ; p++)
 	{
@@ -89,34 +87,34 @@ pattern_t::set_pattern(const char *pattern, unsigned flags)
 		(p[2] == '\0' || p[2] == '/'))
 	    {
 	    	/* A directory component consisting entirely of "**" */
-		estring_append_string(&restr, "\\([^/]*/\\)*");
+		restr.append_string("\\([^/]*/\\)*");
 		if (p[2] == '/')
 		    p++;
 		p++;
 	    }
 	    else if (*p == '*')
-		estring_append_string(&restr, "\\([^/]*\\)");
+		restr.append_string("\\([^/]*\\)");
 	    else if (*p == '?')
-		estring_append_string(&restr, "\\([^/]\\)");
+		restr.append_string("\\([^/]\\)");
 	    else if (strchr(".^$\\", *p) != 0)
 	    {
-		estring_append_char(&restr, '\\');
-		estring_append_char(&restr, *p);
+		restr.append_char('\\');
+		restr.append_char(*p);
 	    }
 	    else
-		estring_append_char(&restr, *p);
+		restr.append_char(*p);
 	}
 
-	estring_append_char(&restr, '$');
+	restr.append_char('$');
     }
         
 #if DEBUG
     fprintf(stderr, "pattern_t::init: \"%s\" -> \"%s\"\n",
-    	    	    	pattern, restr.data);
+    	    	    	pattern, restr.data());
 #endif
     if (!(flags & PAT_CASE)) reflags |= REG_ICASE;
     if (!(flags & PAT_GROUPS)) reflags |= REG_NOSUB;
-    errcode = regcomp(&regex_, restr.data, reflags);
+    errcode = regcomp(&regex_, restr.data(), reflags);
     if (errcode != 0)
     {
 	char errbuf[1024];
@@ -124,7 +122,6 @@ pattern_t::set_pattern(const char *pattern, unsigned flags)
 	regerror(errcode, &regex_, errbuf, sizeof(errbuf));
     	parse_error("\"%s\": %s\n", pattern, errbuf);
     }
-    estring_free(&restr);
     memset(&groups_, 0, sizeof(groups_));
     return (errcode == 0);
 }
@@ -223,24 +220,22 @@ pattern_t::replace(const char *replace) const
     if (rep == 0)
     	return 0;
 	
-    estring_init(&e);
-    
     while (*rep)
     {
     	if (rep[0] == '\\' && isdigit(rep[1]))
 	{
-	    estring_append_string(&e, groups_[rep[1]-'0']);
+	    e.append_string(groups_[rep[1]-'0']);
 	    rep += 2;
 	}
 	else
-	    estring_append_char(&e, *rep++);
+	    e.append_char(*rep++);
     }
     
 #if DEBUG
     fprintf(stderr, "pattern_t::replace: \"%s\" -> \"%s\"\n",
-    	    replace, e.data);
+    	    replace, e.data());
 #endif
-    return e.data;
+    return e.take();
 }
 
 

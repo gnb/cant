@@ -20,54 +20,50 @@
 #include "estring.H"
 #include <stdarg.h>
 
-CVSID("$Id: estring.C,v 1.1 2002-03-29 12:36:26 gnb Exp $");
+CVSID("$Id: estring.C,v 1.2 2002-04-07 08:28:51 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-
-void
-estring_init(estring *e)
+void inline
+estring::expand_by(unsigned int dl)
 {
-    e->data = 0;
-    e->length = 0;
-    e->available = 0;
+   if (length_ + dl + 1 > available_)
+   {
+   	available_ += MIN(1024, (length_ + dl + 1 - available_));
+   	data_ = (data_ == 0 ?
+	    	    g_new(char, available_) :
+		    g_renew(char, data_, available_));
+   }
 }
 
-#define _estring_expand_by(e, dl) \
-   if ((e)->length + (dl) + 1 > (e)->available) \
-   { \
-   	(e)->available += MIN(1024, ((e)->length + (dl) + 1 - (e)->available)); \
-   	(e)->data = ((e)->data == 0 ? g_new(char, (e)->available) : g_renew(char, (e)->data, (e)->available)); \
-   }
-
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 void
-estring_append_string(estring *e, const char *str)
+estring::append_string(const char *str)
 {
     if (str != 0 && *str != '\0')
-	estring_append_chars(e, str, strlen(str));
+	append_chars(str, strlen(str));
 }
 
 void
-estring_append_char(estring *e, char c)
+estring::append_char(char c)
 {
-    _estring_expand_by(e, 1);
-    e->data[e->length++] = c;
-    e->data[e->length] = '\0';
+    expand_by(1);
+    data_[length_++] = c;
+    data_[length_] = '\0';
 }
 
 void
-estring_append_chars(estring *e, const char *buf, unsigned int buflen)
+estring::append_chars(const char *buf, unsigned int buflen)
 {
-    _estring_expand_by(e, buflen);
-    memcpy(&e->data[e->length], buf, buflen);
-    e->length += buflen;
-    e->data[e->length] = '\0';
+    expand_by(buflen);
+    memcpy(&data_[length_], buf, buflen);
+    length_ += buflen;
+    data_[length_] = '\0';
 }
 
 void
-estring_append_printf(estring *e, const char *fmt, ...)
+estring::append_printf(const char *fmt, ...)
 {
     va_list args;
     int len;
@@ -76,42 +72,39 @@ estring_append_printf(estring *e, const char *fmt, ...)
     va_start(args, fmt);
     len = g_printf_string_upper_bound(fmt, args);
     va_end(args);
-    _estring_expand_by(e, len);
+    expand_by(len);
 
     /* format the string into the new space */    
     va_start(args, fmt);
-    vsprintf(e->data+e->length, fmt, args);
+    vsprintf(data_+length_, fmt, args);
     va_end(args);
-    e->length += strlen(e->data+e->length);
+    length_ += strlen(data_+length_);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 void
-estring_replace_string(
-    estring *e,
+estring::replace_string(
     unsigned int start,
     unsigned int len,
     const char *str)
 {
     if (str == 0)
     	str = "";
-    estring_replace_chars(e, start, len, str, strlen(str));
+    replace_chars(start, len, str, strlen(str));
 }
 
 void
-estring_replace_char(
-    estring *e,
+estring::replace_char(
     unsigned int start,
     unsigned int len,
     char c)
 {
-    estring_replace_chars(e, start, len, &c, 1);
+    replace_chars(start, len, &c, 1);
 }
 
 void
-estring_replace_chars(
-    estring *e,
+estring::replace_chars(
     unsigned int start,
     unsigned int len,
     const char *buf,
@@ -120,9 +113,9 @@ estring_replace_chars(
     unsigned int remain;
     
 #if DEBUG > 40
-    fputs("estring_replace_chars: replacing \"", stderr);
-    if (e->data != 0)
-	fwrite(e->data+start, 1, len, stderr);
+    fputs("estring::replace_chars: replacing \"", stderr);
+    if (data_ != 0)
+	fwrite(data_+start, 1, len, stderr);
     fputs("\" -> \"", stderr);    
     if (buf != 0)
 	fwrite(buf, 1, buflen, stderr);
@@ -131,31 +124,30 @@ estring_replace_chars(
 
     if (buflen > len)
     {
-	_estring_expand_by(e, buflen-len);
+	expand_by(buflen-len);
     }
 
-    if ((remain = e->length - (start+len)) > 0)
+    if ((remain = length_ - (start+len)) > 0)
     {
     	/* have to move some chars at the end, up or down */
-	memmove(e->data+start+buflen, e->data+start+len, remain);
+	memmove(data_+start+buflen, data_+start+len, remain);
     }
     
     /* insert new chars */
     if (buflen > 0)
-	memmove(e->data+start, (char*)buf, buflen);
+	memmove(data_+start, (char*)buf, buflen);
 
-    /* update e->length */
+    /* update length_ */
     if (buflen >= len)
-	e->length += (buflen - len);
+	length_ += (buflen - len);
     else
-	e->length -= (len - buflen);
+	length_ -= (len - buflen);
     /* ensure there's a nul char at the right place */
-    e->data[e->length] = '\0';
+    data_[length_] = '\0';
 }
 
-static void
-estring_replace_vprintf(
-    estring *e,
+void
+estring::replace_vprintf(
     unsigned int start,
     unsigned int len,
     const char *fmt, va_list args)
@@ -163,13 +155,12 @@ estring_replace_vprintf(
     char *str;
 
     str = g_strdup_printf(fmt, args);
-    estring_replace_chars(e, start, len, str, strlen(str));
+    replace_chars(start, len, str, strlen(str));
     g_free(str);
 }
 
 void
-estring_replace_printf(
-    estring *e,
+estring::replace_printf(
     unsigned int start,
     unsigned int len,
     const char *fmt, ...)
@@ -177,21 +168,21 @@ estring_replace_printf(
     va_list args;
 
     va_start(args, fmt);
-    estring_replace_vprintf(e, start, len, fmt, args);
+    replace_vprintf(start, len, fmt, args);
     va_end(args);
 }
 
 void
-estring_replace_all(estring *e, const char *from, const char *to)
+estring::replace_all(const char *from, const char *to)
 {
     char *p;
     int i;
 
     i = 0;
-    while ((p = strstr(e->data+i, from)) != 0)
+    while ((p = strstr(data_+i, from)) != 0)
     {
-    	i = (p - e->data);
-    	estring_replace_string(e, i, strlen(from), to);
+    	i = (p - data_);
+    	replace_string(i, strlen(from), to);
 	i += strlen(to);
     }
 }
@@ -199,74 +190,60 @@ estring_replace_all(estring *e, const char *from, const char *to)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 void
-estring_insert_string(estring *e, unsigned int start, const char *str)
+estring::insert_string(unsigned int start, const char *str)
 {
-    estring_replace_string(e, start, 0, str);
+    replace_string(start, 0, str);
 }
 
 void
-estring_insert_char(estring *e, unsigned int start, char c)
+estring::insert_char(unsigned int start, char c)
 {
-    estring_replace_char(e, start, 0, c);
+    replace_char(start, 0, c);
 }
 
 void
-estring_insert_chars(estring *e, unsigned int start, const char *buf, int buflen)
+estring::insert_chars(unsigned int start, const char *buf, int buflen)
 {
-    estring_replace_chars(e, start, 0, buf, buflen);
+    replace_chars(start, 0, buf, buflen);
 }
 
 void
-estring_insert_printf(estring *e, unsigned int start, const char *fmt, ...)
+estring::insert_printf(unsigned int start, const char *fmt, ...)
 {
     va_list args;
 
     va_start(args, fmt);
-    estring_replace_vprintf(e, start, 0, fmt, args);
+    replace_vprintf(start, 0, fmt, args);
     va_end(args);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 void
-estring_remove(estring *e, unsigned int start, unsigned int len)
+estring::remove(unsigned int start, unsigned int len)
 {
-    estring_replace_chars(e, start, len, 0, 0);
+    replace_chars(start, len, 0, 0);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 void
-estring_truncate(estring *e)
+estring::truncate()
 {
-    e->length = 0;
-    if (e->data != 0)
-	e->data[0] = '\0';
+    length_ = 0;
+    if (data_ != 0)
+	data_[0] = '\0';
 }
 
 void
-estring_truncate_to(estring *e, unsigned int len)
+estring::truncate_to(unsigned int len)
 {
-    if (len < e->length)
+    if (len < length_)
     {
-	e->length = len;
-	if (e->data != 0)
-	    e->data[e->length] = '\0';
+	length_ = len;
+	if (data_ != 0)
+	    data_[length_] = '\0';
     }
-}
-
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
-
-void
-estring_free(estring *e)
-{
-   if (e->data != 0)
-   {
-   	g_free(e->data);
-	e->data = 0;
-	e->length = 0;
-	e->available = 0;
-   }
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

@@ -21,7 +21,6 @@
 #define _cant_filename_h_ 1
 
 #include "common.H"
-#include "estring.H"
 #include <dirent.h>
 
 typedef gboolean (*file_apply_proc_t)(const char *filename, void *userdata);

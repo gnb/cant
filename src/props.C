@@ -22,7 +22,7 @@
 #include "filename.H"
 #include "hashtable.H"
 
-CVSID("$Id: props.C,v 1.4 2002-04-07 07:45:00 gnb Exp $");
+CVSID("$Id: props.C,v 1.5 2002-04-07 08:28:51 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -173,29 +173,27 @@ props_t::expand_1(
     const char *value;
     char endname = '\0';
 
-    estring_init(&name);
-
     for ( ; *str ; str++)
     {
     	if (endname)
 	{
 	    if (*str == endname)
 	    {
-	    	value = get(name.data);
+	    	value = get(name.data());
 		if (value != 0)
 		{
 		    if (depth == MAXDEPTH)
 		    	fprintf(stderr, "Property loop detected while expanding \"%s\"\n",
-			    	    	    name.data);
+			    	    	    name.data());
 		    else
 		    	expand_1(rep, value, depth+1);
 		}
-	    	estring_truncate(&name);
+	    	name.truncate();
 	    	endname = '\0';
 		/* skip the closing character itself */
 	    }
 	    else
-		estring_append_char(&name, *str);
+		name.append_char(*str);
 	}
 	else
 	{
@@ -210,7 +208,7 @@ props_t::expand_1(
 	    	str++;	/* skip the dollar and left round */
 	    }
 	    else
-		estring_append_char(rep, *str);
+		rep->append_char(*str);
 	}
     }
 }
@@ -223,15 +221,13 @@ props_t::expand(const char *str) const
     if (str == 0)
     	return 0;
 	
-    estring_init(&rep);
-    
     expand_1(&rep, str, 0);
     
 #if DEBUG
-    fprintf(stderr, "props_t::expand: \"%s\" -> \"%s\"\n", str, rep.data);
+    fprintf(stderr, "props_t::expand: \"%s\" -> \"%s\"\n", str, rep.data());
 #endif
         
-    return rep.data;
+    return rep.take();
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -255,9 +251,6 @@ props_t::read_shellfile(const char *filename)
     fprintf(stderr, "props_t::read_shellfile: \"%s\"\n", filename);
 #endif
 
-    estring_init(&name);
-    estring_init(&value);
-    
     while (ret && (c = fgetc(fp)) != EOF)
     {
     	switch (state)
@@ -273,10 +266,10 @@ props_t::read_shellfile(const char *filename)
 	    /* fall through into NAME case */
 	    
 	case NAME:
-	    if (c == '=' && name.length > 0)
+	    if (c == '=' && name.length() > 0)
 	    	state = VALUE;
 	    else if (isalnum(c) || c == '_' || c == '-')
-	    	estring_append_char(&name, c);
+	    	name.append_char(c);
 	    else
 	    {
 	    	fprintf(stderr, "%s:%d: syntax error\n", filename, lineno);
@@ -292,36 +285,34 @@ props_t::read_shellfile(const char *filename)
 	case VALUE:
 	    if (c == '\n' || c == '\r')
 	    {
-	    	if (name.length > 0)
+	    	if (name.length() > 0)
 		{
 #if DEBUG
 		    fprintf(stderr, "props_t::read_shellfile: \"%s\" -> \"%s\"\n",
-		    	    	     name.data, value.data);
+		    	    	     name.data(), value.data());
 #endif
-	    	    set(name.data, value.data);
+	    	    set(name.data(), value.data());
 		}
-		estring_truncate(&name);
-		estring_truncate(&value);
+		name.truncate();
+		value.truncate();
 	    	state = SOL;
 	    }
 	    else
-	    	estring_append_char(&value, c);
+	    	value.append_char(c);
 	    break;
 	}
     }
     
     /* handle NAME=VALUE on last line without newline */
-    if (ret && state == VALUE && name.length > 0)
+    if (ret && state == VALUE && name.length() > 0)
     {
 #if DEBUG
 	fprintf(stderr, "props_t::read_shellfile: \"%s\" -> \"%s\"\n",
-		    	 name.data, value.data);
+		    	 name.data(), value.data());
 #endif
-    	set(name.data, value.data);
+    	set(name.data(), value.data());
     }
     
-    estring_free(&name);
-    estring_free(&value);
     fclose(fp);
 
     return ret;

@@ -90,6 +90,11 @@ public:
     item_t *add_file(const char *tag, const char *name, const char *value);
     item_t *add_line(const char *tag, const char *name, const char *value);
 
+#if DEBUG
+    // for diagnostics only
+    list_iterator_t<item_t> first_item() const { return items_.first(); }
+#endif
+
     void gather(const tagexp_t *te, const props_t *props, strarray_t *sa) const;
     static void list_gather(const list_t<taglist_t> *list, const tagexp_t *te,
 		     const props_t *props, strarray_t *sa);
