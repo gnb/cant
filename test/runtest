@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: runtest,v 1.1 2001-11-21 09:35:28 gnb Exp $
+# $Id: runtest,v 1.2 2002-02-10 10:12:54 gnb Exp $
 #
 
 VERBOSE=no
@@ -69,5 +69,5 @@ for testdir in $TESTS _dummy ; do
     test $testdir = _dummy && continue
         
     echo "============================ $testdir ============================"
-    ( cd $testdir ; ./runtest $RTFLAGS || failed ) || failed
+    ( cd $testdir ; ./runtest $RTFLAGS || exit 1 ) || failed
 done
