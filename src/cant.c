@@ -21,7 +21,7 @@
 #include "cant.h"
 #include "job.h"
 
-CVSID("$Id: cant.c,v 1.13 2001-11-20 18:02:41 gnb Exp $");
+CVSID("$Id: cant.c,v 1.14 2001-11-21 09:36:26 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -170,29 +170,16 @@ find_buildfile(void)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 static gboolean
-build_target_by_name(project_t *proj, const char *name)
-{
-    target_t *targ;
-    
-    if ((targ = project_find_target(proj, name)) == 0)
-    {
-    	fprintf(stderr, "%s: no such target \"%s\"\n", argv0, name);
-    	return FALSE;
-    }
-    return target_execute(targ);
-}    
-    
-static gboolean
 build_commandline_targets(project_t *proj)
 {
     GList *iter;
     
     if (command_targets == 0)
-    	return build_target_by_name(proj, proj->default_target);
+    	return project_execute_target_by_name(proj, proj->default_target);
 	
     for (iter = command_targets ; iter != 0 ; iter = iter->next)
     {
-    	if (!build_target_by_name(proj, (const char *)iter->data))
+    	if (!project_execute_target_by_name(proj, (const char *)iter->data))
 	    return FALSE;
     }
     

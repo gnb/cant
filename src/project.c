@@ -19,7 +19,7 @@
 
 #include "cant.h"
 
-CVSID("$Id: project.c,v 1.8 2001-11-20 18:02:41 gnb Exp $");
+CVSID("$Id: project.c,v 1.9 2001-11-21 09:36:26 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -271,6 +271,21 @@ fileset_t *
 project_find_fileset(project_t *proj, const char *id)
 {
     return (fileset_t *)g_hash_table_lookup(proj->filesets, id);
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+gboolean
+project_execute_target_by_name(project_t *proj, const char *name)
+{
+    target_t *targ;
+    
+    if ((targ = project_find_target(proj, name)) == 0)
+    {
+    	logf("no such target \"%s\"\n", name);
+    	return FALSE;
+    }
+    return target_execute(targ);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
