@@ -21,18 +21,47 @@
 #define _cant_filename_h_ 1
 
 #include "common.h"
+#include "estring.h"
+#include <dirent.h>
 
 typedef gboolean (*file_apply_proc_t)(const char *filename, void *userdata);
 
-const char *file_basename_c(const char *filename);
+/*
+ * Manipulate the internal stack of pseudo-working-directories
+ * which are used to interpret filenames passed to file_mode() etc.
+ * This trick allows projects from different directories to
+ * co-exist in the same process, as long as we never call system
+ * calls like stat() directly.
+ */
+void file_push_dir(const char *dirname);
+void file_pop_dir(void);
+const char *file_top_dir(void);
+
+/*
+ * In the next 2 functions, if `basedir' is 0, the topmost directory
+ * in the directory stack is used; this is usually what you want.
+ */
+char *file_normalise(const char *dir, const char *basedir/*may be 0*/);
+char *file_normalise_m(char *dir, const char *basedir/*may be 0*/);
+
+/*
+ * These work directly on the given filename textually, and
+ * do not internally normalise.
+ */
 char *file_dirname(const char *filename);
-mode_t file_mode(const char *filename);
+const char *file_basename_c(const char *filename);
+mode_t file_mode_from_string(const char *str, mode_t base, mode_t deflt);
+/*
+ * These will internally normalise the filename because they
+ * need to pass it to system calls.
+ */
 FILE *file_open_mode(const char *filename, const char *rw, mode_t mode);
-char *file_make_absolute(const char *filename);
+DIR *file_opendir(const char *dirname);
+mode_t file_mode(const char *filename);
 int file_exists(const char *filename);
 int file_build_tree(const char *dirname, mode_t mode);	/* make sequence of directories */
-mode_t file_mode_from_string(const char *str, mode_t base, mode_t deflt);
 int file_apply_children(const char *filename, file_apply_proc_t, void *userdata);
 int file_is_directory(const char *filename);
+
 
 #endif /* _cant_filename_h_ */

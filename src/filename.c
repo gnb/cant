@@ -22,11 +22,100 @@
 #include <dirent.h>
 #include <fcntl.h>
 
-CVSID("$Id: filename.c,v 1.4 2001-11-13 04:08:05 gnb Exp $");
+CVSID("$Id: filename.c,v 1.5 2002-02-04 05:11:03 gnb Exp $");
 
 #ifndef __set_errno
 #define __set_errno(v)	 errno = (v)
 #endif
+
+/*
+ * Each element in the stack is a fully normalised
+ * relative directory from the process' current working
+ * directory (i.e. the root in a dir-tree build) to
+ * the directory from which filenames need to be
+ * interpreted.
+ */
+static GList *dir_stack;
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+void
+file_push_dir(const char *dirname)
+{
+    dir_stack = g_list_prepend(dir_stack, file_normalise(dirname, 0));
+}
+
+void
+file_pop_dir(void)
+{
+    if (dir_stack != 0)
+    {
+    	g_free(dir_stack->data);
+	dir_stack = g_list_remove_link(dir_stack, dir_stack);
+    }
+}
+
+const char *
+file_top_dir(void)
+{
+    return (dir_stack == 0 ? "." : (const char *)dir_stack->data);
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+char *
+file_normalise_m(char *filename, const char *basedir)
+{
+    char *fp;
+    char *fn2;
+    estring abs;
+        
+    estring_init(&abs);
+
+    /* seed `abs' with the base directory to which `filename' is relative */
+    if (filename[0] == '/')
+    	estring_append_char(&abs, '/');
+    else if (basedir == 0)
+    	estring_append_string(&abs, file_top_dir());
+    else
+    	estring_append_string(&abs, basedir);
+    
+    /* iterate over parts of `filename', appending to `abs' */
+    fn2 = filename;
+    while ((fp = strtok(fn2, "/")) != 0)
+    {
+    	fn2 = 0;
+    	if (!strcmp(fp, "."))
+	{
+	    /* drop redundant `.' */
+	}
+	else if (!strcmp(fp, ".."))
+	{
+	    /* back up one dir level */
+	    char *p = strrchr(abs.data, '/');
+	    if (p == 0)
+	    	estring_append_string(&abs, "/..");
+	    else if (p != abs.data)
+	    	estring_truncate_to(&abs, (p - abs.data));
+	}
+	else
+	{
+	    /* some other component -- just append it */
+	    if (abs.length > 1 || abs.data[0] != '/')
+		estring_append_char(&abs, '/');
+	    estring_append_string(&abs, fp);
+	}
+    }
+    
+    g_free(filename);
+    return abs.data;
+}
+
+char *
+file_normalise(const char *filename, const char *basedir)
+{
+    return file_normalise_m(g_strdup(filename), basedir);
+}
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -51,14 +140,16 @@ file_basename_c(const char *filename)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 mode_t
-file_mode(const char *filename)
+file_mode_from_string(const char *str, mode_t base, mode_t deflt)
 {
-    struct stat sb;
-    
-    if (stat(filename, &sb) < 0)
-    	return -1;
+    if (str == 0 || *str == '\0')
+    	return deflt;
 	
-    return (sb.st_mode & (S_IRWXU|S_IRWXG|S_IRWXO));
+    if (str[0] >= '0' && str[0] <= '7')
+    	return strtol(str, 0, 8);
+
+    fprintf(stderr, "TODO: can't handle mode strings properly\n");
+    return base;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -69,14 +160,23 @@ file_open_mode(const char *filename, const char *rw, mode_t mode)
     int fd;
     FILE *fp;
     int flags;
+    char *norm_filename;
     
     if (rw[0] == 'r')
     	flags = O_RDONLY;
     else
     	flags = O_WRONLY|O_CREAT;
     
-    if ((fd = open(filename, flags, mode)) < 0)
+    norm_filename = file_normalise(filename, 0);
+    
+    if ((fd = open(norm_filename, flags, mode)) < 0)
+    {
+    	int e = errno;
+	g_free(norm_filename);
+	__set_errno(e);
 	return 0;
+    }
+    g_free(norm_filename);
     
     if ((fp = fdopen(fd, rw)) == 0)
     {
@@ -89,32 +189,56 @@ file_open_mode(const char *filename, const char *rw, mode_t mode)
     return fp;
 }
 
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
-
-char *
-file_make_absolute(const char *filename)
+DIR *
+file_opendir(const char *dirname)
 {
-    char *abs;
-    char *curr;
+    char *norm_dirname;
+    DIR *dir;
     
-    if (filename[0] == '/')
-    	return g_strdup(filename);
+    norm_dirname = file_normalise(dirname, 0);
+    dir = opendir(norm_dirname);
+    g_free(norm_dirname);
     
-    curr = g_get_current_dir();
-    abs = g_strconcat(curr, "/", filename, 0);
-    g_free(curr);
-    
-    return abs;
+    return dir;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+static int
+file_stat(const char *filename, struct stat *sb)
+{
+    char *norm_filename;
+    
+    norm_filename = file_normalise(filename, 0);
+    if (stat(norm_filename, sb) < 0)
+    {
+	int e = errno;
+	g_free(norm_filename);
+	__set_errno(e);
+	return -1;
+    }
+    g_free(norm_filename);
+    return 0;
+}
+
+mode_t
+file_mode(const char *filename)
+{
+    struct stat sb;
+    
+    if (file_stat(filename, &sb) < 0)
+    	return -1;
+	
+    return (sb.st_mode & (S_IRWXU|S_IRWXG|S_IRWXO));
+}
+
 
 int
 file_exists(const char *filename)
 {
     struct stat sb;
     
-    if (stat(filename, &sb) < 0)
+    if (file_stat(filename, &sb) < 0)
     	return (errno == ENOENT ? -1 : 0);
     return 0;
 }
@@ -124,7 +248,7 @@ file_is_directory(const char *filename)
 {
     struct stat sb;
     
-    if (stat(filename, &sb) < 0)
+    if (file_stat(filename, &sb) < 0)
     	return -1;
 	
     if (!S_ISDIR(sb.st_mode))
@@ -141,7 +265,7 @@ file_is_directory(const char *filename)
 int
 file_build_tree(const char *dirname, mode_t mode)
 {
-    char *p, *dir = g_strdup(dirname);
+    char *p, *dir = file_normalise(dirname, 0);
     int ret = 0;
     char oldc;
     
@@ -191,21 +315,6 @@ file_build_tree(const char *dirname, mode_t mode)
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-mode_t
-file_mode_from_string(const char *str, mode_t base, mode_t deflt)
-{
-    if (str == 0 || *str == '\0')
-    	return deflt;
-	
-    if (str[0] >= '0' && str[0] <= '7')
-    	return strtol(str, 0, 8);
-
-    fprintf(stderr, "TODO: can't handle mode strings properly\n");
-    return base;
-}
-
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
-
 int
 file_apply_children(
     const char *filename,
@@ -217,7 +326,7 @@ file_apply_children(
     estring child;
     int ret = 1;
     
-    if ((dir = opendir(filename)) == 0)
+    if ((dir = file_opendir(filename)) == 0)
     	return -1;
 	
     estring_init(&child);
@@ -229,8 +338,11 @@ file_apply_children(
 	    
 	/* TODO: estring_truncate_to() */
 	estring_truncate(&child);
-	estring_append_string(&child, filename);
-	estring_append_char(&child, '/');
+	if (strcmp(filename, "."))
+	{
+	    estring_append_string(&child, filename);
+	    estring_append_char(&child, '/');
+	}
 	estring_append_string(&child, de->d_name);
 	
 	if (!(*function)(child.data, userdata))

@@ -19,7 +19,7 @@
 
 #include "cant.h"
 
-CVSID("$Id: project.c,v 1.10 2001-11-21 16:31:34 gnb Exp $");
+CVSID("$Id: project.c,v 1.11 2002-02-04 05:15:49 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -125,7 +125,15 @@ project_set_default_target(project_t *proj, const char *s)
 void
 project_set_basedir(project_t *proj, const char *s)
 {
-    strassign(proj->basedir, s);
+    if (proj->parent != 0)
+    {
+	strdelete(proj->basedir);
+	proj->basedir = file_normalise(s, proj->parent->basedir);
+    }
+    else
+    {
+    	strassign(proj->basedir, s);
+    }
     props_set(proj->fixed_properties, "basedir", proj->basedir);
 }
 
@@ -135,7 +143,7 @@ project_set_filename(project_t *proj, const char *s)
     strassign(proj->filename, s);
 
     props_setm(proj->fixed_properties, "ant.file",
-    	    	file_make_absolute(proj->filename));
+    	    	file_normalise(proj->filename, 0));
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

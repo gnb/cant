@@ -19,7 +19,7 @@
 
 #include "cant.h"
 
-CVSID("$Id: taglist.c,v 1.4 2001-11-21 16:31:34 gnb Exp $");
+CVSID("$Id: taglist.c,v 1.5 2002-02-04 05:15:49 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -359,9 +359,8 @@ taglist_gather(
 	    strnullnorm(expvalue);
 	    if (expvalue != 0)
 	    {
-	    	props_setm(localprops, "value", file_make_absolute(expvalue));
+	    	props_setm(localprops, "value", expvalue);
     		gather_exps(localprops, exps, sa);
-		g_free(expvalue);
 	    }
 	    break;
 	}
