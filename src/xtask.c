@@ -20,7 +20,7 @@
 #include "xtask.h"
 #include "job.h"
 
-CVSID("$Id: xtask.c,v 1.17 2001-11-21 16:31:34 gnb Exp $");
+CVSID("$Id: xtask.c,v 1.18 2002-02-04 05:16:28 gnb Exp $");
 
 typedef struct
 {
@@ -62,7 +62,6 @@ static gboolean
 xtask_generic_adder(task_t *task, xmlNode *node)
 {
     xtask_private_t *xp = (xtask_private_t *)task->private;
-    xtask_ops_t *xops = (xtask_ops_t *)task->ops;
     taglist_t *tl;
     
     if ((tl = parse_taglist(task->project, node)) == 0)
@@ -116,7 +115,8 @@ xtask_build_command(task_t *task, strarray_t *command)
 	    strnullnorm(exp);
 	    if (exp != 0)
 	    {
-	    	strarray_appendm(command, file_make_absolute(exp));
+	    	strarray_appendm(command,
+		    	    	 file_normalise_m(exp, task->project->basedir));
 		g_free(exp);
 	    }
 	    break;
