@@ -1,0 +1,77 @@
+#!/bin/sh
+#
+# $Id: runtest,v 1.1 2001-11-14 11:00:35 gnb Exp $
+#
+CANT="${CANT:-../../src/cant} --globals-file globals.xml"
+
+matchprop_test ()
+{
+    VALUE="$1"
+    EXPECTED="$2"
+    
+    echo "================================================================"
+    echo "match property test, value=$VALUE"
+    
+    /bin/rm -rf *.o foo
+    $CANT all -Dmatchprop="$VALUE" || exit 1
+    
+    test -x foo || exit 1
+    ./foo | grep "^${EXPECTED} b() called\$" || exit 1
+}
+
+
+boolprop_test ()
+{
+    VALUE="$1"
+    EXPECTED="$2"
+    
+    echo "================================================================"
+    echo "bool property test, value=$VALUE"
+    
+    /bin/rm -rf my-bindir
+    $CANT install -Dboolprop="$VALUE" || exit 1
+    
+    case "$EXPECTED" in
+    bar)
+	test -f my-bindir/bar || exit 1
+	test -f my-bindir/baz && exit 1
+	;;
+    baz)
+	test -f my-bindir/bar && exit 1
+	test -f my-bindir/baz || exit 1
+	;;
+    esac
+}
+
+/bin/rm -rf foo *.o my-bindir
+set -x
+
+matchprop_test "br" bar
+matchprop_test "bar" bar
+matchprop_test "baaar" bar
+matchprop_test "baAar" bar
+matchprop_test "" baz
+matchprop_test "baz" baz
+matchprop_test "anythingelse" baz
+
+boolprop_test "" baz
+boolprop_test "anythingelse" bar
+
+boolprop_test "true" bar
+boolprop_test "TRUE" bar
+boolprop_test "True" bar
+boolprop_test "on" bar
+boolprop_test "oN" bar
+boolprop_test "1" bar
+boolprop_test "yes" bar
+boolprop_test "YES" bar
+
+boolprop_test "false" baz
+boolprop_test "FALSE" baz
+boolprop_test "False" baz
+boolprop_test "off" baz
+boolprop_test "oFF" baz
+boolprop_test "0" baz
+boolprop_test "no" baz
+boolprop_test "NO" baz
+
