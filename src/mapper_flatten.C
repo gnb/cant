@@ -19,38 +19,41 @@
 
 #include "cant.H"
 
-CVSID("$Id: mapper_flatten.C,v 1.1 2002-03-29 12:36:26 gnb Exp $");
+CVSID("$Id: mapper_flatten.C,v 1.2 2002-04-06 11:21:55 gnb Exp $");
+
+class mapper_flatten_t : public mapper_t
+{
+public:
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static gboolean
-flatten_new(mapper_t *ma)
+mapper_flatten_t()
 {
-    ma->private_data = 0;
+}
+
+~mapper_flatten_t()
+{
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+gboolean
+init()
+{
     return TRUE;
 }
 
-static char *
-flatten_map(mapper_t *ma, const char *filename)
+char *
+map(const char *filename)
 {
     return g_strdup(file_basename_c(filename));
 }
 
-static void
-flatten_delete(mapper_t *ma)
-{
-    ma->private_data = 0;
-}
-
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-mapper_ops_t flatten_ops = 
-{
-    "flatten",
-    flatten_new,
-    flatten_map,
-    flatten_delete
-};
+}; // end of class
+
+MAPPER_DEFINE_CLASS(flatten);
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 /*END*/

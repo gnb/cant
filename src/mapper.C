@@ -21,11 +21,21 @@
 #include "log.H"
 #include "hashtable.H"
 
-CVSID("$Id: mapper.C,v 1.2 2002-03-29 16:12:31 gnb Exp $");
+CVSID("$Id: mapper.C,v 1.3 2002-04-06 11:21:55 gnb Exp $");
 
-static hashtable_t<const char*, mapper_ops_t> *mapper_ops_all;
+hashtable_t<char*, mapper_creator_t> *mapper_t::creators;
 
-static mapper_ops_t *mapper_ops_find(const char *name);
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+mapper_t::mapper_t()
+{
+}
+
+mapper_t::~mapper_t()
+{
+    strdelete(from_);
+    strdelete(to_);
+}
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -33,45 +43,34 @@ static mapper_ops_t *mapper_ops_find(const char *name);
 extern void parse_error(const char *fmt, ...);
 
 mapper_t *
-mapper_new(const char *name, const char *from, const char *to)
+mapper_t::create(const char *name, const char *from, const char *to)
 {
     mapper_t *ma;
-    mapper_ops_t *ops;
+    mapper_creator_t *creator;
     
-    if ((ops = mapper_ops_find(name)) == 0)
+    if (creators == 0 ||
+    	(creator = creators->lookup((char*)name)) == 0)
     {
     	parse_error("Unknown mapper type \"%s\"\n", name);
     	return 0;
     }
-	
-    ma = new(mapper_t);
+
+    ma =  (*creator)();
     
-    ma->ops = ops;
-    strassign(ma->from, from);
-    strassign(ma->to, to);
+    strassign(ma->from_, from);
+    strassign(ma->to_, to);
     
-    if (!(*ma->ops->ctor)(ma))
+    if (!ma->init())
     {
-    	mapper_delete(ma);
-    	return 0;
+    	delete ma;
+	return 0;
     }
     
     return ma;
 }
 
-void
-mapper_delete(mapper_t *ma)
-{
-    (*ma->ops->dtor)(ma);
-    
-    strdelete(ma->from);
-    strdelete(ma->to);
-    
-    g_free(ma);
-}
-
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
-
+#if 0
 char *
 mapper_map(mapper_t *ma, const char *filename)
 {
@@ -86,52 +85,41 @@ mapper_map(mapper_t *ma, const char *filename)
 
     return res;
 }
-
+#endif
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-void
-mapper_ops_register(mapper_ops_t *ops)
+gboolean
+mapper_t::add_creator(const char *name, mapper_creator_t *creator)
 {
-    if (mapper_ops_all == 0)
-    	mapper_ops_all = new hashtable_t<const char*, mapper_ops_t>;
-    else if (mapper_ops_all->lookup(ops->name) != 0)
+    if (creators == 0)
+    	creators = new hashtable_t<char*, mapper_creator_t>;
+    else if (creators->lookup((char *)name) != 0)
     {
     	logf("mapper operations \"%s\" already registered, ignoring new definition\n",
-	    	ops->name);
-    	return;
+	    	name);
+    	return FALSE;
     }
     
-    mapper_ops_all->insert(ops->name, ops);
+    creators->insert(g_strdup(name), creator);
 #if DEBUG
-    fprintf(stderr, "mapper_ops_register: registering \"%s\"\n", ops->name);
+    fprintf(stderr, "mapper_t::add_creator: adding \"%s\" -> %08lx\n",
+    	name, (unsigned long)creator);
 #endif
-}
-
-void
-mapper_ops_unregister(mapper_ops_t *ops)
-{
-    if (mapper_ops_all != 0)
-	mapper_ops_all->remove(ops->name);
-}
-
-static mapper_ops_t *
-mapper_ops_find(const char *name)
-{
-    return mapper_ops_all->lookup(name);
+    return TRUE;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-#define MAPPEROPS(m)  	extern mapper_ops_t m;
+#define MAPPER_CLASS(nm)  	extern mapper_creator_t mapper_##nm##_create;
 #include "builtin-mappers.H"
-#undef MAPPEROPS
+#undef MAPPER_CLASS
 
 void
-mapper_initialise_builtins(void)
+mapper_t::initialise_builtins()
 {
-#define MAPPEROPS(m)  mapper_ops_register(&m);
+#define MAPPER_CLASS(nm)  mapper_t::add_creator(g_string(nm), &mapper_##nm##_create);
 #include "builtin-mappers.H"
-#undef MAPPEROPS
+#undef MAPPER_CLASS
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/

@@ -19,38 +19,40 @@
 
 #include "cant.H"
 
-CVSID("$Id: mapper_identity.C,v 1.1 2002-03-29 12:36:26 gnb Exp $");
+CVSID("$Id: mapper_identity.C,v 1.2 2002-04-06 11:21:55 gnb Exp $");
+
+class mapper_identity_t : public mapper_t
+{
+public:
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static gboolean
-identity_new(mapper_t *ma)
+mapper_identity_t()
 {
-    ma->private_data = 0;
+}
+
+~mapper_identity_t()
+{
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+gboolean
+init()
+{
     return TRUE;
 }
 
-static char *
-identity_map(mapper_t *ma, const char *filename)
+char *
+map(const char *filename)
 {
     return g_strdup(filename);
 }
 
-static void
-identity_delete(mapper_t *ma)
-{
-    ma->private_data = 0;
-}
-
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-mapper_ops_t identity_ops = 
-{
-    "identity",
-    identity_new,
-    identity_map,
-    identity_delete
-};
+}; // end of class
+MAPPER_DEFINE_CLASS(identity);
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 /*END*/

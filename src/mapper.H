@@ -21,36 +21,46 @@
 #define _mapper_h_ 1
 
 #include "common.H"
+#include "hashtable.H"
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
  
-typedef struct mapper_s     	mapper_t;
-typedef struct mapper_ops_s 	mapper_ops_t;
+class mapper_t;
+typedef mapper_t * (mapper_creator_t)(void);
 
-
-struct mapper_s
+class mapper_t
 {
-    mapper_ops_t *ops;
-    char *from;
-    char *to;
-    void *private_data;
+private:
+    static hashtable_t<char*, mapper_creator_t> *creators;
+
+protected:    
+    char *from_;
+    char *to_;
+
+    mapper_t();
+
+    // separate from ctor to allow it to fail gracefully
+    virtual gboolean init() = 0;
+
+public:
+    virtual ~mapper_t();
+
+    virtual char *map(const char *filename) = 0;
+    
+    static mapper_t *create(const char *name, const char *from, const char *to);
+
+    static gboolean add_creator(const char *name, mapper_creator_t *);
+    // TODO: remove_creator
+
+    static void initialise_builtins();
 };
 
-struct mapper_ops_s
-{
-    char *name;
-    gboolean (*ctor)(mapper_t *);
-    char *(*map)(mapper_t *, const char *filename);
-    void (*dtor)(mapper_t *);
-};
-
-
-mapper_t *mapper_new(const char *name, const char *from, const char *to);
-void mapper_delete(mapper_t *);
-char *mapper_map(mapper_t *, const char *filename);
-void mapper_ops_register(mapper_ops_t *ops);
-void mapper_ops_unregister(mapper_ops_t *ops);
-void mapper_initialise_builtins(void);
+#define MAPPER_DEFINE_CLASS(nm) \
+\
+mapper_t *mapper_##nm##_create(void) \
+{ \
+    return new mapper_##nm##_t(); \
+}
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 #endif /* _mapper_h_ */

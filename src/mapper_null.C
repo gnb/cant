@@ -19,38 +19,41 @@
 
 #include "cant.H"
 
-CVSID("$Id: mapper_null.C,v 1.1 2002-03-29 12:36:26 gnb Exp $");
+CVSID("$Id: mapper_null.C,v 1.2 2002-04-06 11:21:55 gnb Exp $");
+
+class mapper_null_t : public mapper_t
+{
+public:
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static gboolean
-null_new(mapper_t *ma)
+mapper_null_t()
 {
-    ma->private_data = 0;
-    return TRUE;
 }
 
-static char *
-null_map(mapper_t *ma, const char *filename)
+~mapper_null_t()
+{
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+gboolean
+init()
+{
+    return TRUE;    	// too simple for anything to go wrong
+}
+
+char *
+map(const char *filename)
 {
     return 0;	/* that's all it does folks */
 }
 
-static void
-null_delete(mapper_t *ma)
-{
-    ma->private_data = 0;
-}
-
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-mapper_ops_t null_ops = 
-{
-    "null",
-    null_new,
-    null_map,
-    null_delete
-};
+}; // end of class
+
+MAPPER_DEFINE_CLASS(null);
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 /*END*/

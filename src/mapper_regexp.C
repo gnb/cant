@@ -19,43 +19,49 @@
 
 #include "cant.H"
 
-CVSID("$Id: mapper_regexp.C,v 1.1 2002-03-29 12:36:26 gnb Exp $");
+CVSID("$Id: mapper_regexp.C,v 1.2 2002-04-06 11:21:55 gnb Exp $");
+
+class mapper_regexp_t : public mapper_t
+{
+private:
+    pattern_t *pattern_;
+
+public:
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static gboolean
-regexp_new(mapper_t *ma)
+mapper_regexp_t()
 {
-    ma->private_data = pattern_new(ma->from, PAT_GROUPS|PAT_REGEXP);
-    return (ma->private_data != 0);
 }
 
-static char *
-regexp_map(mapper_t *ma, const char *filename)
+~mapper_regexp_t()
 {
-    pattern_t *pat = (pattern_t *)ma->private_data;
-    
-    if (!pattern_match(pat, filename))
+    if (pattern_ != 0)
+	pattern_delete(pattern_);
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+gboolean
+init()
+{
+    pattern_ = pattern_new(from_, PAT_GROUPS|PAT_REGEXP);
+    return (pattern_ != 0);
+}
+
+char *
+map(const char *filename)
+{
+    if (!pattern_match(pattern_, filename))
     	return 0;
-    return pattern_replace(pat, ma->to);
-}
-
-static void
-regexp_delete(mapper_t *ma)
-{
-    if (ma->private_data != 0)
-	pattern_delete((pattern_t *)ma->private_data);
+    return pattern_replace(pattern_, to_);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-mapper_ops_t regexp_ops = 
-{
-    "regexp",
-    regexp_new,
-    regexp_map,
-    regexp_delete
-};
+}; // end of class
+
+MAPPER_DEFINE_CLASS(regexp);
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 /*END*/

@@ -19,19 +19,38 @@
 
 #include "cant.H"
 
-CVSID("$Id: mapper_glob.C,v 1.1 2002-03-29 12:36:26 gnb Exp $");
+CVSID("$Id: mapper_glob.C,v 1.2 2002-04-06 11:21:55 gnb Exp $");
+
+class mapper_glob_t : public mapper_t
+{
+private:
+    pattern_t *pattern_;
+
+public:
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
- 
-static gboolean
-glob_new(mapper_t *ma)
+
+mapper_glob_t()
+{
+}
+
+~mapper_glob_t()
+{
+    if (pattern_ != 0)
+	pattern_delete(pattern_);
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+gboolean
+init()
 {
     estring replace;
     const char *p;
     int nstar, nother;
     
     nstar = nother = 0;
-    for (p = ma->from ; *p ; p++)
+    for (p = from_ ; *p ; p++)
     {
     	if (*p == '*')
 	    nstar++;
@@ -40,17 +59,17 @@ glob_new(mapper_t *ma)
     }
     if (nstar != 1 || nother != 0)
     {
-    	parse_error("bad \"from\" expression \"%s\"\n", ma->from);
+    	parse_error("bad \"from\" expression \"%s\"\n", from_);
     	return FALSE;
     }
-    if ((ma->private_data = pattern_new(ma->from, PAT_GROUPS)) == 0)
+    if ((pattern_ = pattern_new(from_, PAT_GROUPS)) == 0)
     	return FALSE;
     
 
 
     estring_init(&replace);
     nstar = nother = 0;
-    for (p = ma->to ; *p ; p++)
+    for (p = to_ ; *p ; p++)
     {
     	if (*p == '*')
 	{
@@ -65,30 +84,29 @@ glob_new(mapper_t *ma)
     }
     if (nstar != 1 || nother != 0)
     {
-    	parse_error("bad \"to\" expression \"%s\"\n", ma->to);
+    	parse_error("bad \"to\" expression \"%s\"\n", to_);
     	estring_free(&replace);
     	return FALSE;
     }
     /* might as well stash this in `to', it has no other use */
-    g_free(ma->to);
-    ma->to = replace.data;
+    g_free(to_);
+    to_ = replace.data;
     
     return TRUE;
 }
 
-static char *
-glob_map(mapper_t *ma, const char *filename)
+char *
+map(const char *filename)
 {
-    pattern_t *pat = (pattern_t *)ma->private_data;
     const char *base;
     char *rep;
     
     base = file_basename_c(filename);
     
-    if (!pattern_match(pat, base))
+    if (!pattern_match(pattern_, base))
     	return 0;
 	
-    rep = pattern_replace(pat, ma->to);
+    rep = pattern_replace(pattern_, to_);
     
     if (base != filename)
     {
@@ -102,22 +120,11 @@ glob_map(mapper_t *ma, const char *filename)
     return rep;
 }
 
-static void
-glob_delete(mapper_t *ma)
-{
-    if (ma->private_data != 0)
-	pattern_delete((pattern_t *)ma->private_data);
-}
-
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-mapper_ops_t glob_ops = 
-{
-    "glob",
-    glob_new,
-    glob_map,
-    glob_delete
-};
+}; // end of class
+
+MAPPER_DEFINE_CLASS(glob);
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 /*END*/

@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 # 
-# $Id: Makefile.am,v 1.27 2002-04-06 04:16:38 gnb Exp $
+# $Id: Makefile.am,v 1.28 2002-04-06 11:20:06 gnb Exp $
 #
 
 bin_PROGRAMS=	cant
@@ -80,14 +80,14 @@ task.o: builtin-tasks.H
 builtin-tasks.H: $(TASK_SOURCES)
 	$(RM) $@
 	for file in $(TASK_SOURCES) ; do \
-	    sed -n -e 's|^TASK_DEFINE_CLASS_BEGIN[ 	]*(\([a-z_][a-z_]*\).*$$|TASK_CLASS(\1)|p' < $$file >> $@ ;\
+	    sed -n -e 's|^[ 	]*TASK_DEFINE_CLASS_BEGIN[ 	]*([ 	]*\([a-z_][a-z_]*\).*$$|TASK_CLASS(\1)|p' < $$file >> $@ ;\
 	done
 
 mapper.o: builtin-mappers.H
 builtin-mappers.H: $(MAPPER_SOURCES)
 	$(RM) $@
 	for file in $(MAPPER_SOURCES) ; do \
-	    sed -n -e 's|^mapper_ops_t[ 	][ 	]*\([a-z_][a-z_]*\).*$$|MAPPEROPS(\1)|p' < $$file >> $@ ;\
+	    sed -n -e 's|^[ 	]*MAPPER_DEFINE_CLASS[ 	]*([ 	]*\([a-z_][a-z_]*\).*$$|MAPPER_CLASS(\1)|p' < $$file >> $@ ;\
 	done
 
 CLEANFILES=	builtin-tasks.H builtin-mappers.H \

@@ -19,38 +19,41 @@
 
 #include "cant.H"
 
-CVSID("$Id: mapper_merge.C,v 1.1 2002-03-29 12:36:26 gnb Exp $");
+CVSID("$Id: mapper_merge.C,v 1.2 2002-04-06 11:21:55 gnb Exp $");
+
+class mapper_merge_t : public mapper_t
+{
+public:
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-static gboolean
-merge_new(mapper_t *ma)
+mapper_merge_t()
 {
-    ma->private_data = 0;
+}
+
+~mapper_merge_t()
+{
+}
+
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+gboolean
+init()
+{
     return TRUE;
 }
 
-static char *
-merge_map(mapper_t *ma, const char *filename)
+char *
+map(const char *filename)
 {
-    return g_strdup(ma->to);
-}
-
-static void
-merge_delete(mapper_t *ma)
-{
-    ma->private_data = 0;
+    return g_strdup(to_);
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-mapper_ops_t merge_ops = 
-{
-    "merge",
-    merge_new,
-    merge_map,
-    merge_delete
-};
+}; // end of class
+
+MAPPER_DEFINE_CLASS(merge);
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 /*END*/
