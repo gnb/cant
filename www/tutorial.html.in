@@ -36,12 +36,10 @@ packages from source).  This should result in a executable
 </p>
 
 <p>
-Now, get the source for the tutorial examples
-<a href="cant-tutorial-LATEST_VERSION.tar.gz">here</a> and extract
-it.  For the purposes of this tutorial, we'll assume you've
-extracted the tutorial tarball in your home directory, resulting
-in the directory <i>~/cant-tutorial-LATEST_VERSION/</i> being
-created.
+Now, look in the CANT source directory for the tutorial examples.
+For the purposes of this tutorial, we'll assume you've
+extracted the CANT tarball in your home directory, so the
+tutorial examples are in <i>~/cant-LATEST_VERSION/doc/tutorial/</i>.
 </p>
 
 <h2>Simple C Program</h2>
@@ -57,7 +55,7 @@ Change to the first example directory:
 <p>
 
 <pre class="example">
-me@mybox % cd ~/cant-tutorial-LATEST_VERSION/example1
+me@mybox % cd ~/cant-LATEST_VERSION/doc/tutorial/example1
 </pre>
 
 <h3>Taking a Look Around</h3>
