@@ -20,7 +20,7 @@
 #include "xtask.h"
 #include "job.h"
 
-CVSID("$Id: xtask.c,v 1.11 2001-11-16 03:34:19 gnb Exp $");
+CVSID("$Id: xtask.c,v 1.12 2001-11-16 05:31:45 gnb Exp $");
 
 typedef struct
 {
@@ -184,7 +184,9 @@ xtask_execute_command(task_t *task)
 
     strnullnorm(targfile);
     
-    if (xops->logmessage != 0)
+    if (verbose)
+    	logmsg = logmsg_newnm(strarray_join(command, " "));
+    else if (xops->logmessage != 0)
     	logmsg = logmsg_newnm(props_expand(xp->properties, xops->logmessage));
 
     if (targfile == 0)

@@ -21,7 +21,7 @@
 #include "cant.h"
 #include "job.h"
 
-CVSID("$Id: cant.c,v 1.11 2001-11-14 10:59:03 gnb Exp $");
+CVSID("$Id: cant.c,v 1.12 2001-11-16 05:31:45 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -208,6 +208,9 @@ static const char usage_str[] =
 "-buildfile FILE    specify build file (default \"build.xml\")\n"
 "-Dname=value       override property \"name\"\n"
 "-jN                set N-way parallelism for compilation (default 1)\n"
+"--help             print this message and exit\n"
+"--version          print CANT version and exit\n"
+"--verbose          print more messages\n"
 ;
 
 static void
@@ -325,6 +328,15 @@ parse_args(int argc, char **argv)
 	    else if (!strcmp(argv[i], "--globals-file"))
 	    {
 	    	set_globals_file(argv[++i]);
+	    }
+	    else if (!strcmp(argv[i], "--version"))
+	    {
+	    	printf("%s version %s\n", PACKAGE, VERSION);
+	    	exit(0);
+	    }
+	    else if (!strcmp(argv[i], "--verbose"))
+	    {
+	    	verbose = TRUE;
 	    }
 	    else if (!strcmp(argv[i], "--help"))
 	    {

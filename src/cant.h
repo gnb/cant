@@ -146,6 +146,7 @@ struct task_scope_s
 #endif
 
 EXTERN char *argv0;
+EXTERN gboolean verbose;
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 /*
