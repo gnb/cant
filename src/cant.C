@@ -21,7 +21,7 @@
 #include "cant.H"
 #include "job.H"
 
-CVSID("$Id: cant.C,v 1.7 2002-04-07 06:20:41 gnb Exp $");
+CVSID("$Id: cant.C,v 1.8 2002-04-07 08:28:14 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -374,21 +374,21 @@ static void
 dump_one_taglist(gpointer key, gpointer value, gpointer userdata)
 {
     taglist_t *tl = (taglist_t *)value;
-    list_iterator_t<tl_item_t> iter;
+    list_iterator_t<taglist_t::item_t> iter;
     
     fprintf(stderr, "    TAGLIST {\n");
-    fprintf(stderr, "        NAMESPACE=\"%s\"\n", tl->name_space);
-    fprintf(stderr, "        ID=\"%s\"\n", tl->id);
+    fprintf(stderr, "        NAMESPACE=\"%s\"\n", tl->name_space());
+    fprintf(stderr, "        ID=\"%s\"\n", tl->id());
 
-    for (iter = tl->items.first() ; iter != 0 ; ++iter)
+    for (iter = tl->first_item() ; iter != 0 ; ++iter)
     {
-    	tl_item_t *tlitem = *iter;
+    	taglist_t::item_t *tlitem = *iter;
 	
 	fprintf(stderr, "        TL_SPEC {\n");
-	fprintf(stderr, "            TAG=\"%s\"\n", tlitem->tag);
-	fprintf(stderr, "            NAME=\"%s\"\n", tlitem->name);
-	fprintf(stderr, "            TYPE=%d\n", tlitem->type);
-	fprintf(stderr, "            VALUE=\"%s\"\n", tlitem->value);
+	fprintf(stderr, "            TAG=\"%s\"\n", tlitem->tag_);
+	fprintf(stderr, "            NAME=\"%s\"\n", tlitem->name_);
+	fprintf(stderr, "            TYPE=%d\n", tlitem->type_);
+	fprintf(stderr, "            VALUE=\"%s\"\n", tlitem->value_);
 	fprintf(stderr, "        }\n");
     }
         
