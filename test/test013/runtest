@@ -1,0 +1,47 @@
+#!/bin/sh
+#
+# $Id: runtest,v 1.1 2002-02-11 02:01:52 gnb Exp $
+#
+
+. ../testfunctions.sh
+
+redirect_test ()
+{
+    VALUE="$1"
+    
+    start_test "redirect"
+    cant $VALUE
+}
+
+redirect_test_f ()
+{
+    VALUE="$1"
+    
+    start_test "redirect"
+    cant_status $VALUE
+    check_status failed
+}
+
+redirect_test inprop
+check_output_file inprop.expected
+
+redirect_test_f infile1
+check_output_re 'no-such-file: No such file or directory'
+
+redirect_test infile2
+check_output_file infile2.expected
+
+redirect_test outprop1
+check_output_file outprop1.expected
+
+redirect_test outprop2
+check_output_file outprop2.expected
+
+redirect_test outprop3
+check_output_file outprop3.expected
+
+/bin/rm -f outfile.txt
+redirect_test outfile
+check_file_exists outfile.txt outfile.expected
+
+

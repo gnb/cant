@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+
+<!-- $Id: build.xml,v 1.1 2002-02-11 02:01:52 gnb Exp $ -->
+
+<project name="test013" default="all" basedir=".">
+
+    <xtaskdef name="sylvester" executable="cat"/>
+    
+    <property name="INPUT_TEST" value="Testing Input Property"/>
+    <property name="OUTPUT_TEST1" value="Old Value1"/>
+    <property name="OUTPUT_TEST2" value="Old Value2"/>
+    <property name="OUTPUT_TEST3" value="Old Value3"/>
+
+    <target name="inprop">
+	<redirect input_property="INPUT_TEST">
+	    <sylvester/>
+	</redirect>
+    </target>
+
+    <target name="infile1">
+	<redirect input_file="no-such-file">
+	    <sylvester/>
+	</redirect>
+    </target>
+
+    <target name="infile2">
+	<redirect input_file="infile.txt">
+	    <sylvester/>
+	</redirect>
+    </target>
+
+    <target name="outprop1">
+	<redirect output_property="OUTPUT_TEST1">
+	    <echo message="Testing Output Property1"/>
+	</redirect>
+	<echo message="OUTPUT_TEST1=$(OUTPUT_TEST1)"/>
+    </target>
+
+    <target name="outprop2">
+	<redirect output_property="OUTPUT_TEST2">
+	    <echo message="Testing Output Property2" newline="no"/>
+	</redirect>
+	<echo message="OUTPUT_TEST2=$(OUTPUT_TEST2)" newline="no"/>
+    </target>
+
+    <target name="outprop3">
+	<redirect output_property="OUTPUT_TEST3" collapse_whitespace="yes">
+	    <echo>
+First Line
+    Second Line  
+Third Line
+    	    </echo>
+	</redirect>
+	<echo message="OUTPUT_TEST3=$(OUTPUT_TEST3)FOO"/>
+    </target>
+
+    <target name="outfile">
+	<redirect output_file="outfile.txt">
+	    <echo message="Testing Output File"/>
+	</redirect>
+    </target>
+
+</project>
