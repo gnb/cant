@@ -15,6 +15,22 @@ controlled.  In contrast, make requires a specific, dated
 and complex format which ultimately requires that each Makefile
 contain the complete specification of how to build software.
 
+The focus of ANT of very much towards building Java programs,
+which is understandable because Java's compilation paradigm
+and platform-independance mean that "make" is a very poor
+solution.  Initially CANT will also focus on building Java
+programs.  Once a decent level of compatibility with ANT is
+achieved, features specific for C and C++ will be added.
+
+One area where it will be impossible to achieve real
+compatibility with ANT is extendability via Java classes.
+Probably the best way to approach this is combining XML
+configuration with string construction to run commandlines.
+For example, adding a new C compiler should mean creating
+an XML file which describes the way to map CANT features to
+compiler command lines, e.g. <compile-c debug="true"> becomes
+"gcc -g".
+
 Greg Banks <gnb@alphalink.com.au>
 2 November 2001.
 
