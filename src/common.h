@@ -62,7 +62,17 @@
 	    (v) = 0; \
 	} \
     } while(0)
-    
+
+#define listdelete(v,type,dtor) \
+    do { \
+	while ((v) != 0) \
+	{ \
+    	    dtor((type *)(v)->data); \
+    	    (v) = g_list_remove_link((v), (v)); \
+	} \
+    } while(0)
+
+
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 #if defined(__ELF__) && defined(__GNUC__)

@@ -17,27 +17,27 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef _strarray_h_
-#define _strarray_h_ 1
+#ifndef _cant_queue_h_
+#define _cant_queue_h_ 1
 
 #include "common.h"
 
-typedef GPtrArray   strarray_t;
+#if !THREADS_NONE
 
-strarray_t *strarray_new(void);
-void strarray_delete(strarray_t *);
+typedef struct queue_s	    queue_t;
 
-int strarray_append(strarray_t *, const char *s);
-int strarray_appendm(strarray_t *, char *s);
-void strarray_remove(strarray_t *, int i);
+queue_t *queue_new(unsigned int maxlen);
+void queue_delete(queue_t *);
 
-#define strarray_join(sa, sep) \
-    g_strjoinv((sep), (char **)(sa)->pdata)
+/* Blocking put and get */
+void queue_put(queue_t *, void *);
+void *queue_get(queue_t *);
 
-#define strarray_nth(sa, i) \
-    ((const char *)g_ptr_array_index((sa), (i)))
-#define strarray_data(sa) \
-    ((const char **)((sa)->pdata))
+/* Non-blocking put and get */
+gboolean queue_tryput(queue_t *, void *);
+/* Returns 0 if queue empty */
+void *queue_tryget(queue_t *);
 
+#endif /* !THREADS_NONE */
 
-#endif /* _strarray_h_ */
+#endif /* _cant_queue_h_ */

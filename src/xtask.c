@@ -18,8 +18,9 @@
  */
 
 #include "cant.h"
+#include "job.h"
 
-CVSID("$Id: xtask.c,v 1.6 2001-11-10 14:39:50 gnb Exp $");
+CVSID("$Id: xtask.c,v 1.7 2001-11-13 03:02:55 gnb Exp $");
 
 typedef struct
 {
@@ -63,75 +64,59 @@ typedef struct
 } xtask_mapped_strarray_rec_t;
 
 static gboolean
-xtask_append_file_estring(const char *filename, void *userdata)
-{
-    estring *ep = (estring *)userdata;
-    
-    if (ep->length > 0)
-	estring_append_char(ep, ' ');
-
-    /* TODO: escape whitespace in filename */
-    estring_append_string(ep, filename);
-    
-    return TRUE;   /* keep going */
-}
-
-static gboolean
-xtask_append_file_strarray(const char *filename, void *userdata)
-{
-    strarray_t *sa = (strarray_t *)userdata;
-    
-    strarray_append(sa, filename);
-    
-    return TRUE;   /* keep going */
-}
-
-
-static gboolean
 xtask_append_file_mapped_strarray(const char *filename, void *userdata)
 {
     xtask_mapped_strarray_rec_t *rec = (xtask_mapped_strarray_rec_t *)userdata;
-    GList *iter;
-    char *mapped = 0;
-    
-    for (iter = rec->mappers ; iter != 0 ; iter = iter->next)
-    {
-    	mapper_t *ma = (mapper_t *)iter->data;
-	
-	if ((mapped = mapper_map(ma, filename)) != 0)
-	    break;
-    }
 
-    if (mapped != 0)
-    {    
-	strarray_append(rec->strarray, mapped);
-	g_free(mapped);
+    if (rec->mappers == 0)
+    {
+	strarray_append(rec->strarray, filename);
+    }
+    else
+    {
+    	GList *iter;
+	char *mapped = 0;
+
+	for (iter = rec->mappers ; iter != 0 ; iter = iter->next)
+	{
+    	    mapper_t *ma = (mapper_t *)iter->data;
+
+	    if ((mapped = mapper_map(ma, filename)) != 0)
+		break;
+	}
+
+	if (mapped != 0)
+	{    
+	    strarray_append(rec->strarray, mapped);
+	    g_free(mapped);
+	}
     }
     
     return TRUE;   /* keep going */
 }
 
+static void
+xtask_fileset_apply_mappers(fileset_t *fs, strarray_t *sa, GList *mappers)
+{
+    xtask_mapped_strarray_rec_t rec;
+    
+    rec.mappers = mappers;
+    rec.strarray = sa;
+    
+    fileset_apply(fs, xtask_append_file_mapped_strarray, &rec);
+}
 
+/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+
+/* TODO: build env too */
 static gboolean
-xtask_execute_command(task_t *task)
+xtask_build_command(task_t *task, strarray_t *command)
 {
     xtask_private_t *xp = (xtask_private_t *)task->private;
     xtask_ops_t *xops = (xtask_ops_t *)task->ops;
-    strarray_t *command;
     GList *iter;
     char *exp;
-    int status;
-    
-    if (xops->logmessage != 0)
-    {
-    	char *logexp = props_expand(xp->properties, xops->logmessage);
-	logf("%s\n", logexp);
-	g_free(logexp);
-    }
 
-    /* build the command from args and properties */
-    command = strarray_new();
-    
     if (xops->executable != 0)
     	strarray_appendm(command, props_expand(xp->properties, xops->executable));
     
@@ -142,7 +127,7 @@ xtask_execute_command(task_t *task)
     	switch (xa->flags & _XT_TYPE_MASK)
 	{
 	case XT_FILESET:    /* <fileset> child */
-	    fileset_apply(xa->data.fileset, xtask_append_file_strarray, command);
+    	    xtask_fileset_apply_mappers(xa->data.fileset, command, /*mappers*/0);
 	    break;
 
 	case XT_ARG:	    /* <arg> child */
@@ -173,38 +158,106 @@ xtask_execute_command(task_t *task)
 	
 	case XT_FILES:	    /* <files> child */
 	    if (task->fileset != 0)
-	    {
-    	    	xtask_mapped_strarray_rec_t rec;
-		
-		rec.mappers = xa->data.mappers;
-		rec.strarray = command;
-		fileset_apply(task->fileset, xtask_append_file_mapped_strarray, &rec);
-	    }
+    	    	xtask_fileset_apply_mappers(task->fileset, command, xops->mappers);
 	    break;
 	}
     }
     
-    /* execute the command */
 #if DEBUG
     {
-    	int i;
-	fprintf(stderr, "xtask_execute_command:");
-	for (i = 0 ; i < command->len ; i++)
-	    fprintf(stderr, " \"%s\"", strarray_nth(command, i));
-	fprintf(stderr, "\n");
+    	char *commstr = strarray_join(command, "\" \"");
+	fprintf(stderr, "xtask_build_command: \"%s\"\n", commstr);
+	g_free(commstr);
     }
 #endif
 
-    if ((status = process_run(command, 0)) != 0)
+    return TRUE;
+}
+
+
+
+static gboolean
+xtask_execute_command(task_t *task)
+{
+    xtask_private_t *xp = (xtask_private_t *)task->private;
+    xtask_ops_t *xops = (xtask_ops_t *)task->ops;
+    strarray_t *command;
+    strarray_t *depfiles;
+    char *targfile = 0;
+    
+    if (xops->logmessage != 0)
     {
-    	process_log_status(strarray_nth(command, 0), status);
-	xp->result = FALSE;
+    	char *logexp = props_expand(xp->properties, xops->logmessage);
+	logf("%s\n", logexp);
+	g_free(logexp);
+    }
+
+    /* build the command from args and properties */
+    command = strarray_new();
+    
+    if (!xtask_build_command(task, command))
+    {
+    	strarray_delete(command);
+	return FALSE;
     }
     
-    strarray_delete(command);
+       
+    /* try to build dependency information for the command */
+
+    depfiles = strarray_new();
+
+    if (xops->task_ops.is_fileset)
+    {
+	if (xops->foreach)
+	{
+	    GList *iter;
+	    char *depfile;
+
+	    depfile = props_expand(xp->properties, "${file}");
+	    strarray_appendm(depfiles, depfile);
+	    
+	    for (iter = xops->dep_mappers ; iter != 0 ; iter = iter->next)
+	    {
+		mapper_t *ma = (mapper_t *)iter->data;
+
+		if ((targfile = mapper_map(ma, depfile)) != 0)
+	    	    break;
+	    }
+	    /* TODO: expand targfile */
+	}
+	else
+	{
+    	    xtask_fileset_apply_mappers(task->fileset, depfiles, xops->mappers);
+
+    	    targfile = props_expand(xp->properties, xops->dep_target);
+    	}
+    }
+
+    strnullnorm(targfile);
     
-    return (status == 0);
+    if (targfile == 0)
+    {
+    	/* no dependency information -- job barrier, serialised */
+    	if (!job_immediate_command(command, /*env*/0))
+	    xp->result = FALSE;
+    }
+    else
+    {
+    	/* have dependency information -- schedule job for later */
+    	job_t *job;
+	int i;
+	
+	job = job_add_command(targfile, command, /*env*/0);
+	for (i = 0 ; i < depfiles->len ; i++)
+	    job_add_depend(job, strarray_nth(depfiles, i));
+    }
+
+    strdelete(targfile);
+    strarray_delete(depfiles);
+
+    return xp->result;    /* keep going unless failure */
 }
+
 
 static gboolean
 xtask_execute_one(const char *filename, void *userdata)
@@ -238,14 +291,6 @@ xtask_execute(task_t *task)
 	}
 	else
 	{
-    	    /* construct the "files" property */
-    	    estring files;
-
-    	    /* This is of course *NOT* whitespace-safe */
-	    estring_init(&files);
-	    fileset_apply(task->fileset, xtask_append_file_estring, &files);
-	    props_setm(xp->properties, "files", files.data);
-
     	    /* run the command just once */
 	    xtask_execute_command(task);
 	}
@@ -258,7 +303,6 @@ xtask_execute(task_t *task)
     
     /* wipe out any temporary properties */
     props_setm(xp->properties, "file", 0);
-    props_setm(xp->properties, "files", 0);
     
     return xp->result;
 }
@@ -309,11 +353,6 @@ xtask_arg_delete(xtask_arg_t *xa)
 	strdelete(xa->data.arg);
     	break;
     case XT_FILES:  	/* <files> child */
-    	while (xa->data.mappers != 0)
-	{
-	    mapper_delete((mapper_t *)xa->data.mappers->data);
-	    xa->data.mappers = g_list_remove_link(xa->data.mappers, xa->data.mappers);
-	}
     	break;
     }
     
@@ -371,16 +410,15 @@ xtask_ops_new(const char *name)
 void
 xtask_ops_delete(xtask_ops_t *xops)
 {
-    while (xops->args != 0)
-    {
-    	xtask_arg_delete((xtask_arg_t *)xops->args->data);
-    	xops->args = g_list_remove_link(xops->args, xops->args);
-    }
+    listdelete(xops->args, xtask_arg_t, xtask_arg_delete);
+    listdelete(xops->mappers, mapper_t, mapper_delete);
+    listdelete(xops->dep_mappers, mapper_t, mapper_delete);
     
     strdelete(xops->task_ops.name);
     strdelete(xops->executable);
     strdelete(xops->logmessage);
-
+    strdelete(xops->dep_target);
+    
     props_delete(xops->property_map);
 
     g_free(xops);

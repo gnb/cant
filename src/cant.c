@@ -19,8 +19,9 @@
 
 #define _DEFINE_GLOBALS 1
 #include "cant.h"
+#include "job.h"
 
-CVSID("$Id: cant.c,v 1.7 2001-11-10 03:17:24 gnb Exp $");
+CVSID("$Id: cant.c,v 1.8 2001-11-13 03:02:55 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -28,6 +29,7 @@ static gboolean find_flag = FALSE;
 static props_t *command_defines;   /* -Dfoo=bar on the commandline */
 static GList *command_targets;     /* targets specified on the commandline */
 static char *buildfile = "build.xml";
+static unsigned parallelism = 1;
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 #define PATTERN_TEST 0
@@ -193,10 +195,13 @@ build_target(project_t *proj, target_t *targ)
 	
 	if (!task_execute(task))
 	{
+	    job_clear();
 	    log_pop_context();
 	    return FALSE;
 	}
     }
+    
+    job_run();
     
     log_pop_context();
     return TRUE;
@@ -240,6 +245,7 @@ static const char usage_str[] =
 "-find              search in parent directories for build.xml\n"
 "-buildfile FILE    specify build file (default \"build.xml\")\n"
 "-Dname=value       override property \"name\"\n"
+"-jN                set N-way parallelism for compilation (default 1)\n"
 ;
 
 static void
@@ -310,6 +316,11 @@ parse_args(int argc, char **argv)
 	    else if (!strncmp(argv[i], "-D", 2))
 	    {
 	    	add_commandline_define(argv[i]+2);
+	    }
+	    else if (!strncmp(argv[i], "-j", 2))
+	    {
+	    	if ((parallelism = atoi(argv[i]+2)) < 1)
+		    parallelism = 1;
 	    }
 	    else if (!strcmp(argv[i], "-help"))
 	    {
@@ -418,6 +429,8 @@ main(int argc, char **argv)
     
     task_initialise_builtins();
     mapper_initialise_builtins();
+    if (!job_init(parallelism))
+    	return 1;
 
     if (find_flag && !find_buildfile())
     	fatal("Can't find buildfile \"%s\" in any parent directory\n", buildfile);

@@ -17,27 +17,37 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef _strarray_h_
-#define _strarray_h_ 1
+#ifndef _cant_thread_h_
+#define _cant_thread_h_ 1
 
 #include "common.h"
 
-typedef GPtrArray   strarray_t;
+#if THREADS_POSIX
 
-strarray_t *strarray_new(void);
-void strarray_delete(strarray_t *);
+#include <pthread.h>
+#include <semaphore.h>
 
-int strarray_append(strarray_t *, const char *s);
-int strarray_appendm(strarray_t *, char *s);
-void strarray_remove(strarray_t *, int i);
+/* Trivial threads portability layer */
+typedef sem_t	    	    	cant_sem_t;
+typedef pthread_mutex_t	    	cant_mutex_t;
+typedef pthread_t   	    	cant_thread_t;
 
-#define strarray_join(sa, sep) \
-    g_strjoinv((sep), (char **)(sa)->pdata)
+#define cant_sem_init(s, v) 	sem_init((s), 0, (v))
+#define cant_sem_wait(s)    	sem_wait((s))
+#define cant_sem_trywait(s)    	(sem_trywait((s)) == 0)
+#define cant_sem_post(s)    	sem_post((s))
+#define cant_sem_destroy(s)    	sem_destroy((s))
 
-#define strarray_nth(sa, i) \
-    ((const char *)g_ptr_array_index((sa), (i)))
-#define strarray_data(sa) \
-    ((const char **)((sa)->pdata))
+/*
+#define cant_mutex_init(m) 	pthread_mutex_init((m), 0)
+#define cant_mutex_lock(m)    	pthread_mutex_lock((m))
+#define cant_mutex_unlock(m)    pthread_mutex_unlock((m))
+*/
+
+#define cant_thread_create(th,fn,arg) \
+    	(pthread_create((th), 0, (fn), (arg)) ? -1 : 0)
+
+#endif	/* THREADS_POSIX */
 
 
-#endif /* _strarray_h_ */
+#endif /* _cant_thread_h_ */

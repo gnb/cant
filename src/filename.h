@@ -17,27 +17,22 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef _strarray_h_
-#define _strarray_h_ 1
+#ifndef _cant_filename_h_
+#define _cant_filename_h_ 1
 
 #include "common.h"
 
-typedef GPtrArray   strarray_t;
+typedef gboolean (*file_apply_proc_t)(const char *filename, void *userdata);
 
-strarray_t *strarray_new(void);
-void strarray_delete(strarray_t *);
+const char *file_basename_c(const char *filename);
+char *file_dirname(const char *filename);
+mode_t file_mode(const char *filename);
+FILE *file_open_mode(const char *filename, const char *rw, mode_t mode);
+char *file_make_absolute(const char *filename);
+int file_exists(const char *filename);
+int file_build_tree(const char *dirname, mode_t mode);	/* make sequence of directories */
+mode_t file_mode_from_string(const char *str, mode_t base, mode_t deflt);
+int file_apply_children(const char *filename, file_apply_proc_t, void *userdata);
+int file_is_directory(const char *filename);
 
-int strarray_append(strarray_t *, const char *s);
-int strarray_appendm(strarray_t *, char *s);
-void strarray_remove(strarray_t *, int i);
-
-#define strarray_join(sa, sep) \
-    g_strjoinv((sep), (char **)(sa)->pdata)
-
-#define strarray_nth(sa, i) \
-    ((const char *)g_ptr_array_index((sa), (i)))
-#define strarray_data(sa) \
-    ((const char **)((sa)->pdata))
-
-
-#endif /* _strarray_h_ */
+#endif /* _cant_filename_h_ */

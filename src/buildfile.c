@@ -20,7 +20,7 @@
 #include "cant.h"
 #include <parser.h>
 
-CVSID("$Id: buildfile.c,v 1.6 2001-11-10 14:39:50 gnb Exp $");
+CVSID("$Id: buildfile.c,v 1.7 2001-11-13 03:02:55 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -198,6 +198,7 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
     xops->task_ops.is_fileset = cantXmlGetBooleanProp(node, "fileset", FALSE);
     xops->task_ops.fileset_dir_name = "dir";	/* TODO */
     xops->foreach = cantXmlGetBooleanProp(node, "foreach", FALSE);
+    xops->dep_target = xml2g(xmlGetProp(node, "deptarget"));
 
     /* TODO: syntax check other attributes */
     
@@ -247,26 +248,21 @@ parse_xtaskdef(project_t *proj, xmlNode *node)
 	}
 	else if (!strcmp(child->name, "files"))
 	{
-	    mapper_t *ma;
-	    xmlNode *grand;
-	    
 	    xa = xtask_ops_add_files(xops);
-	    for (grand = child->childs ; grand != 0 ; grand = grand->next)
-	    {
-    		if (grand->type != XML_ELEMENT_NODE)
-		    continue;
-		
-		if (!strcmp(grand->name, "mapper"))
-		{
-		    if ((ma = parse_mapper(proj, grand)) != 0)
-		    	xa->data.mappers = g_list_append(xa->data.mappers, ma);
-		}
-		else
-		    parse_error("Expecting only \"mapper\" children\n");
-    	    }
-	    if (xa->data.mappers == 0)
-	    	xa->data.mappers = g_list_append(xa->data.mappers, 
-		    	    	    		 mapper_new("identity", 0, 0));
+	}
+	else if (!strcmp(child->name, "mapper"))
+	{
+	    mapper_t *ma;
+	    
+	    if ((ma = parse_mapper(proj, child)) != 0)
+		xops->mappers = g_list_append(xops->mappers, ma);
+	}
+	else if (!strcmp(child->name, "depmapper"))
+	{
+	    mapper_t *ma;
+	    
+	    if ((ma = parse_mapper(proj, child)) != 0)
+		xops->dep_mappers = g_list_append(xops->dep_mappers, ma);
 	}
 	else
 	    parse_error("Unexpected child \"%s\"\n", child->name);

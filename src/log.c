@@ -19,7 +19,7 @@
 
 #include "cant.h"
 
-CVSID("$Id: log.c,v 1.2 2001-11-06 09:10:30 gnb Exp $");
+CVSID("$Id: log.c,v 1.3 2001-11-13 03:02:55 gnb Exp $");
 
 static GList *log_context_stack;
 
@@ -29,6 +29,7 @@ void
 logv(const char *fmt, va_list args)
 {
     /* TODO: handle embedded newlines */
+    /* TODO: lock between threads */
     
     if (log_context_stack != 0)
     {

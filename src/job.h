@@ -17,27 +17,31 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef _strarray_h_
-#define _strarray_h_ 1
+#ifndef _cant_job_h_
+#define _cant_job_h_ 1
 
 #include "common.h"
+#include "strarray.h"
 
-typedef GPtrArray   strarray_t;
+typedef struct job_s job_t;
+typedef struct job_ops_s job_ops_t;
 
-strarray_t *strarray_new(void);
-void strarray_delete(strarray_t *);
+struct job_ops_s
+{
+    gboolean (*execute)(void *userdata);
+    char *(*describe)(void *userdata);
+    void (*delete)(void *userdata);
+};
 
-int strarray_append(strarray_t *, const char *s);
-int strarray_appendm(strarray_t *, char *s);
-void strarray_remove(strarray_t *, int i);
-
-#define strarray_join(sa, sep) \
-    g_strjoinv((sep), (char **)(sa)->pdata)
-
-#define strarray_nth(sa, i) \
-    ((const char *)g_ptr_array_index((sa), (i)))
-#define strarray_data(sa) \
-    ((const char **)((sa)->pdata))
+gboolean job_init(unsigned int num_workers);
+job_t *job_add(const char *name, job_ops_t *ops, void *userdata);
+job_t *job_add_command(const char *name, strarray_t *command, strarray_t *env);
+void job_add_depend(job_t *job, const char *depname);
+gboolean job_pending(void);
+void job_clear(void);
+gboolean job_run(void);
+gboolean job_immediate(job_ops_t *ops, void *userdata);
+gboolean job_immediate_command(strarray_t *command, strarray_t *env);
 
 
-#endif /* _strarray_h_ */
+#endif /* _cant_job_h_ */

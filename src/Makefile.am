@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 # 
-# $Id: Makefile.am,v 1.7 2001-11-10 03:17:24 gnb Exp $
+# $Id: Makefile.am,v 1.8 2001-11-13 03:02:55 gnb Exp $
 #
 
 bin_PROGRAMS=	cant
@@ -41,15 +41,16 @@ cant_SOURCES=	common.h cant.h \
 		project.c target.c task.c xtask.c \
 		props.h props.c \
 		estring.h estring.c \
-		log.c filename.c \
+		log.c filename.h filename.c \
 		fileset.c mapper.c pattern.h pattern.c \
 		xml.h xml.c \
 		common.c process.c \
 		strarray.h strarray.c \
+		thread.h queue.h queue.c job.h job.c \
 		$(TASK_SOURCES) \
 		$(MAPPER_SOURCES)
-INCLUDES=	$(GLIB_CFLAGS) $(LIBXML_CFLAGS)
-cant_LDADD=	$(GLIB_LIBS) $(LIBXML_LIBS)
+INCLUDES=	$(GLIB_CFLAGS) $(LIBXML_CFLAGS) $(THREADS_CFLAGS)
+cant_LDADD=	$(GLIB_LIBS) $(LIBXML_LIBS) $(THREADS_LIBS)
 
 task.o: builtin-tasks.h
 

@@ -25,7 +25,7 @@
 #include "props.h"
 #include "strarray.h"
 #include "pattern.h"
-#include <regex.h>
+#include "filename.h"
 #include "xml.h"
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
@@ -144,7 +144,6 @@ struct xtask_arg_s
     {
 	char *arg;	    	/* for XT_ARG */
 	fileset_t *fileset;     /* for XT_FILESET */
-	GList *mappers; 	/* for XT_FILES */
     } data;
     
     char *condition;
@@ -158,6 +157,9 @@ struct xtask_ops_s
     char *logmessage;
     GList *args;    	    	/* list of xtask_arg_t */
     props_t *property_map;	/* maps attributes to local property *name*s */
+    GList *mappers;     	/* list of mapper_t: args to files */
+    GList *dep_mappers;     	/* list of mapper_t: depfiles to targfiles */
+    char *dep_target;
     
     gboolean foreach:1;
 };
@@ -194,9 +196,6 @@ struct fs_spec_s
     char *condition;
 };
 
-
-
-typedef gboolean (*file_apply_proc_t)(const char *filename, void *userdata);
 
 
 struct mapper_s
@@ -340,20 +339,8 @@ void logperror(const char *filename);
 void log_push_context(const char *name);
 void log_pop_context(void);
 
-/* filename.c */
-const char *file_basename_c(const char *filename);
-char *file_dirname(const char *filename);
-mode_t file_mode(const char *filename);
-FILE *file_open_mode(const char *filename, const char *rw, mode_t mode);
-char *file_make_absolute(const char *filename);
-int file_build_tree(const char *dirname, mode_t mode);	/* make sequence of directories */
-mode_t file_mode_from_string(const char *str, mode_t base, mode_t deflt);
-int file_apply_children(const char *filename, file_apply_proc_t, void *userdata);
-int file_is_directory(const char *filename);
-
 /* process.c */
-int process_run(strarray_t *command, strarray_t *env);
-void process_log_status(const char *command, int status);
+gboolean process_run(strarray_t *command, strarray_t *env);
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 #endif /* _cant_h_ */

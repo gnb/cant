@@ -23,12 +23,21 @@
 #include <sys/wait.h>
 #endif
 
-CVSID("$Id: process.c,v 1.1 2001-11-07 08:36:00 gnb Exp $");
+CVSID("$Id: process.c,v 1.2 2001-11-13 03:02:55 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
+/*
+ * Waits for a process to die and reaps it, returning the
+ * exit status (if the program exited normally), >256
+ * (if the program died via a signal) or -1 (system
+ * call failed for various reasons).
+ */
+
+#define SIGNAL_FLAG 	0x100
+
 static int
-do_wait(pid_t pid)
+vulture(pid_t pid)
 {
     int status;
     
@@ -49,7 +58,7 @@ do_wait(pid_t pid)
 	if (WIFEXITED(status))
 	    return WEXITSTATUS(status);
 	else if (WIFSIGNALED(status))
-	    return (0x100+WTERMSIG(status));
+	    return (SIGNAL_FLAG|WTERMSIG(status));
 	/* WIFSTOPPED() -- continue */
     }
     /* UNREACHED */
@@ -58,14 +67,12 @@ do_wait(pid_t pid)
 
 /*
  * Runs the given command with the given environment
- * overrides, waits until it finishes, and returns the
- * exit status (if the program exited normally), >256
- * (if the program died via a signal) or -1 (system
- * call failed for various reasons).  In other words,
- * you want it to return 0 and anything else is bad.
+ * overrides, waits until it finishes, and returns
+ * TRUE iff the process ran and reported no errors
+ * in its exit status.
  */
- 
-int
+  
+gboolean
 process_run(strarray_t *command, strarray_t *env)
 {
     pid_t pid;
@@ -80,7 +87,7 @@ process_run(strarray_t *command, strarray_t *env)
     {
     	/* error */
     	logperror("fork");
-	return -1;
+	return FALSE;
     }
     
     if (pid == 0)
@@ -97,27 +104,32 @@ process_run(strarray_t *command, strarray_t *env)
     else
     {
     	/* parent */
-	if ((status = do_wait(pid)) < 0)
+	status = vulture(pid);
+	
+	if (status < 0)
+	{
 	    logperror("waitpid");
-	return status;
+	    return FALSE;
+	}
+	else if (status & SIGNAL_FLAG)
+	{
+	    status &= ~SIGNAL_FLAG;
+    	    logf("Command \"%s\" was terminated by signal %d (%s)\n",
+	    	    strarray_nth(command, 0),
+		    status,
+		    g_strsignal(status));
+	    return FALSE;
+	}
+	else if (status > 0)
+	{
+    	    logf("Command \"%s\" exited with status %d\n",
+	    	    strarray_nth(command, 0),
+		    status);
+	    return FALSE;
+	}
+	/* == 0 -> ok */
     }
-    /* UNREACHED */
-    return -1;
-}
-
-/*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
-
-void
-process_log_status(const char *command, int status)
-{
-    if (status > 0x100)
-    	logf("Command \"%s\" was terminated by signal %d (%s)\n",
-	    	command, (status-0x100), g_strsignal(status-0x100));
-    else if (status > 0)
-    	logf("Command \"%s\" exited with status %d\n",
-	    	command, status);
-    /* == 0 -> ok */
-    /* < 0 -> error, reported above */
+    return TRUE;
 }
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
