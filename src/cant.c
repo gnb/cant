@@ -21,7 +21,7 @@
 #include "cant.h"
 #include "job.h"
 
-CVSID("$Id: cant.c,v 1.16 2002-02-04 04:59:56 gnb Exp $");
+CVSID("$Id: cant.c,v 1.17 2002-02-08 07:13:53 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -360,6 +360,8 @@ parse_args(int argc, char **argv)
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 #if DEBUG
 
+#define boolstr(b)  ((b) ? "true" : "false")
+
 static void
 dump_one_property(const char *name, const char *value, void *userdata)
 {
@@ -387,6 +389,37 @@ dump_one_taglist(gpointer key, gpointer value, gpointer userdata)
 	fprintf(stderr, "            NAME=\"%s\"\n", tlitem->name);
 	fprintf(stderr, "            TYPE=%d\n", tlitem->type);
 	fprintf(stderr, "            VALUE=\"%s\"\n", tlitem->value);
+	fprintf(stderr, "        }\n");
+    }
+        
+    fprintf(stderr, "    }\n");
+}
+
+static void
+dump_one_fileset(gpointer key, gpointer value, gpointer userdata)
+{
+    fileset_t *fs = (fileset_t *)value;
+    GList *iter;
+    char *cond_desc;
+    
+    fprintf(stderr, "    FILESET {\n");
+    fprintf(stderr, "        ID=\"%s\"\n", fs->id);
+    fprintf(stderr, "        REFCOUNT=%d\n", fs->refcount);
+    fprintf(stderr, "        DIRECTORY=\"%s\"\n", fs->directory);
+    fprintf(stderr, "        DEFAULT_EXCLUDES=%s\n", boolstr(fs->default_excludes));
+    fprintf(stderr, "        CASE_SENSITIVE=%s\n", boolstr(fs->case_sensitive));
+
+    for (iter = fs->specs ; iter != 0 ; iter = iter->next)
+    {
+    	fs_spec_t *fss = (fs_spec_t *)iter->data;
+	
+	fprintf(stderr, "        FS_SPEC {\n");
+	fprintf(stderr, "            FLAGS=%d\n", fss->flags);
+	fprintf(stderr, "            FILENAME=\"%s\"\n", fss->filename);
+	fprintf(stderr, "            PATTERN=\"%s\"\n", fss->pattern.pattern);
+	cond_desc = condition_describe(&fss->condition);
+	fprintf(stderr, "            CONDITION=%s\n", cond_desc);
+	g_free(cond_desc);
 	fprintf(stderr, "        }\n");
     }
         
@@ -437,7 +470,7 @@ dump_project_properties(project_t *proj)
     fprintf(stderr, "    }\n");
 }
 
-static void
+void
 dump_project(project_t *proj)
 {
     fprintf(stderr, "PROJECT {\n");
@@ -447,6 +480,7 @@ dump_project(project_t *proj)
     fprintf(stderr, "    BASEDIR=\"%s\"\n", proj->basedir);
     g_hash_table_foreach(proj->targets, dump_one_target, 0);
     g_hash_table_foreach(proj->taglists, dump_one_taglist, 0);
+    g_hash_table_foreach(proj->filesets, dump_one_fileset, 0);
     dump_project_properties(proj);
     fprintf(stderr, "}\n");
 }
