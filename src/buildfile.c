@@ -20,7 +20,7 @@
 #include "cant.h"
 #include "xtask.h"
 
-CVSID("$Id: buildfile.c,v 1.20 2002-02-04 04:58:35 gnb Exp $");
+CVSID("$Id: buildfile.c,v 1.21 2002-02-08 07:11:50 gnb Exp $");
 
 /*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
@@ -168,6 +168,7 @@ static gboolean
 parse_property(project_t *proj, xmlNode *node)
 {
     char *name = 0;
+    char *name_e = 0;
     xmlAttr *attr;
     gboolean failed = FALSE;
 
@@ -175,6 +176,17 @@ parse_property(project_t *proj, xmlNode *node)
     name = xmlGetProp(node, "name");
 
     if (name != 0)
+    {
+	name_e = project_expand(proj, name);
+	strnullnorm(name_e);
+    }
+
+    if (name != 0 && name_e == 0)
+    {
+	parse_node_error(node, "\"name\" expanded empty\n");
+	failed = TRUE;
+    }
+    else if (name != 0)
     {
     	/* exactly one of "value", "location" and "refid" may be present */
 	char *value = xmlGetProp(node, "value");
@@ -193,17 +205,21 @@ parse_property(project_t *proj, xmlNode *node)
 	}
     	else if (value != 0)
 	{
-	    project_set_property(proj, name, value);
+	    if (cantXmlGetBooleanProp(node, "append", FALSE))
+		project_append_property(proj, name_e, value);
+	    else
+		project_set_property(proj, name_e, value);
 	}
 	else if (location != 0)
 	{
 	    /* TODO: translate DOS format filenames */
 	    if (location[0] == '/')
-	    	project_set_property(proj, name, location);
+	    	project_set_property(proj, name_e, location);
 	    else
 	    {
+	    	/* TODO: use file_normalise() */
 	    	char *abs = g_strconcat(proj->basedir, "/", location, 0);
-	    	project_set_property(proj, name, abs);
+	    	project_set_property(proj, name_e, abs);
 		g_free(abs);
 	    }
 	}
@@ -226,16 +242,18 @@ parse_property(project_t *proj, xmlNode *node)
     	/* exactly one of "resource", "file" and "environment" may be present */
 	char *resource = xmlGetProp(node, "resource");
 	char *file = xmlGetProp(node, "file");
+	char *shellfile = xmlGetProp(node, "shellfile");
 	char *environment = xmlGetProp(node, "environment");
 	int n = 0;
 	
 	if (resource != 0) n++;
 	if (file != 0) n++;
+	if (shellfile != 0) n++;
 	if (environment != 0) n++;
 
 	if (n != 1)
 	{
-	    parse_node_error(node, "You must specify exactly one of \"resource\", \"file\", and \"environment\"\n");
+	    parse_node_error(node, "You must specify exactly one of \"resource\", \"file\", \"shellfile\" and \"environment\"\n");
     	    failed = TRUE;
     	}
 	else if (resource != 0)
@@ -250,6 +268,10 @@ parse_property(project_t *proj, xmlNode *node)
 	    parse_node_error(node, "<property file=> not implemented\n");
 	    failed = TRUE;
 	}
+	else if (shellfile != 0)
+	{
+	    failed = !props_read_shellfile(proj->properties, shellfile);
+	}
 	else if (environment != 0)
 	{
 	    /* TODO */
@@ -261,6 +283,8 @@ parse_property(project_t *proj, xmlNode *node)
     	    xmlFree(resource);
 	if (file != 0)
     	    xmlFree(file);
+	if (shellfile != 0)
+    	    xmlFree(shellfile);
 	if (environment != 0)
     	    xmlFree(environment);
     }
@@ -273,9 +297,11 @@ parse_property(project_t *proj, xmlNode *node)
     	if (!strcmp(attr->name, "name") ||
 	    !strcmp(attr->name, "value") ||
 	    !strcmp(attr->name, "location") ||
+	    !strcmp(attr->name, "append") ||
 	    !strcmp(attr->name, "refid") ||
 	    !strcmp(attr->name, "resource") ||
 	    !strcmp(attr->name, "file") ||
+	    !strcmp(attr->name, "shellfile") ||
 	    !strcmp(attr->name, "environment") ||
 	    !strcmp(attr->name, "classpath") ||
 	    !strcmp(attr->name, "classpathref"))
@@ -292,6 +318,7 @@ parse_property(project_t *proj, xmlNode *node)
 
     if (name != 0)
     	xmlFree(name);
+    strdelete(name_e);
 	
     return !failed;
 }
@@ -846,6 +873,7 @@ parse_fileset(project_t *proj, xmlNode *node, const char *dirprop)
     fs_spec_t *fss;
     char *buf, *buf2, *x;
     xmlNode *child;
+    gboolean appending = FALSE;
     static const char sep[] = ", \t\n\r";
 
 #if DEBUG
@@ -862,6 +890,13 @@ parse_fileset(project_t *proj, xmlNode *node, const char *dirprop)
 	    xmlFree(buf2);
 	    return 0;
 	}
+    	if ((buf2 = xmlGetProp(node, "append")) != 0)
+	{
+	    parse_node_error(node, "Cannot specify both \"append\" and \"refid\"\n");
+	    xmlFree(buf);
+	    xmlFree(buf2);
+	    return 0;
+	}
 	
 	if ((fs = project_find_fileset(proj, buf)) == 0)
 	{
@@ -873,36 +908,69 @@ parse_fileset(project_t *proj, xmlNode *node, const char *dirprop)
 	    xmlFree(buf);
 	    return 0;
 	}
-	/* TODO: refcount to prevent problems deleting the project */
-	
     	xmlFree(buf);
+	fileset_ref(fs);
 	return fs;
     }
-
-    /* Handle definition of a new fileset */
-    if (dirprop != 0 && (buf = xmlGetProp(node, dirprop)) == 0)
+    else if ((buf = xmlGetProp(node, "append")) != 0)
     {
-	parse_error_required_attribute(node, dirprop);
-    	return 0;
-    }
+    	/* Handle appending to an existing fileset */
+    	if ((buf2 = xmlGetProp(node, "id")) != 0)
+	{
+	    parse_node_error(node, "Cannot specify both \"id\" and \"append\"\n");
+	    xmlFree(buf);
+	    xmlFree(buf2);
+	    return 0;
+	}
+    	if ((buf2 = xmlGetProp(node, "refid")) != 0)
+	{
+	    parse_node_error(node, "Cannot specify both \"refid\" and \"append\"\n");
+	    xmlFree(buf);
+	    xmlFree(buf2);
+	    return 0;
+	}
 
-    fs = fileset_new();
-    fileset_set_directory(fs, buf);
-    xmlFree(buf);
-
-
-    if ((buf = xmlGetProp(node, "id")) != 0)
-    {
-    	strassign(fs->id, buf);
+    	buf2 = project_expand(proj, buf);
+	if ((fs = project_find_fileset(proj, buf2)) == 0)
+	{
+	    /*
+    	     * TODO: order dependency.... May need to scan the project
+	     *       for non-tasks first before parsing tasks.
+	     */
+	    parse_node_error(node, "Cannot find fileset \"%s\" to satisfy \"append\"\n", buf);
+	    xmlFree(buf);
+	    return 0;
+	}
     	xmlFree(buf);
+	strdelete(buf2);
+	appending = TRUE;
     }
-    
+    else
+    {
+	/* Handle definition of a new fileset */
+	if (dirprop != 0 && (buf = xmlGetProp(node, dirprop)) == 0)
+	{
+	    parse_error_required_attribute(node, dirprop);
+    	    return 0;
+	}
 
-    fileset_set_case_sensitive(fs,
-    	    	    cantXmlGetBooleanProp(node, "casesensitive", TRUE));
-    fileset_set_default_excludes(fs,
-    	    	    cantXmlGetBooleanProp(node, "defaultexcludes", TRUE));
+	fs = fileset_new();
+	fileset_set_directory(fs, buf);
+	xmlFree(buf);
 
+
+	if ((buf = xmlGetProp(node, "id")) != 0)
+	{
+    	    strassign(fs->id, buf);
+    	    xmlFree(buf);
+	}
+
+
+	fileset_set_case_sensitive(fs,
+    	    		cantXmlGetBooleanProp(node, "casesensitive", TRUE));
+	fileset_set_default_excludes(fs,
+    	    		cantXmlGetBooleanProp(node, "defaultexcludes", TRUE));
+    }
 
     /*
      * "includes" attribute
@@ -1010,6 +1078,7 @@ is_fileset_attribute(const char *attrname, const char *dirprop)
     	    !strcmp(attrname, "excludesfile") ||
     	    !strcmp(attrname, "casesensitive") ||
     	    !strcmp(attrname, "defaultexcludes") ||
+    	    !strcmp(attrname, "recursive") ||
     	    !strcmp(attrname, "refid"));
 }
 
